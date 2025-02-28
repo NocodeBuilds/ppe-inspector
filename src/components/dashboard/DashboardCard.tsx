@@ -10,6 +10,7 @@ interface DashboardCardProps {
   description: string;
   iconBgColor?: string;
   className?: string;
+  onClick?: () => void; // Add the onClick property to the interface
 }
 
 const DashboardCard = ({
@@ -19,7 +20,16 @@ const DashboardCard = ({
   description,
   iconBgColor = 'bg-primary',
   className,
+  onClick,
 }: DashboardCardProps) => {
+  // If onClick is provided, we'll use it with the Link component
+  const handleClick = (e: React.MouseEvent) => {
+    if (onClick) {
+      e.preventDefault(); // Prevent the default navigation
+      onClick();
+    }
+  };
+
   return (
     <Link
       to={to}
@@ -28,6 +38,7 @@ const DashboardCard = ({
         'hover:translate-y-[-2px] hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-ring',
         className
       )}
+      onClick={handleClick}
     >
       <div className="flex flex-col items-center text-center">
         <div className={cn(

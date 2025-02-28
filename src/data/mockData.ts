@@ -213,3 +213,6 @@ export const getPPETypes = (): PPEType[] => [
   'Safety Goggles',
   'Ear Protection'
 ];
+
+// We need to re-export the PPEType from our types so it can be imported from mockData
+export type { PPEType };
