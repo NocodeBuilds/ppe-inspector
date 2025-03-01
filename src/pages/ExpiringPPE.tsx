@@ -4,7 +4,7 @@ import EquipmentCard from '@/components/equipment/EquipmentCard';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import CardOverlay from '@/components/ui/card-overlay';
-import { supabase, PPEItem } from '@/integrations/supabase/client';
+import { supabase, PPEItem, PPEType } from '@/integrations/supabase/client';
 
 const ExpiringPPE = () => {
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
@@ -93,7 +93,7 @@ const ExpiringPPE = () => {
               item={{
                 id: item.id,
                 serialNumber: item.serial_number,
-                type: item.type,
+                type: item.type as PPEType,
                 brand: item.brand,
                 modelNumber: item.model_number,
                 manufacturingDate: item.manufacturing_date,

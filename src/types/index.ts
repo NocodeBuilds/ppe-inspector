@@ -1,4 +1,3 @@
-
 export type PPEType = 
   | 'Full Body Harness'
   | 'Fall Arrester'
@@ -55,4 +54,14 @@ export interface User {
   email: string;
   role: 'admin' | 'inspector' | 'user';
   avatar?: string;
+}
+
+export interface DashboardCardProps {
+  to: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  iconBgColor: string;
+  className?: string;
+  onClick?: () => void;
 }

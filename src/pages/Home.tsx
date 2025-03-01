@@ -67,7 +67,7 @@ const Home = () => {
       
       <div className="grid grid-cols-2 gap-4">
         <DashboardCard
-          to="/add-ppe"
+          to="/equipment"
           title="Add PPE"
           description="Add new equipment"
           icon={<Plus size={28} className="text-primary-foreground" />}

@@ -9,7 +9,209 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      inspection_checkpoints: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: string
+          ppe_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: string
+          ppe_type: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: string
+          ppe_type?: string
+        }
+        Relationships: []
+      }
+      inspection_results: {
+        Row: {
+          checkpoint_id: string | null
+          created_at: string | null
+          id: string
+          inspection_id: string | null
+          notes: string | null
+          passed: boolean
+          photo_url: string | null
+        }
+        Insert: {
+          checkpoint_id?: string | null
+          created_at?: string | null
+          id?: string
+          inspection_id?: string | null
+          notes?: string | null
+          passed: boolean
+          photo_url?: string | null
+        }
+        Update: {
+          checkpoint_id?: string | null
+          created_at?: string | null
+          id?: string
+          inspection_id?: string | null
+          notes?: string | null
+          passed?: boolean
+          photo_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_results_checkpoint_id_fkey"
+            columns: ["checkpoint_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_checkpoints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_results_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspections: {
+        Row: {
+          created_at: string | null
+          date: string | null
+          id: string
+          inspector_id: string | null
+          notes: string | null
+          overall_result: string
+          ppe_id: string | null
+          signature_url: string | null
+          type: Database["public"]["Enums"]["inspection_type"]
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          inspector_id?: string | null
+          notes?: string | null
+          overall_result: string
+          ppe_id?: string | null
+          signature_url?: string | null
+          type: Database["public"]["Enums"]["inspection_type"]
+        }
+        Update: {
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          inspector_id?: string | null
+          notes?: string | null
+          overall_result?: string
+          ppe_id?: string | null
+          signature_url?: string | null
+          type?: Database["public"]["Enums"]["inspection_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspections_inspector_id_fkey"
+            columns: ["inspector_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_ppe_id_fkey"
+            columns: ["ppe_id"]
+            isOneToOne: false
+            referencedRelation: "ppe_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ppe_items: {
+        Row: {
+          brand: string
+          created_at: string | null
+          created_by: string | null
+          expiry_date: string
+          id: string
+          image_url: string | null
+          last_inspection: string | null
+          manufacturing_date: string
+          model_number: string
+          next_inspection: string | null
+          serial_number: string
+          status: Database["public"]["Enums"]["ppe_status"] | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          brand: string
+          created_at?: string | null
+          created_by?: string | null
+          expiry_date: string
+          id?: string
+          image_url?: string | null
+          last_inspection?: string | null
+          manufacturing_date: string
+          model_number: string
+          next_inspection?: string | null
+          serial_number: string
+          status?: Database["public"]["Enums"]["ppe_status"] | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          brand?: string
+          created_at?: string | null
+          created_by?: string | null
+          expiry_date?: string
+          id?: string
+          image_url?: string | null
+          last_inspection?: string | null
+          manufacturing_date?: string
+          model_number?: string
+          next_inspection?: string | null
+          serial_number?: string
+          status?: Database["public"]["Enums"]["ppe_status"] | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppe_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          role?: Database["public"]["Enums"]["app_role"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +220,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "inspector" | "user"
+      inspection_type: "pre-use" | "monthly" | "quarterly"
+      ppe_status: "active" | "expired" | "maintenance" | "flagged"
     }
     CompositeTypes: {
       [_ in never]: never
