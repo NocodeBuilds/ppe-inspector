@@ -73,12 +73,7 @@ const EditProfile = () => {
     if (!user?.id) return;
     
     try {
-      // We need to use RPC or a custom query since the table doesn't exist in types
-      const { data: extendedProfileData, error: extendedProfileError } = await supabase
-        .from('extended_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const { data: extendedProfileData, error: extendedProfileError } = await supabase.rpc('get_extended_profile');
       
       if (extendedProfileError && extendedProfileError.code !== 'PGRST116') {
         throw extendedProfileError;
@@ -206,16 +201,13 @@ const EditProfile = () => {
         
       if (profileError) throw profileError;
       
-      // Update or insert extended_profiles record using RPC or a custom query
-      const { error: extendedProfileError } = await supabase
-        .from('extended_profiles')
-        .upsert({
-          user_id: user.id,
-          employee_id: formData.employeeId,
-          location: formData.location,
-          department: formData.department,
-          bio: formData.bio
-        }, { onConflict: 'user_id' });
+      // Update or insert extended_profiles record using RPC
+      const { error: extendedProfileError } = await supabase.rpc('upsert_extended_profile', {
+        p_employee_id: formData.employeeId,
+        p_location: formData.location,
+        p_department: formData.department,
+        p_bio: formData.bio
+      });
         
       if (extendedProfileError) throw extendedProfileError;
       

@@ -24,18 +24,17 @@ const Profile = () => {
   
   const fetchExtendedProfile = async () => {
     try {
-      // We need to use RPC or a custom query since the table doesn't exist in types
-      const { data, error } = await supabase
-        .from('extended_profiles')
-        .select('*')
-        .eq('user_id', profile?.id)
-        .maybeSingle();
-        
-      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
-        throw error;
-      }
+      const { data, error } = await supabase.rpc('get_extended_profile');
       
-      setExtendedProfile(data as ExtendedProfile || null);
+      if (error) {
+        if (error.code !== 'PGRST116') { // PGRST116 means no rows returned
+          throw error;
+        }
+        // If no data is found, set extendedProfile to null
+        setExtendedProfile(null);
+      } else {
+        setExtendedProfile(data as ExtendedProfile);
+      }
     } catch (error: any) {
       console.error('Error fetching extended profile:', error);
     } finally {

@@ -1,101 +1,131 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
+import { CalendarIcon, Download, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { format, subDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Download, FileSpreadsheet, FileText, Share2 } from 'lucide-react';
 
-const Reports = () => {
-  const [dateRange, setDateRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [activeTab, setActiveTab] = useState('status');
-  const [inspectors, setInspectors] = useState<{ id: string; name: string }[]>([]);
-  const [selectedInspector, setSelectedInspector] = useState<string | null>(null);
-  const [statusData, setStatusData] = useState<any[]>([]);
-  const [inspectionData, setInspectionData] = useState<any[]>([]);
-  const [expiryData, setExpiryData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const COLORS = ['#4caf50', '#ff9800', '#f44336', '#9e9e9e'];
-  
+const ReportsPage = () => {
+  const { profile } = useAuth();
+  const [reportType, setReportType] = useState('inspections');
+  const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
+  const [endDate, setEndDate] = useState<Date>(new Date());
+  const [ppeTypes, setPpeTypes] = useState<string[]>([]);
+  const [selectedPpeType, setSelectedPpeType] = useState<string>('all');
+  const [inspectors, setInspectors] = useState<{id: string, name: string}[]>([]);
+  const [selectedInspector, setSelectedInspector] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [reportData, setReportData] = useState([]);
+
   useEffect(() => {
-    // Set default date range
-    updateDateRange('month');
-    fetchInspectors();
+    fetchFilters();
   }, []);
-  
+
   useEffect(() => {
-    if (startDate && endDate) {
+    if (!isLoading) {
       fetchReportData();
     }
-  }, [startDate, endDate, selectedInspector, activeTab]);
-  
-  const updateDateRange = (range: 'week' | 'month' | 'quarter' | 'year') => {
-    const end = new Date();
-    let start = new Date();
-    
-    switch (range) {
-      case 'week':
-        start.setDate(end.getDate() - 7);
-        break;
-      case 'month':
-        start.setMonth(end.getMonth() - 1);
-        break;
-      case 'quarter':
-        start.setMonth(end.getMonth() - 3);
-        break;
-      case 'year':
-        start.setFullYear(end.getFullYear() - 1);
-        break;
-    }
-    
-    setDateRange(range);
-    setStartDate(start);
-    setEndDate(end);
-  };
-  
-  const fetchInspectors = async () => {
+  }, [reportType, startDate, endDate, selectedPpeType, selectedInspector, isLoading]);
+
+  const fetchFilters = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch PPE types
+      const { data: typesData, error: typesError } = await supabase
+        .from('ppe_items')
+        .select('type')
+        .order('type');
+
+      if (typesError) throw typesError;
+
+      const uniqueTypes = [...new Set(typesData.map(item => item.type))];
+      setPpeTypes(uniqueTypes);
+
+      // Fetch inspectors
+      const { data: inspectorsData, error: inspectorsError } = await supabase
         .from('profiles')
         .select('id, full_name')
-        .eq('role', 'inspector');
-      
-      if (error) throw error;
-      
-      const formattedInspectors = data.map(inspector => ({
-        id: inspector.id,
-        name: inspector.full_name || 'Unknown'
-      }));
-      
-      setInspectors(formattedInspectors);
+        .order('full_name');
+
+      if (inspectorsError) throw inspectorsError;
+
+      setInspectors(inspectorsData.map(user => ({
+        id: user.id,
+        name: user.full_name || 'Unknown'
+      })));
+
+      setIsLoading(false);
     } catch (error) {
-      console.error('Error fetching inspectors:', error);
+      console.error('Error fetching filters:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load report filters',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
     }
   };
-  
+
   const fetchReportData = async () => {
-    if (!startDate || !endDate) return;
-    
     setIsLoading(true);
-    
+
     try {
-      switch (activeTab) {
-        case 'status':
-          await fetchStatusData();
-          break;
-        case 'inspections':
-          await fetchInspectionData();
-          break;
-        case 'expiry':
-          await fetchExpiryData();
-          break;
+      if (reportType === 'inspections') {
+        let query = supabase
+          .from('inspections')
+          .select(`
+            id,
+            date,
+            type,
+            overall_result,
+            ppe_items(id, type, serial_number),
+            profiles(id, full_name)
+          `)
+          .gte('date', format(startDate, 'yyyy-MM-dd'))
+          .lte('date', format(endDate, 'yyyy-MM-dd'));
+
+        if (selectedInspector !== 'all') {
+          query = query.eq('inspector_id', selectedInspector);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        // Filter by PPE type if needed
+        let filteredData = data;
+        if (selectedPpeType !== 'all') {
+          filteredData = data.filter(record => 
+            record.ppe_items && record.ppe_items.type === selectedPpeType
+          );
+        }
+
+        setReportData(filteredData);
+      } else if (reportType === 'equipment') {
+        let query = supabase
+          .from('ppe_items')
+          .select('*');
+
+        if (selectedPpeType !== 'all') {
+          query = query.eq('type', selectedPpeType);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        setReportData(data);
       }
     } catch (error) {
       console.error('Error fetching report data:', error);
@@ -108,262 +138,210 @@ const Reports = () => {
       setIsLoading(false);
     }
   };
-  
-  const fetchStatusData = async () => {
-    // In a real implementation, this would fetch actual data from Supabase
-    const { data, error } = await supabase
-      .from('ppe_items')
-      .select('status, count')
-      .eq('status', 'active');
-    
-    if (error) throw error;
-    
-    // Sample data structure for demonstration
-    const statusCounts = [
-      { name: 'Active', value: 45 },
-      { name: 'Expired', value: 12 },
-      { name: 'Maintenance', value: 8 },
-      { name: 'Flagged', value: 5 }
-    ];
-    
-    setStatusData(statusCounts);
-  };
-  
-  const fetchInspectionData = async () => {
-    // Sample data structure for demonstration
-    const inspectionCounts = [
-      { name: 'Jan', 'Pre-use': 20, 'Monthly': 8, 'Quarterly': 3 },
-      { name: 'Feb', 'Pre-use': 18, 'Monthly': 7, 'Quarterly': 0 },
-      { name: 'Mar', 'Pre-use': 25, 'Monthly': 9, 'Quarterly': 4 },
-      { name: 'Apr', 'Pre-use': 22, 'Monthly': 6, 'Quarterly': 0 },
-      { name: 'May', 'Pre-use': 28, 'Monthly': 10, 'Quarterly': 0 },
-      { name: 'Jun', 'Pre-use': 24, 'Monthly': 8, 'Quarterly': 3 }
-    ];
-    
-    setInspectionData(inspectionCounts);
-  };
-  
-  const fetchExpiryData = async () => {
-    // Sample data structure for demonstration
-    const expiryMonths = [
-      { name: 'This Month', value: 3 },
-      { name: '1-3 Months', value: 8 },
-      { name: '3-6 Months', value: 15 },
-      { name: '6+ Months', value: 44 }
-    ];
-    
-    setExpiryData(expiryMonths);
-  };
-  
-  const exportToPDF = () => {
+
+  const downloadReport = () => {
     toast({
-      title: 'Exporting PDF',
-      description: 'Your report is being generated and will be downloaded shortly.'
+      title: 'Download Started',
+      description: 'Your report is being prepared for download',
     });
     
-    // In a real implementation, this would generate and download a PDF
+    // This is a mock implementation
+    setTimeout(() => {
+      toast({
+        title: 'Download Complete',
+        description: 'Your report has been downloaded',
+      });
+    }, 2000);
   };
-  
-  const exportToExcel = () => {
-    toast({
-      title: 'Exporting Excel',
-      description: 'Your report is being generated and will be downloaded shortly.'
-    });
-    
-    // In a real implementation, this would generate and download an Excel file
-  };
-  
-  const shareReport = () => {
-    toast({
-      title: 'Share Report',
-      description: 'Sharing options will be available soon.'
-    });
-    
-    // In a real implementation, this would open sharing options
-  };
-  
+
   return (
-    <div className="fade-in">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Reports & Analytics</h1>
-      </div>
+    <div className="container mx-auto p-4 pb-20">
+      <h1 className="text-2xl font-bold mb-6">Reports & Analytics</h1>
       
-      <Card className="p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">Date Range</label>
-            <Select value={dateRange} onValueChange={(value: any) => updateDateRange(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">Last Week</SelectItem>
-                <SelectItem value="month">Last Month</SelectItem>
-                <SelectItem value="quarter">Last Quarter</SelectItem>
-                <SelectItem value="year">Last Year</SelectItem>
-              </SelectContent>
-            </Select>
+      <Card className="mb-6">
+        <div className="p-4">
+          <h2 className="text-lg font-semibold mb-4">Generate Report</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Report Type</label>
+              <Select
+                value={reportType}
+                onValueChange={setReportType}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select report type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inspections">Inspection Report</SelectItem>
+                  <SelectItem value="equipment">Equipment Status</SelectItem>
+                  <SelectItem value="expiring">Expiring PPE</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-2 block">Start Date</label>
+              <DatePicker date={startDate} setDate={setStartDate} />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-2 block">End Date</label>
+              <DatePicker date={endDate} setDate={setEndDate} />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-2 block">PPE Type</label>
+              <Select
+                value={selectedPpeType}
+                onValueChange={setSelectedPpeType}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select PPE type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {ppeTypes.map(type => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {reportType === 'inspections' && (
+              <div>
+                <label className="text-sm font-medium mb-2 block">Inspector</label>
+                <Select
+                  value={selectedInspector}
+                  onValueChange={setSelectedInspector}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select inspector" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Inspectors</SelectItem>
+                    {inspectors.map(inspector => (
+                      <SelectItem key={inspector.id} value={inspector.id}>
+                        {inspector.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           
-          <div>
-            <label className="text-sm font-medium mb-1 block">Inspector</label>
-            <Select 
-              value={selectedInspector || ''} 
-              onValueChange={setSelectedInspector}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All Inspectors" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Inspectors</SelectItem>
-                {inspectors.map(inspector => (
-                  <SelectItem key={inspector.id} value={inspector.id}>
-                    {inspector.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Separator className="my-4" />
           
-          <div>
-            <label className="text-sm font-medium mb-1 block">Start Date</label>
-            <DatePicker
-              date={startDate}
-              setDate={setStartDate}
-            />
-          </div>
-          
-          <div>
-            <label className="text-sm font-medium mb-1 block">End Date</label>
-            <DatePicker
-              date={endDate}
-              setDate={setEndDate}
-            />
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-muted-foreground">
+              {reportData.length} records found
+            </div>
+            
+            <Button onClick={downloadReport}>
+              <Download size={16} className="mr-2" />
+              Download Report
+            </Button>
           </div>
         </div>
       </Card>
       
-      <Tabs defaultValue="status" value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList className="w-full">
-          <TabsTrigger value="status" className="flex-1">PPE Status</TabsTrigger>
-          <TabsTrigger value="inspections" className="flex-1">Inspections</TabsTrigger>
-          <TabsTrigger value="expiry" className="flex-1">Expiry</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="status" className="pt-4">
-          <Card className="p-4">
-            <h2 className="text-lg font-semibold mb-4">PPE Status Distribution</h2>
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={true}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {statusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="inspections" className="pt-4">
-          <Card className="p-4">
-            <h2 className="text-lg font-semibold mb-4">Inspections by Month and Type</h2>
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={inspectionData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="Pre-use" stackId="a" fill="#4caf50" />
-                    <Bar dataKey="Monthly" stackId="a" fill="#2196f3" />
-                    <Bar dataKey="Quarterly" stackId="a" fill="#ff9800" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="expiry" className="pt-4">
-          <Card className="p-4">
-            <h2 className="text-lg font-semibold mb-4">PPE Expiry Timeline</h2>
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={expiryData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#ff9800" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </Card>
-        </TabsContent>
-      </Tabs>
-      
-      <div className="flex flex-wrap gap-2 justify-end">
-        <Button variant="outline" onClick={exportToPDF}>
-          <FileText size={16} className="mr-2" />
-          Export PDF
-        </Button>
-        <Button variant="outline" onClick={exportToExcel}>
-          <FileSpreadsheet size={16} className="mr-2" />
-          Export Excel
-        </Button>
-        <Button variant="outline" onClick={shareReport}>
-          <Share2 size={16} className="mr-2" />
-          Share
+      <div className="mb-4 flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Report Preview</h2>
+        <Button variant="outline" size="sm">
+          <Filter size={16} className="mr-2" />
+          More Filters
         </Button>
       </div>
+      
+      {isLoading ? (
+        <div className="flex justify-center my-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      ) : reportData.length > 0 ? (
+        <div className="grid gap-4">
+          {reportType === 'inspections' ? (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-muted">
+                    <th className="p-2 text-left">Date</th>
+                    <th className="p-2 text-left">PPE Type</th>
+                    <th className="p-2 text-left">Serial Number</th>
+                    <th className="p-2 text-left">Inspector</th>
+                    <th className="p-2 text-left">Type</th>
+                    <th className="p-2 text-left">Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportData.map((record: any) => (
+                    <tr key={record.id} className="border-b border-gray-200">
+                      <td className="p-2">{format(new Date(record.date), 'MMM d, yyyy')}</td>
+                      <td className="p-2">{record.ppe_items?.type || 'Unknown'}</td>
+                      <td className="p-2">{record.ppe_items?.serial_number || 'Unknown'}</td>
+                      <td className="p-2">{record.profiles?.full_name || 'Unknown'}</td>
+                      <td className="p-2 capitalize">{record.type}</td>
+                      <td className="p-2">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          record.overall_result === 'pass' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {record.overall_result}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-muted">
+                    <th className="p-2 text-left">Type</th>
+                    <th className="p-2 text-left">Serial Number</th>
+                    <th className="p-2 text-left">Brand</th>
+                    <th className="p-2 text-left">Expiry Date</th>
+                    <th className="p-2 text-left">Last Inspection</th>
+                    <th className="p-2 text-left">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportData.map((item: any) => (
+                    <tr key={item.id} className="border-b border-gray-200">
+                      <td className="p-2">{item.type}</td>
+                      <td className="p-2">{item.serial_number}</td>
+                      <td className="p-2">{item.brand}</td>
+                      <td className="p-2">{format(new Date(item.expiry_date), 'MMM d, yyyy')}</td>
+                      <td className="p-2">{item.last_inspection ? format(new Date(item.last_inspection), 'MMM d, yyyy') : 'Never'}</td>
+                      <td className="p-2">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          item.status === 'active' ? 'bg-green-100 text-green-800' : 
+                          item.status === 'expired' ? 'bg-red-100 text-red-800' :
+                          item.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-orange-100 text-orange-800'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-center p-8 bg-muted rounded-lg">
+          <CalendarIcon size={48} className="mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-medium mb-2">No data available</h3>
+          <p className="text-muted-foreground">
+            Try adjusting your filters to see more results
+          </p>
+        </div>
+      )}
     </div>
   );
 };
 
-export default Reports;
+export default ReportsPage;
