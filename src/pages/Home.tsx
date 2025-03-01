@@ -7,14 +7,17 @@ import CardOverlay from '@/components/ui/card-overlay';
 import AddPPEForm from '@/components/forms/AddPPEForm';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
   const [showAddPPE, setShowAddPPE] = useState(false);
   const [stats, setStats] = useState({
     upcomingInspections: 0,
-    expiringPPE: 0
+    expiringPPE: 0,
+    flaggedPPE: 0
   });
   const { profile } = useAuth();
+  const navigate = useNavigate();
   
   useEffect(() => {
     const fetchStats = async () => {
@@ -39,9 +42,18 @@ const Home = () => {
           
         if (expiringError) throw expiringError;
         
+        // Get flagged PPE count
+        const { count: flaggedCount, error: flaggedError } = await supabase
+          .from('ppe_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'flagged');
+          
+        if (flaggedError) throw flaggedError;
+        
         setStats({
           upcomingInspections: upcomingCount || 0,
-          expiringPPE: expiringCount || 0
+          expiringPPE: expiringCount || 0,
+          flaggedPPE: flaggedCount || 0
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
@@ -77,12 +89,13 @@ const Home = () => {
         />
         
         <DashboardCard
-          to="/inspect"
+          to="/equipment"
           title="Start Inspection"
           description="Begin inspection"
           icon={<Shield size={28} className="text-primary-foreground" />}
           iconBgColor="bg-info"
           className="slide-up"
+          onClick={() => navigate('/equipment')}
         />
         
         <DashboardCard
@@ -104,20 +117,20 @@ const Home = () => {
         />
         
         <DashboardCard
+          to="/equipment"
+          title="Flagged Issues"
+          description={`${stats.flaggedPPE} item${stats.flaggedPPE !== 1 ? 's' : ''} need action`}
+          icon={<AlertTriangle size={28} className="text-primary-foreground" />}
+          iconBgColor="bg-destructive"
+          className="slide-up col-span-1"
+        />
+        
+        <DashboardCard
           to="/reports"
           title="Reports"
           description="View & download"
           icon={<FileText size={28} className="text-primary-foreground" />}
           iconBgColor="bg-accent"
-          className="slide-up col-span-1"
-        />
-        
-        <DashboardCard
-          to="/exports"
-          title="Export Data"
-          description="PDF & Excel files"
-          icon={<Download size={28} className="text-primary-foreground" />}
-          iconBgColor="bg-secondary"
           className="slide-up col-span-1"
         />
       </div>

@@ -18,6 +18,9 @@ import NotFound from "./pages/NotFound";
 import RegisterPage from "./pages/Register";
 import ForgotPasswordPage from "./pages/ForgotPassword";
 import ResetPasswordPage from "./pages/ResetPassword";
+import EditProfile from "./pages/EditProfile";
+import InspectionForm from "./pages/InspectionForm";
+import ReportsPage from "./pages/Reports";
 
 const queryClient = new QueryClient();
 
@@ -105,6 +108,9 @@ const App = () => {
                 <Route path="equipment" element={<Equipment />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="edit-profile" element={<EditProfile />} />
+                <Route path="inspect/:ppeId" element={<InspectionForm />} />
+                <Route path="reports" element={<ReportsPage />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />
