@@ -9,9 +9,10 @@ interface EquipmentCardProps {
   type: 'expiring' | 'upcoming' | 'equipment';
   onEdit?: () => void;
   onDownload?: () => void;
+  onInspect?: () => void;  // Added the onInspect prop
 }
 
-const EquipmentCard = ({ item, type, onEdit, onDownload }: EquipmentCardProps) => {
+const EquipmentCard = ({ item, type, onEdit, onDownload, onInspect }: EquipmentCardProps) => {
   const borderColor = 
     type === 'expiring' ? 'border-danger/50' : 
     type === 'upcoming' ? 'border-warning/50' : 
@@ -74,12 +75,27 @@ const EquipmentCard = ({ item, type, onEdit, onDownload }: EquipmentCardProps) =
           <p className="text-sm">{getStatusText()}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={onDownload} className="bg-background h-10 w-10">
-            <Download size={20} />
-          </Button>
-          <Button variant="default" size="icon" onClick={onEdit} className="bg-primary text-primary-foreground h-10 w-10">
-            <Edit size={20} />
-          </Button>
+          {onInspect && (
+            <Button variant="default" size="icon" onClick={onInspect} className="bg-primary text-primary-foreground h-10 w-10">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <path d="M16 13H8"></path>
+                <path d="M16 17H8"></path>
+                <path d="M10 9H8"></path>
+              </svg>
+            </Button>
+          )}
+          {onDownload && (
+            <Button variant="outline" size="icon" onClick={onDownload} className="bg-background h-10 w-10">
+              <Download size={20} />
+            </Button>
+          )}
+          {onEdit && (
+            <Button variant="default" size="icon" onClick={onEdit} className="bg-primary text-primary-foreground h-10 w-10">
+              <Edit size={20} />
+            </Button>
+          )}
         </div>
       </div>
     </div>
