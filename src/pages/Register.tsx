@@ -6,16 +6,18 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Moon, Sun } from 'lucide-react';
 
-const Login = () => {
+const RegisterPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') || 
       (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   });
-
-  const { signIn, isLoading } = useAuth();
+  
+  const { signUp, isLoading } = useAuth();
   const navigate = useNavigate();
   
   const toggleTheme = () => {
@@ -25,15 +27,25 @@ const Login = () => {
     localStorage.setItem('theme', newTheme);
   };
   
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    
     try {
-      await signIn(email, password);
-      navigate('/');
+      await signUp(email, password, fullName);
+      navigate('/login', { state: { registrationSuccess: true } });
     } catch (error: any) {
-      setError(error.message || 'Failed to sign in');
+      setError(error.message || 'Failed to create account');
     }
   };
   
@@ -55,8 +67,8 @@ const Login = () => {
       <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20">
         <div className="w-full max-w-md">
           <div className="text-center mb-10">
-            <h1 className="text-4xl font-bold text-primary mb-2">RENEW</h1>
-            <p className="text-muted-foreground">PPE Inspection Portal</p>
+            <h1 className="text-4xl font-bold text-primary mb-2">REGISTER</h1>
+            <p className="text-muted-foreground">Create your PPE Inspector account</p>
           </div>
           
           <div className="glass-card rounded-lg p-6">
@@ -66,7 +78,19 @@ const Login = () => {
               </div>
             )}
             
-            <form onSubmit={handleLogin} className="space-y-6">
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="fullName" className="block text-sm">Full Name</label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Your full name"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
+              
               <div className="space-y-2">
                 <label htmlFor="email" className="block text-sm">Email address</label>
                 <Input
@@ -80,33 +104,42 @@ const Login = () => {
               </div>
               
               <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm">Your Password</label>
+                <label htmlFor="password" className="block text-sm">Password</label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Your password"
+                  placeholder="Create a password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
               
+              <div className="space-y-2">
+                <label htmlFor="confirmPassword" className="block text-sm">Confirm Password</label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+              
               <Button 
                 type="submit" 
-                className="w-full bg-success hover:bg-success/90"
+                className="w-full bg-success hover:bg-success/90 mt-4"
                 disabled={isLoading}
               >
-                {isLoading ? 'Signing in...' : 'Sign in'}
+                {isLoading ? 'Creating Account...' : 'Create Account'}
               </Button>
               
-              <div className="text-center space-y-2 mt-4">
-                <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground block">
-                  Forgot your password?
-                </Link>
+              <div className="text-center mt-4">
                 <div className="block text-sm">
-                  Don't have an account?{' '}
-                  <Link to="/register" className="text-primary hover:underline">
-                    Sign up
+                  Already have an account?{' '}
+                  <Link to="/login" className="text-primary hover:underline">
+                    Sign in
                   </Link>
                 </div>
               </div>
@@ -118,4 +151,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default RegisterPage;

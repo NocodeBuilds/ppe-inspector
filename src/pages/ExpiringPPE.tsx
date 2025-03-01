@@ -1,24 +1,56 @@
 
-import { useState } from 'react';
-import { getExpiringPPE } from '@/data/mockData';
+import { useState, useEffect } from 'react';
 import EquipmentCard from '@/components/equipment/EquipmentCard';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import CardOverlay from '@/components/ui/card-overlay';
-import { PPEItem } from '@/types';
+import { supabase, PPEItem } from '@/integrations/supabase/client';
 
 const ExpiringPPE = () => {
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [selectedItem, setSelectedItem] = useState<PPEItem | null>(null);
+  const [expiringItems, setExpiringItems] = useState<PPEItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const expiringItems = getExpiringPPE();
+  useEffect(() => {
+    fetchExpiringPPE();
+  }, []);
+  
+  const fetchExpiringPPE = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get items that are expired or expiring within 30 days
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+      
+      const { data, error } = await supabase
+        .from('ppe_items')
+        .select('*')
+        .or(`status.eq.expired,expiry_date.lte.${thirtyDaysFromNow.toISOString()}`)
+        .order('expiry_date', { ascending: true });
+        
+      if (error) throw error;
+      
+      setExpiringItems(data || []);
+    } catch (error: any) {
+      console.error('Error fetching expiring PPE:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load expiring PPE items',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   const handleEdit = (item: PPEItem) => {
     setSelectedItem(item);
     // In a real app, we would navigate to an edit page or show a modal
     toast({
       title: 'Edit PPE',
-      description: `Editing ${item.type} (${item.serialNumber})`,
+      description: `Editing ${item.type} (${item.serial_number})`,
     });
   };
 
@@ -45,7 +77,11 @@ const ExpiringPPE = () => {
     <div className="fade-in">
       <h1 className="text-2xl font-bold mb-6">Expiring PPE</h1>
       
-      {expiringItems.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center my-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      ) : expiringItems.length === 0 ? (
         <div className="text-center my-12">
           <p className="text-muted-foreground">No expiring PPE items found</p>
         </div>
@@ -54,7 +90,19 @@ const ExpiringPPE = () => {
           {expiringItems.map((item) => (
             <EquipmentCard
               key={item.id}
-              item={item}
+              item={{
+                id: item.id,
+                serialNumber: item.serial_number,
+                type: item.type,
+                brand: item.brand,
+                modelNumber: item.model_number,
+                manufacturingDate: item.manufacturing_date,
+                expiryDate: item.expiry_date,
+                status: item.status,
+                imageUrl: item.image_url || undefined,
+                lastInspection: item.last_inspection || undefined,
+                nextInspection: item.next_inspection || undefined,
+              }}
               type="expiring"
               onEdit={() => handleEdit(item)}
               onDownload={() => handleDownload(item)}

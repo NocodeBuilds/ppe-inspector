@@ -1,19 +1,69 @@
 
 import { Plus, Shield, Calendar, AlertTriangle, Download, FileText } from 'lucide-react';
 import DashboardCard from '@/components/dashboard/DashboardCard';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import CardOverlay from '@/components/ui/card-overlay';
 import AddPPEForm from '@/components/forms/AddPPEForm';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Home = () => {
   const [showAddPPE, setShowAddPPE] = useState(false);
+  const [stats, setStats] = useState({
+    upcomingInspections: 0,
+    expiringPPE: 0
+  });
+  const { profile } = useAuth();
+  
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Get upcoming inspections count
+        const today = new Date().toISOString();
+        const { count: upcomingCount, error: upcomingError } = await supabase
+          .from('ppe_items')
+          .select('id', { count: 'exact', head: true })
+          .gte('next_inspection', today);
+          
+        if (upcomingError) throw upcomingError;
+        
+        // Get expiring PPE count
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        
+        const { count: expiringCount, error: expiringError } = await supabase
+          .from('ppe_items')
+          .select('id', { count: 'exact', head: true })
+          .or(`status.eq.expired,expiry_date.lte.${thirtyDaysFromNow.toISOString()}`);
+          
+        if (expiringError) throw expiringError;
+        
+        setStats({
+          upcomingInspections: upcomingCount || 0,
+          expiringPPE: expiringCount || 0
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+    
+    fetchStats();
+  }, []);
   
   return (
     <div>
       <h1 className="text-3xl font-bold mb-8 text-center mt-6 fade-in">
         <span className="text-primary">PPE</span> Inspector Pro
       </h1>
+      
+      {profile && (
+        <div className="mb-6 fade-in">
+          <p className="text-center text-muted-foreground">
+            Welcome back, <span className="font-semibold">{profile.full_name || 'User'}</span>
+          </p>
+        </div>
+      )}
       
       <div className="grid grid-cols-2 gap-4">
         <DashboardCard
@@ -38,7 +88,7 @@ const Home = () => {
         <DashboardCard
           to="/upcoming"
           title="Upcoming Inspections"
-          description="9 inspections due"
+          description={`${stats.upcomingInspections} inspection${stats.upcomingInspections !== 1 ? 's' : ''} due`}
           icon={<Calendar size={28} className="text-primary-foreground" />}
           iconBgColor="bg-warning"
           className="slide-up"
@@ -47,7 +97,7 @@ const Home = () => {
         <DashboardCard
           to="/expiring"
           title="Expiring PPE"
-          description="3 items need attention"
+          description={`${stats.expiringPPE} item${stats.expiringPPE !== 1 ? 's' : ''} need attention`}
           icon={<AlertTriangle size={28} className="text-primary-foreground" />}
           iconBgColor="bg-destructive"
           className="slide-up"

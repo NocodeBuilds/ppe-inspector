@@ -5,7 +5,7 @@ import { Calendar, Upload } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { PPEType, getPPETypes } from '@/data/mockData';
+import { PPEType } from '@/types';
 import {
   Select,
   SelectContent,
@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AddPPEFormProps {
   onSuccess?: () => void;
@@ -28,24 +30,76 @@ interface FormValues {
   expiryDate: string;
 }
 
+const ppeTypes: PPEType[] = [
+  'Full Body Harness',
+  'Fall Arrester',
+  'Double Lanyard',
+  'Safety Helmet',
+  'Safety Boots',
+  'Safety Gloves',
+  'Safety Goggles',
+  'Ear Protection'
+];
+
 const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
-
-  const ppeTypes = getPPETypes();
+  const { user } = useAuth();
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormValues>();
 
   const onSubmit = async (data: FormValues) => {
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to add PPE items',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
-      // In a real app, we would send the data to the backend
-      console.log('Submitting PPE data:', data);
-      console.log('Image file:', imageFile);
+      // Upload image if selected
+      let imageUrl = null;
+      if (imageFile) {
+        const filename = `${Date.now()}-${imageFile.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('ppe-images')
+          .upload(filename, imageFile);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('ppe-images')
+          .getPublicUrl(filename);
+          
+        imageUrl = publicUrl;
+      }
       
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Calculate next inspection date (3 months from manufacturing date)
+      const manufacturingDate = new Date(data.manufacturingDate);
+      const nextInspection = new Date(manufacturingDate);
+      nextInspection.setMonth(nextInspection.getMonth() + 3);
+      
+      // Insert PPE item
+      const { error: insertError } = await supabase
+        .from('ppe_items')
+        .insert({
+          serial_number: data.serialNumber,
+          type: data.type,
+          brand: data.brand,
+          model_number: data.modelNumber,
+          manufacturing_date: data.manufacturingDate,
+          expiry_date: data.expiryDate,
+          status: new Date(data.expiryDate) < new Date() ? 'expired' : 'active',
+          image_url: imageUrl,
+          created_by: user.id,
+          next_inspection: nextInspection.toISOString(),
+        });
+        
+      if (insertError) throw insertError;
       
       toast({
         title: 'Success!',
@@ -55,11 +109,11 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
       if (onSuccess) {
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding PPE:', error);
       toast({
         title: 'Error',
-        description: 'Failed to add PPE item',
+        description: error.message || 'Failed to add PPE item',
         variant: 'destructive',
       });
     } finally {

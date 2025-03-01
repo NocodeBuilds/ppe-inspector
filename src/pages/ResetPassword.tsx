@@ -1,22 +1,33 @@
 
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { Moon, Sun } from 'lucide-react';
 
-const Login = () => {
-  const [email, setEmail] = useState('');
+const ResetPasswordPage = () => {
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') || 
       (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   });
-
-  const { signIn, isLoading } = useAuth();
+  
   const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    // Check if this is indeed a password reset flow
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    if (!params.get('type') || params.get('type') !== 'recovery') {
+      setError('Invalid reset password link');
+    }
+  }, []);
   
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -25,15 +36,40 @@ const Login = () => {
     localStorage.setItem('theme', newTheme);
   };
   
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    
     try {
-      await signIn(email, password);
-      navigate('/');
+      setLoading(true);
+      
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: 'Password updated',
+        description: 'Your password has been updated successfully.',
+      });
+      
+      // Redirect to login
+      navigate('/login');
     } catch (error: any) {
-      setError(error.message || 'Failed to sign in');
+      setError(error.message || 'Failed to update password');
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -55,8 +91,8 @@ const Login = () => {
       <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20">
         <div className="w-full max-w-md">
           <div className="text-center mb-10">
-            <h1 className="text-4xl font-bold text-primary mb-2">RENEW</h1>
-            <p className="text-muted-foreground">PPE Inspection Portal</p>
+            <h1 className="text-4xl font-bold text-primary mb-2">NEW PASSWORD</h1>
+            <p className="text-muted-foreground">Create a new password</p>
           </div>
           
           <div className="glass-card rounded-lg p-6">
@@ -66,50 +102,38 @@ const Login = () => {
               </div>
             )}
             
-            <form onSubmit={handleLogin} className="space-y-6">
+            <form onSubmit={handleResetPassword} className="space-y-6">
               <div className="space-y-2">
-                <label htmlFor="email" className="block text-sm">Email address</label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Your email address"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm">Your Password</label>
+                <label htmlFor="password" className="block text-sm">New Password</label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Your password"
+                  placeholder="Create a new password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
               
+              <div className="space-y-2">
+                <label htmlFor="confirmPassword" className="block text-sm">Confirm Password</label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your new password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+              
               <Button 
                 type="submit" 
-                className="w-full bg-success hover:bg-success/90"
-                disabled={isLoading}
+                className="w-full"
+                disabled={loading}
               >
-                {isLoading ? 'Signing in...' : 'Sign in'}
+                {loading ? 'Updating Password...' : 'Update Password'}
               </Button>
-              
-              <div className="text-center space-y-2 mt-4">
-                <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground block">
-                  Forgot your password?
-                </Link>
-                <div className="block text-sm">
-                  Don't have an account?{' '}
-                  <Link to="/register" className="text-primary hover:underline">
-                    Sign up
-                  </Link>
-                </div>
-              </div>
             </form>
           </div>
         </div>
@@ -118,4 +142,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default ResetPasswordPage;
