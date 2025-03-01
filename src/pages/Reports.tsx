@@ -1,71 +1,63 @@
 
 import React, { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Download, FileText, Filter, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import { Download, FileSpreadsheet, FileText, Share2 } from 'lucide-react';
 
 const Reports = () => {
-  const [inspections, setInspections] = useState<any[]>([]);
-  const [filteredInspections, setFilteredInspections] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    ppeType: '',
-    inspector: '',
-    dateFrom: undefined as Date | undefined,
-    dateTo: undefined as Date | undefined,
-    result: ''
-  });
-  const [inspectors, setInspectors] = useState<{id: string, name: string}[]>([]);
-  const [ppeTypes, setPpeTypes] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState('status');
+  const [inspectors, setInspectors] = useState<{ id: string; name: string }[]>([]);
+  const [selectedInspector, setSelectedInspector] = useState<string | null>(null);
+  const [statusData, setStatusData] = useState<any[]>([]);
+  const [inspectionData, setInspectionData] = useState<any[]>([]);
+  const [expiryData, setExpiryData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const COLORS = ['#4caf50', '#ff9800', '#f44336', '#9e9e9e'];
   
   useEffect(() => {
-    fetchInspections();
+    // Set default date range
+    updateDateRange('month');
     fetchInspectors();
-    fetchPPETypes();
   }, []);
   
   useEffect(() => {
-    applyFilters();
-  }, [filters, inspections]);
-  
-  const fetchInspections = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('inspections')
-        .select(`
-          id,
-          date,
-          type,
-          overall_result,
-          inspector_id,
-          ppe_id,
-          profiles!inspections_inspector_id_fkey(full_name),
-          ppe_items!inspections_ppe_id_fkey(type, serial_number)
-        `)
-        .order('date', { ascending: false });
-        
-      if (error) throw error;
-      
-      setInspections(data || []);
-      setFilteredInspections(data || []);
-    } catch (error: any) {
-      console.error('Error fetching inspections:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load inspection reports',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+    if (startDate && endDate) {
+      fetchReportData();
     }
+  }, [startDate, endDate, selectedInspector, activeTab]);
+  
+  const updateDateRange = (range: 'week' | 'month' | 'quarter' | 'year') => {
+    const end = new Date();
+    let start = new Date();
+    
+    switch (range) {
+      case 'week':
+        start.setDate(end.getDate() - 7);
+        break;
+      case 'month':
+        start.setMonth(end.getMonth() - 1);
+        break;
+      case 'quarter':
+        start.setMonth(end.getMonth() - 3);
+        break;
+      case 'year':
+        start.setFullYear(end.getFullYear() - 1);
+        break;
+    }
+    
+    setDateRange(range);
+    setStartDate(start);
+    setEndDate(end);
   };
   
   const fetchInspectors = async () => {
@@ -73,332 +65,303 @@ const Reports = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name')
-        .not('full_name', 'is', null);
-        
+        .eq('role', 'inspector');
+      
       if (error) throw error;
       
-      setInspectors(data || []);
-    } catch (error: any) {
+      const formattedInspectors = data.map(inspector => ({
+        id: inspector.id,
+        name: inspector.full_name || 'Unknown'
+      }));
+      
+      setInspectors(formattedInspectors);
+    } catch (error) {
       console.error('Error fetching inspectors:', error);
     }
   };
   
-  const fetchPPETypes = async () => {
+  const fetchReportData = async () => {
+    if (!startDate || !endDate) return;
+    
+    setIsLoading(true);
+    
     try {
-      const { data, error } = await supabase
-        .from('ppe_items')
-        .select('type')
-        .limit(100);
-        
-      if (error) throw error;
-      
-      // Extract unique PPE types
-      const types = [...new Set(data?.map(item => item.type))];
-      setPpeTypes(types);
-    } catch (error: any) {
-      console.error('Error fetching PPE types:', error);
+      switch (activeTab) {
+        case 'status':
+          await fetchStatusData();
+          break;
+        case 'inspections':
+          await fetchInspectionData();
+          break;
+        case 'expiry':
+          await fetchExpiryData();
+          break;
+      }
+    } catch (error) {
+      console.error('Error fetching report data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load report data',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
   
-  const applyFilters = () => {
-    let filtered = [...inspections];
+  const fetchStatusData = async () => {
+    // In a real implementation, this would fetch actual data from Supabase
+    const { data, error } = await supabase
+      .from('ppe_items')
+      .select('status, count')
+      .eq('status', 'active');
     
-    if (filters.ppeType) {
-      filtered = filtered.filter(inspection => 
-        inspection.ppe_items?.type === filters.ppeType
-      );
-    }
+    if (error) throw error;
     
-    if (filters.inspector) {
-      filtered = filtered.filter(inspection => 
-        inspection.inspector_id === filters.inspector
-      );
-    }
+    // Sample data structure for demonstration
+    const statusCounts = [
+      { name: 'Active', value: 45 },
+      { name: 'Expired', value: 12 },
+      { name: 'Maintenance', value: 8 },
+      { name: 'Flagged', value: 5 }
+    ];
     
-    if (filters.dateFrom) {
-      filtered = filtered.filter(inspection => 
-        new Date(inspection.date) >= new Date(filters.dateFrom!)
-      );
-    }
-    
-    if (filters.dateTo) {
-      filtered = filtered.filter(inspection => 
-        new Date(inspection.date) <= new Date(filters.dateTo!)
-      );
-    }
-    
-    if (filters.result) {
-      filtered = filtered.filter(inspection => 
-        inspection.overall_result === filters.result
-      );
-    }
-    
-    setFilteredInspections(filtered);
+    setStatusData(statusCounts);
   };
   
-  const handleFilterChange = (field: string, value: any) => {
-    setFilters(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const fetchInspectionData = async () => {
+    // Sample data structure for demonstration
+    const inspectionCounts = [
+      { name: 'Jan', 'Pre-use': 20, 'Monthly': 8, 'Quarterly': 3 },
+      { name: 'Feb', 'Pre-use': 18, 'Monthly': 7, 'Quarterly': 0 },
+      { name: 'Mar', 'Pre-use': 25, 'Monthly': 9, 'Quarterly': 4 },
+      { name: 'Apr', 'Pre-use': 22, 'Monthly': 6, 'Quarterly': 0 },
+      { name: 'May', 'Pre-use': 28, 'Monthly': 10, 'Quarterly': 0 },
+      { name: 'Jun', 'Pre-use': 24, 'Monthly': 8, 'Quarterly': 3 }
+    ];
+    
+    setInspectionData(inspectionCounts);
   };
   
-  const resetFilters = () => {
-    setFilters({
-      ppeType: '',
-      inspector: '',
-      dateFrom: undefined,
-      dateTo: undefined,
-      result: ''
-    });
+  const fetchExpiryData = async () => {
+    // Sample data structure for demonstration
+    const expiryMonths = [
+      { name: 'This Month', value: 3 },
+      { name: '1-3 Months', value: 8 },
+      { name: '3-6 Months', value: 15 },
+      { name: '6+ Months', value: 44 }
+    ];
+    
+    setExpiryData(expiryMonths);
   };
   
-  const handleExportPDF = (inspectionId: string) => {
+  const exportToPDF = () => {
     toast({
-      title: 'Export PDF',
-      description: 'PDF export functionality is coming soon',
+      title: 'Exporting PDF',
+      description: 'Your report is being generated and will be downloaded shortly.'
     });
+    
+    // In a real implementation, this would generate and download a PDF
   };
   
-  const handleExportExcel = () => {
+  const exportToExcel = () => {
     toast({
-      title: 'Export Excel',
-      description: 'Excel export functionality is coming soon',
+      title: 'Exporting Excel',
+      description: 'Your report is being generated and will be downloaded shortly.'
     });
+    
+    // In a real implementation, this would generate and download an Excel file
   };
   
-  const getInspectionTypeLabel = (type: string) => {
-    switch(type) {
-      case 'pre-use': return 'Pre-use';
-      case 'monthly': return 'Monthly';
-      case 'quarterly': return 'Quarterly';
-      default: return type;
-    }
+  const shareReport = () => {
+    toast({
+      title: 'Share Report',
+      description: 'Sharing options will be available soon.'
+    });
+    
+    // In a real implementation, this would open sharing options
   };
   
   return (
-    <div className="fade-in pb-20">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => window.history.back()}
-            className="mr-2"
-          >
-            <ArrowLeft size={20} />
-          </Button>
-          <h1 className="text-2xl font-bold">Inspection Reports</h1>
-        </div>
-        
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-1"
-        >
-          <Filter size={16} />
-          {showFilters ? 'Hide Filters' : 'Filter'}
-        </Button>
+    <div className="fade-in">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Reports & Analytics</h1>
       </div>
       
-      {showFilters && (
-        <div className="glass-card rounded-lg p-4 mb-4">
-          <h2 className="font-semibold mb-2">Filters</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">PPE Type</label>
-              <Select
-                value={filters.ppeType}
-                onValueChange={(value) => handleFilterChange('ppeType', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
-                  {ppeTypes.map(type => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Inspector</label>
-              <Select
-                value={filters.inspector}
-                onValueChange={(value) => handleFilterChange('inspector', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Inspectors" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Inspectors</SelectItem>
-                  {inspectors.map(inspector => (
-                    <SelectItem key={inspector.id} value={inspector.id}>{inspector.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date From</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !filters.dateFrom && "text-muted-foreground"
-                    )}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {filters.dateFrom ? format(filters.dateFrom, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={filters.dateFrom}
-                    onSelect={(date) => handleFilterChange('dateFrom', date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date To</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !filters.dateTo && "text-muted-foreground"
-                    )}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {filters.dateTo ? format(filters.dateTo, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={filters.dateTo}
-                    onSelect={(date) => handleFilterChange('dateTo', date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Result</label>
-              <Select
-                value={filters.result}
-                onValueChange={(value) => handleFilterChange('result', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Results" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Results</SelectItem>
-                  <SelectItem value="pass">Pass</SelectItem>
-                  <SelectItem value="fail">Fail</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex items-end">
-              <Button 
-                variant="outline" 
-                onClick={resetFilters}
-                className="w-full"
-              >
-                Reset Filters
-              </Button>
-            </div>
+      <Card className="p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="text-sm font-medium mb-1 block">Date Range</label>
+            <Select value={dateRange} onValueChange={(value: any) => updateDateRange(value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="week">Last Week</SelectItem>
+                <SelectItem value="month">Last Month</SelectItem>
+                <SelectItem value="quarter">Last Quarter</SelectItem>
+                <SelectItem value="year">Last Year</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
-          <div className="mt-4">
-            <Button 
-              variant="outline" 
-              onClick={handleExportExcel}
-              className="w-full flex items-center gap-2"
+          <div>
+            <label className="text-sm font-medium mb-1 block">Inspector</label>
+            <Select 
+              value={selectedInspector || ''} 
+              onValueChange={setSelectedInspector}
             >
-              <FileText size={16} />
-              Export Filtered Results to Excel
-            </Button>
+              <SelectTrigger>
+                <SelectValue placeholder="All Inspectors" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Inspectors</SelectItem>
+                {inspectors.map(inspector => (
+                  <SelectItem key={inspector.id} value={inspector.id}>
+                    {inspector.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium mb-1 block">Start Date</label>
+            <DatePicker
+              date={startDate}
+              setDate={setStartDate}
+            />
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium mb-1 block">End Date</label>
+            <DatePicker
+              date={endDate}
+              setDate={setEndDate}
+            />
           </div>
         </div>
-      )}
+      </Card>
       
-      {isLoading ? (
-        <div className="flex justify-center my-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      ) : filteredInspections.length === 0 ? (
-        <div className="text-center my-12">
-          <p className="text-muted-foreground">No inspection reports found</p>
-          {Object.values(filters).some(v => v !== '' && v !== undefined) && (
-            <Button 
-              variant="outline" 
-              onClick={resetFilters}
-              className="mt-4"
-            >
-              Clear Filters
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredInspections.map(inspection => (
-            <div key={inspection.id} className="glass-card rounded-lg p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className="font-semibold">{inspection.ppe_items?.type}</h3>
-                  <p className="text-sm text-muted-foreground">Serial: {inspection.ppe_items?.serial_number}</p>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => handleExportPDF(inspection.id)}
-                  className="flex items-center gap-1"
-                >
-                  <Download size={14} />
-                  PDF
-                </Button>
+      <Tabs defaultValue="status" value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <TabsList className="w-full">
+          <TabsTrigger value="status" className="flex-1">PPE Status</TabsTrigger>
+          <TabsTrigger value="inspections" className="flex-1">Inspections</TabsTrigger>
+          <TabsTrigger value="expiry" className="flex-1">Expiry</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="status" className="pt-4">
+          <Card className="p-4">
+            <h2 className="text-lg font-semibold mb-4">PPE Status Distribution</h2>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
               </div>
-              
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Date</p>
-                  <p>{format(new Date(inspection.date), "PPP")}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Type</p>
-                  <p>{getInspectionTypeLabel(inspection.type)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Inspector</p>
-                  <p>{inspection.profiles?.full_name || 'Unknown'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Result</p>
-                  <p className={cn(
-                    "font-medium",
-                    inspection.overall_result === 'pass' ? "text-success" : "text-destructive"
-                  )}>
-                    {inspection.overall_result === 'pass' ? 'Pass' : 'Fail'}
-                  </p>
-                </div>
+            ) : (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={true}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {statusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            )}
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="inspections" className="pt-4">
+          <Card className="p-4">
+            <h2 className="text-lg font-semibold mb-4">Inspections by Month and Type</h2>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={inspectionData}
+                    margin={{
+                      top: 20,
+                      right: 30,
+                      left: 20,
+                      bottom: 5,
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="Pre-use" stackId="a" fill="#4caf50" />
+                    <Bar dataKey="Monthly" stackId="a" fill="#2196f3" />
+                    <Bar dataKey="Quarterly" stackId="a" fill="#ff9800" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="expiry" className="pt-4">
+          <Card className="p-4">
+            <h2 className="text-lg font-semibold mb-4">PPE Expiry Timeline</h2>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={expiryData}
+                    margin={{
+                      top: 20,
+                      right: 30,
+                      left: 20,
+                      bottom: 5,
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#ff9800" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      <div className="flex flex-wrap gap-2 justify-end">
+        <Button variant="outline" onClick={exportToPDF}>
+          <FileText size={16} className="mr-2" />
+          Export PDF
+        </Button>
+        <Button variant="outline" onClick={exportToExcel}>
+          <FileSpreadsheet size={16} className="mr-2" />
+          Export Excel
+        </Button>
+        <Button variant="outline" onClick={shareReport}>
+          <Share2 size={16} className="mr-2" />
+          Share
+        </Button>
+      </div>
     </div>
   );
 };

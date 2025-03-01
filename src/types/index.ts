@@ -1,3 +1,4 @@
+
 export type PPEType = 
   | 'Full Body Harness'
   | 'Fall Arrester'
@@ -64,4 +65,22 @@ export interface DashboardCardProps {
   iconBgColor: string;
   className?: string;
   onClick?: () => void;
+}
+
+export interface ExtendedProfile {
+  id?: string;
+  user_id?: string;
+  employee_id: string;
+  location: string;
+  department: string;
+  bio: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CheckpointStatus {
+  checkpointId: string;
+  status: 'ok' | 'not-ok' | 'na';
+  notes: string;
+  photoUrl?: string;
 }

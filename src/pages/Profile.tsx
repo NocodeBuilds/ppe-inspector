@@ -6,17 +6,11 @@ import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-
-interface ExtendedProfile {
-  employee_id: string;
-  location: string;
-  department: string;
-  bio: string;
-}
+import { ExtendedProfile } from '@/types';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, user } = useAuth();
   const [extendedProfile, setExtendedProfile] = useState<ExtendedProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -30,17 +24,18 @@ const Profile = () => {
   
   const fetchExtendedProfile = async () => {
     try {
+      // We need to use RPC or a custom query since the table doesn't exist in types
       const { data, error } = await supabase
         .from('extended_profiles')
         .select('*')
         .eq('user_id', profile?.id)
-        .single();
+        .maybeSingle();
         
       if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
         throw error;
       }
       
-      setExtendedProfile(data || null);
+      setExtendedProfile(data as ExtendedProfile || null);
     } catch (error: any) {
       console.error('Error fetching extended profile:', error);
     } finally {
@@ -138,7 +133,7 @@ const Profile = () => {
             <Mail size={20} className="text-muted-foreground mr-3" />
             <div>
               <p className="text-sm text-muted-foreground">Email</p>
-              <p>{profile?.email || 'Email not available'}</p>
+              <p>{user?.email || 'Email not available'}</p>
             </div>
           </div>
         </div>

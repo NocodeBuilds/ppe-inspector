@@ -14,6 +14,7 @@ import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from '
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ExtendedProfile } from '@/types';
 
 // Locations and departments
 const locations = [
@@ -72,15 +73,18 @@ const EditProfile = () => {
     if (!user?.id) return;
     
     try {
-      const { data: extendedProfile, error } = await supabase
+      // We need to use RPC or a custom query since the table doesn't exist in types
+      const { data: extendedProfileData, error: extendedProfileError } = await supabase
         .from('extended_profiles')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
-        throw error;
+      if (extendedProfileError && extendedProfileError.code !== 'PGRST116') {
+        throw extendedProfileError;
       }
+      
+      const extendedProfile = extendedProfileData as ExtendedProfile | null;
       
       setFormData({
         fullName: profile?.full_name || '',
@@ -202,7 +206,7 @@ const EditProfile = () => {
         
       if (profileError) throw profileError;
       
-      // Update or insert extended_profiles record
+      // Update or insert extended_profiles record using RPC or a custom query
       const { error: extendedProfileError } = await supabase
         .from('extended_profiles')
         .upsert({
