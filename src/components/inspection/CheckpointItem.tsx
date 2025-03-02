@@ -1,127 +1,125 @@
 
 import React, { useState } from 'react';
-import { InspectionCheckpoint } from '@/types';
+import { Check, X, Camera, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, X, Minus, Camera } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
 
-interface CheckpointItemProps {
-  checkpoint: InspectionCheckpoint;
-  result: {
-    status: 'ok' | 'not-ok' | 'na';
-    notes: string;
-    photoUrl?: string;
-  };
-  onStatusChange: (status: 'ok' | 'not-ok' | 'na') => void;
-  onNotesChange: (notes: string) => void;
-  onCapturePicture: () => void;
+export interface CheckpointItemProps {
+  id: string; // Add id property to fix the TypeScript error
+  description: string;
+  passed: boolean;
+  notes: string;
+  photoUrl?: string;
+  onPassedChange: (value: boolean) => void;
+  onNotesChange: (value: string) => void;
+  onPhotoCapture: (url: string) => void;
+  onPhotoDelete: () => void;
 }
 
-const CheckpointItem = ({
-  checkpoint,
-  result,
-  onStatusChange,
+const CheckpointItem: React.FC<CheckpointItemProps> = ({
+  id,
+  description,
+  passed,
+  notes,
+  photoUrl,
+  onPassedChange,
   onNotesChange,
-  onCapturePicture
-}: CheckpointItemProps) => {
-  const [expanded, setExpanded] = useState(false);
-
+  onPhotoCapture,
+  onPhotoDelete
+}) => {
+  const [showCamera, setShowCamera] = useState(false);
+  
+  const handleCapturePhoto = () => {
+    // In a real app, this would use the device camera
+    // For this demo, we'll just use a placeholder image URL
+    const mockPhotoUrl = 'https://via.placeholder.com/300';
+    onPhotoCapture(mockPhotoUrl);
+    setShowCamera(false);
+  };
+  
   return (
-    <div className="border border-border rounded-lg overflow-hidden mb-3">
-      <div className="p-3 flex flex-col">
-        <div className="flex items-center justify-between">
-          <span className="font-medium">{checkpoint.description}</span>
-          <div className="flex space-x-1">
+    <Card className="p-4">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0">
+          <div className="flex gap-2">
             <Button
               type="button"
               size="sm"
-              variant="ghost"
-              onClick={() => onStatusChange('ok')}
-              className={cn(
-                "h-8 w-8 p-0 rounded-full",
-                result.status === 'ok' && "bg-success text-white hover:bg-success/90"
-              )}
+              variant={passed ? 'default' : 'outline'}
+              className={passed ? 'bg-green-600 hover:bg-green-700 h-9 w-9 p-0' : 'h-9 w-9 p-0'}
+              onClick={() => onPassedChange(true)}
             >
               <Check size={16} />
-              <span className="sr-only">OK</span>
             </Button>
             
             <Button
               type="button"
               size="sm"
-              variant="ghost"
-              onClick={() => onStatusChange('not-ok')}
-              className={cn(
-                "h-8 w-8 p-0 rounded-full",
-                result.status === 'not-ok' && "bg-destructive text-white hover:bg-destructive/90"
-              )}
+              variant={!passed ? 'default' : 'outline'}
+              className={!passed ? 'bg-destructive hover:bg-destructive/90 h-9 w-9 p-0' : 'h-9 w-9 p-0'}
+              onClick={() => onPassedChange(false)}
             >
               <X size={16} />
-              <span className="sr-only">Not OK</span>
-            </Button>
-            
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => onStatusChange('na')}
-              className={cn(
-                "h-8 w-8 p-0 rounded-full",
-                result.status === 'na' && "bg-muted-foreground text-white hover:bg-muted-foreground/90"
-              )}
-            >
-              <Minus size={16} />
-              <span className="sr-only">N/A</span>
             </Button>
           </div>
         </div>
         
-        <div className="flex items-center justify-between mt-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setExpanded(!expanded)}
-            className="px-2 py-1 h-auto text-xs"
-          >
-            {expanded ? 'Hide Details' : 'Add Notes'}
-          </Button>
+        <div className="flex-grow">
+          <p className="font-medium mb-2">{description}</p>
           
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onCapturePicture}
-            className="px-2 py-1 h-auto flex items-center text-xs"
-          >
-            <Camera size={14} className="mr-1" />
-            Photo
-          </Button>
-        </div>
-      </div>
-      
-      {expanded && (
-        <div className="p-3 pt-0">
-          <Textarea
-            value={result.notes}
-            onChange={(e) => onNotesChange(e.target.value)}
-            placeholder="Add notes"
-            className="min-h-20 text-sm"
-          />
+          {!passed && (
+            <Textarea
+              placeholder="Please add notes explaining the issue..."
+              value={notes}
+              onChange={(e) => onNotesChange(e.target.value)}
+              className="mt-2 mb-3"
+              rows={2}
+            />
+          )}
           
-          {result.photoUrl && (
+          {photoUrl ? (
+            <div className="mt-3 relative">
+              <img src={photoUrl} alt="Checkpoint" className="rounded-md w-full max-h-40 object-cover" />
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="absolute top-2 right-2 h-8 w-8 p-0"
+                onClick={onPhotoDelete}
+              >
+                <Trash2 size={14} />
+              </Button>
+            </div>
+          ) : (
             <div className="mt-2">
-              <img
-                src={result.photoUrl}
-                alt="Inspection photo"
-                className="max-h-32 rounded-md object-cover"
-              />
+              {showCamera ? (
+                <div className="bg-muted p-4 rounded-md">
+                  <div className="aspect-video bg-muted-foreground/20 rounded flex items-center justify-center mb-2">
+                    <Camera size={40} className="text-muted-foreground" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleCapturePhoto}>Capture</Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowCamera(false)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-1"
+                  onClick={() => setShowCamera(true)}
+                >
+                  <Camera size={14} className="mr-1" />
+                  Add Photo
+                </Button>
+              )}
             </div>
           )}
         </div>
-      )}
-    </div>
+      </div>
+    </Card>
   );
 };
 

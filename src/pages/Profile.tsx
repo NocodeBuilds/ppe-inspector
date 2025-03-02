@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Key, LogOut, Edit, Briefcase, MapPin, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,8 +31,9 @@ const Profile = () => {
         }
         // If no data is found, set extendedProfile to null
         setExtendedProfile(null);
-      } else {
-        setExtendedProfile(data as ExtendedProfile);
+      } else if (data) {
+        // Cast the data to ExtendedProfile type 
+        setExtendedProfile(data as unknown as ExtendedProfile);
       }
     } catch (error: any) {
       console.error('Error fetching extended profile:', error);

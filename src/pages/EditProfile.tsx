@@ -48,16 +48,16 @@ const EditProfile = () => {
         if (error.code !== 'PGRST116') { // PGRST116 means no rows returned
           throw error;
         }
-      } else {
-        setExtendedProfile(data as ExtendedProfile);
+      } else if (data) {
+        // Cast the data to ExtendedProfile type
+        const profileData = data as unknown as ExtendedProfile;
+        setExtendedProfile(profileData);
         
         // Populate form with existing data
-        if (data) {
-          setEmployeeId(data.employee_id || '');
-          setLocation(data.location || '');
-          setDepartment(data.department || '');
-          setBio(data.bio || '');
-        }
+        setEmployeeId(profileData.employee_id || '');
+        setLocation(profileData.location || '');
+        setDepartment(profileData.department || '');
+        setBio(profileData.bio || '');
       }
     } catch (error: any) {
       console.error('Error fetching extended profile:', error);
