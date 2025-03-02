@@ -250,7 +250,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_extended_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      upsert_extended_profile: {
+        Args: {
+          p_employee_id: string
+          p_location: string
+          p_department: string
+          p_bio: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "inspector" | "user"

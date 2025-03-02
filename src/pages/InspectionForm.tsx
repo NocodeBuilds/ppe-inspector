@@ -1,250 +1,312 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Camera, Save, Check, X, AlertTriangle, SendHorizontal, Download, Share } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Camera, Check, ChevronLeft, ChevronRight, Delete, Info, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { PPEItem, InspectionCheckpoint, CheckpointStatus } from '@/types';
-import { DatePicker } from '@/components/ui/date-picker';
-import { format } from 'date-fns';
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { toast } from '@/hooks/use-toast';
+import { supabase, PPEType, InspectionType } from '@/integrations/supabase/client';
+import { InspectionCheckpoint } from '@/types';
+import CheckpointItem from '@/components/inspection/CheckpointItem';
 import SignatureCanvas from '@/components/inspection/SignatureCanvas';
+
+// Helper to convert a string to a known PPEType
+const toPPEType = (typeString: string): PPEType => {
+  const validTypes: PPEType[] = [
+    'Full Body Harness',
+    'Fall Arrester',
+    'Double Lanyard',
+    'Safety Helmet',
+    'Safety Boots',
+    'Safety Gloves',
+    'Safety Goggles',
+    'Ear Protection'
+  ];
+  
+  if (validTypes.includes(typeString as PPEType)) {
+    return typeString as PPEType;
+  }
+  
+  // Default fallback
+  return 'Safety Helmet';
+};
 
 const InspectionForm = () => {
   const { ppeId } = useParams<{ ppeId: string }>();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const queryClient = useQueryClient();
   
-  const [ppe, setPpe] = useState<PPEItem | null>(null);
+  // PPE item state
+  const [ppeItem, setPpeItem] = useState<{
+    id: string;
+    serialNumber: string;
+    type: PPEType;
+    brand: string;
+    modelNumber: string;
+  } | null>(null);
+  
+  // Inspection state
+  const [inspectionType, setInspectionType] = useState<InspectionType>('pre-use');
   const [checkpoints, setCheckpoints] = useState<InspectionCheckpoint[]>([]);
-  const [checkpointStatuses, setCheckpointStatuses] = useState<CheckpointStatus[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [overallResult, setOverallResult] = useState<'pass' | 'fail'>('pass');
+  const [results, setResults] = useState<Record<string, { passed: boolean; notes: string; photoUrl?: string }>>({});
   const [notes, setNotes] = useState('');
-  const [inspectionDate, setInspectionDate] = useState<Date>(new Date());
-  const [inspectionType, setInspectionType] = useState<'pre-use' | 'monthly' | 'quarterly'>('pre-use');
-  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
-  const [signatureImage, setSignatureImage] = useState<string | null>(null);
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [signature, setSignature] = useState<string | null>(null);
+  const [overallResult, setOverallResult] = useState<'pass' | 'fail'>('pass');
   
-  const signatureRef = useRef(null);
+  // Form navigation
+  const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Loading states
+  const [isLoading, setIsLoading] = useState(true);
+  const [ppeError, setPpeError] = useState<string | null>(null);
+  const [checkpointsError, setCheckpointsError] = useState<string | null>(null);
+  const [resultsError, setResultsError] = useState<string | null>(null);
   
   useEffect(() => {
     if (ppeId) {
-      fetchPPEItem();
+      fetchPPEItem(ppeId);
+    } else {
+      setPpeError('No PPE ID provided');
+      setIsLoading(false);
     }
   }, [ppeId]);
   
-  useEffect(() => {
-    if (ppe?.type) {
-      fetchCheckpoints(ppe.type);
-    }
-  }, [ppe]);
-  
-  const fetchPPEItem = async () => {
-    if (!ppeId) return;
-    
+  // Fetch PPE item details
+  const fetchPPEItem = async (id: string) => {
     try {
       const { data, error } = await supabase
         .from('ppe_items')
         .select('*')
-        .eq('id', ppeId)
+        .eq('id', id)
         .single();
-        
+      
       if (error) throw error;
       
-      // Convert from database format to frontend format
-      const ppeItem: PPEItem = {
-        id: data.id,
-        serialNumber: data.serial_number,
-        type: data.type,
-        brand: data.brand,
-        modelNumber: data.model_number,
-        manufacturingDate: data.manufacturing_date,
-        expiryDate: data.expiry_date,
-        status: data.status,
-        imageUrl: data.image_url || undefined,
-        lastInspection: data.last_inspection || undefined,
-        nextInspection: data.next_inspection || undefined
-      };
-      
-      setPpe(ppeItem);
+      if (data) {
+        setPpeItem({
+          id: data.id,
+          serialNumber: data.serial_number,
+          type: toPPEType(data.type),
+          brand: data.brand,
+          modelNumber: data.model_number,
+        });
+        
+        // After getting PPE item, fetch applicable checkpoints
+        fetchCheckpoints(data.type);
+      }
     } catch (error: any) {
       console.error('Error fetching PPE item:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load PPE item',
-        variant: 'destructive',
-      });
+      setPpeError(error.message || 'Failed to load PPE item');
     }
   };
   
+  // Fetch inspection checkpoints for the PPE type
   const fetchCheckpoints = async (ppeType: string) => {
     try {
       const { data, error } = await supabase
         .from('inspection_checkpoints')
         .select('*')
         .eq('ppe_type', ppeType);
-        
+      
       if (error) throw error;
       
-      // Initialize all checkpoints with default status
-      const checkpointsData = data.map(cp => ({
-        id: cp.id,
-        description: cp.description,
-        ppeType: cp.ppe_type
-      }));
-      
-      setCheckpoints(checkpointsData);
-      
-      // Initialize checkpoint statuses
-      const initialStatuses: CheckpointStatus[] = checkpointsData.map(cp => ({
-        checkpointId: cp.id,
-        status: 'na', // Default to NA
-        notes: ''
-      }));
-      
-      setCheckpointStatuses(initialStatuses);
-      setIsLoading(false);
+      if (data && data.length > 0) {
+        const formattedCheckpoints = data.map(checkpoint => ({
+          id: checkpoint.id,
+          description: checkpoint.description,
+          ppeType: toPPEType(checkpoint.ppe_type)
+        }));
+        
+        setCheckpoints(formattedCheckpoints as InspectionCheckpoint[]);
+        
+        // Initialize results object with default values
+        const initialResults: Record<string, { passed: boolean; notes: string; photoUrl?: string }> = {};
+        data.forEach(checkpoint => {
+          initialResults[checkpoint.id] = { passed: true, notes: '' };
+        });
+        
+        setResults(initialResults);
+      } else {
+        setCheckpointsError('No checkpoints found for this PPE type');
+      }
     } catch (error: any) {
       console.error('Error fetching checkpoints:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load inspection checkpoints',
-        variant: 'destructive',
-      });
+      setCheckpointsError(error.message || 'Failed to load inspection checkpoints');
+    } finally {
       setIsLoading(false);
     }
   };
   
-  const updateCheckpointStatus = (checkpointId: string, status: 'ok' | 'not-ok' | 'na') => {
-    setCheckpointStatuses(prev => 
-      prev.map(cp => 
-        cp.checkpointId === checkpointId 
-          ? { ...cp, status } 
-          : cp
-      )
-    );
+  const handleResultChange = (checkpointId: string, value: boolean) => {
+    setResults(prev => ({
+      ...prev,
+      [checkpointId]: { ...prev[checkpointId], passed: value }
+    }));
     
-    // Update overall result if any checkpoint is marked as 'not-ok'
-    if (status === 'not-ok') {
+    // Update overall result if any checkpoint fails
+    if (!value) {
       setOverallResult('fail');
     } else {
-      // Check if all remaining checkpoints are 'ok' or 'na'
-      const hasFailedCheckpoints = checkpointStatuses.some(
-        cp => cp.checkpointId !== checkpointId && cp.status === 'not-ok'
-      );
+      // Check if all checkpoints are passing now
+      const allPassing = Object.values({ 
+        ...results, 
+        [checkpointId]: { ...results[checkpointId], passed: value } 
+      }).every(result => result.passed);
       
-      if (!hasFailedCheckpoints) {
+      if (allPassing) {
         setOverallResult('pass');
       }
     }
   };
   
-  const updateCheckpointNotes = (checkpointId: string, notes: string) => {
-    setCheckpointStatuses(prev => 
-      prev.map(cp => 
-        cp.checkpointId === checkpointId 
-          ? { ...cp, notes } 
-          : cp
-      )
-    );
+  const handleNotesChange = (checkpointId: string, value: string) => {
+    setResults(prev => ({
+      ...prev,
+      [checkpointId]: { ...prev[checkpointId], notes: value }
+    }));
   };
   
-  const capturePhoto = async (checkpointId: string) => {
-    // Mock implementation - would be replaced with actual camera API
-    toast({
-      title: 'Camera Feature',
-      description: 'Camera functionality will be implemented soon',
+  const handlePhotoCapture = (checkpointId: string, photoUrl: string) => {
+    setResults(prev => ({
+      ...prev,
+      [checkpointId]: { ...prev[checkpointId], photoUrl }
+    }));
+  };
+  
+  const handlePhotoDelete = (checkpointId: string) => {
+    setResults(prev => {
+      const newResults = { ...prev };
+      delete newResults[checkpointId].photoUrl;
+      return newResults;
     });
   };
   
-  const handleSignatureEnd = (signatureData: string) => {
-    setSignatureImage(signatureData);
-    setSignatureDialogOpen(false);
+  const handleNextStep = () => {
+    if (step < 3) {
+      setStep(prev => prev + 1);
+    }
   };
   
-  const submitInspection = async () => {
-    if (!profile || !ppe) return;
+  const handlePrevStep = () => {
+    if (step > 1) {
+      setStep(prev => prev - 1);
+    }
+  };
+  
+  const validateForm = (): boolean => {
+    // Check if there are any failed checkpoints without notes
+    const invalidResults = Object.entries(results).filter(
+      ([_, result]) => !result.passed && !result.notes.trim()
+    );
     
-    setSubmitting(true);
+    if (invalidResults.length > 0) {
+      setResultsError('Please add notes for all failed checkpoints');
+      return false;
+    }
+    
+    // In step 3, signature is required
+    if (step === 3 && !signature) {
+      toast({
+        title: 'Signature Required',
+        description: 'Please sign to complete the inspection',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    
+    setResultsError(null);
+    return true;
+  };
+  
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
     
     try {
-      // Create inspection record
-      const { data: inspectionData, error: inspectionError } = await supabase
+      // 1. Create the inspection record
+      const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
         .insert({
-          ppe_id: ppe.id,
-          inspector_id: profile.id,
+          ppe_id: ppeItem?.id,
           type: inspectionType,
-          date: format(inspectionDate, 'yyyy-MM-dd'),
+          date: new Date().toISOString(),
           overall_result: overallResult,
-          notes,
-          signature_url: signatureImage
+          notes: notes,
+          signature_url: signature,
         })
-        .select()
+        .select('id')
         .single();
-        
+      
       if (inspectionError) throw inspectionError;
       
-      // Create inspection results for each checkpoint
-      const inspectionResults = checkpointStatuses.map(status => ({
-        inspection_id: inspectionData.id,
-        checkpoint_id: status.checkpointId,
-        passed: status.status === 'ok',
-        notes: status.notes || null,
-        photo_url: status.photoUrl || null
+      // 2. Create inspection results
+      const resultsToInsert = Object.entries(results).map(([checkpointId, result]) => ({
+        inspection_id: inspection.id,
+        checkpoint_id: checkpointId,
+        passed: result.passed,
+        notes: result.notes,
+        photo_url: result.photoUrl,
       }));
       
       const { error: resultsError } = await supabase
         .from('inspection_results')
-        .insert(resultsErrors);
-        
+        .insert(resultsToInsert);
+      
       if (resultsError) throw resultsError;
       
-      // Update PPE item with last inspection date and next inspection date
-      let nextInspectionDate = new Date(inspectionDate);
+      // 3. Update PPE item with inspection date and next inspection date
+      const now = new Date();
+      let nextInspectionDate: Date;
       
       switch (inspectionType) {
-        case 'pre-use':
-          // No change to next inspection date for pre-use
-          break;
         case 'monthly':
-          nextInspectionDate.setMonth(nextInspectionDate.getMonth() + 1);
+          nextInspectionDate = new Date(now);
+          nextInspectionDate.setMonth(now.getMonth() + 1);
           break;
         case 'quarterly':
-          nextInspectionDate.setMonth(nextInspectionDate.getMonth() + 3);
+          nextInspectionDate = new Date(now);
+          nextInspectionDate.setMonth(now.getMonth() + 3);
+          break;
+        case 'pre-use':
+        default:
+          // For pre-use, next inspection depends on usage pattern, default to 7 days
+          nextInspectionDate = new Date(now);
+          nextInspectionDate.setDate(now.getDate() + 7);
           break;
       }
+      
+      // Update PPE status based on inspection result
+      const newStatus = overallResult === 'pass' ? 'active' : 'flagged';
       
       const { error: ppeUpdateError } = await supabase
         .from('ppe_items')
         .update({
-          last_inspection: format(inspectionDate, 'yyyy-MM-dd'),
-          next_inspection: format(nextInspectionDate, 'yyyy-MM-dd'),
-          status: overallResult === 'pass' ? 'active' : 'flagged'
+          last_inspection: now.toISOString(),
+          next_inspection: nextInspectionDate.toISOString(),
+          status: newStatus,
         })
-        .eq('id', ppe.id);
-        
+        .eq('id', ppeItem?.id);
+      
       if (ppeUpdateError) throw ppeUpdateError;
       
-      // Show success dialog
-      setShowSuccessDialog(true);
+      // 4. Success! Update cache and show success message
+      queryClient.invalidateQueries({ queryKey: ['ppe-items'] });
+      queryClient.invalidateQueries({ queryKey: ['upcoming-inspections'] });
       
+      // Show success message with overlay
+      // In a real app, this would trigger the success overlay screen
+      toast({
+        title: 'Inspection Completed',
+        description: 'The inspection has been successfully recorded',
+      });
+      
+      // Navigate back or to success screen
+      navigate(`/equipment/${ppeItem?.id}`);
     } catch (error: any) {
       console.error('Error submitting inspection:', error);
       toast({
@@ -253,24 +315,8 @@ const InspectionForm = () => {
         variant: 'destructive',
       });
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
-  };
-  
-  const downloadReport = () => {
-    // Mock implementation
-    toast({
-      title: 'Download Feature',
-      description: 'PDF/Excel download will be implemented soon',
-    });
-  };
-  
-  const shareReport = () => {
-    // Mock implementation
-    toast({
-      title: 'Share Feature',
-      description: 'Sharing via WhatsApp/Email will be implemented soon',
-    });
   };
   
   if (isLoading) {
@@ -281,260 +327,276 @@ const InspectionForm = () => {
     );
   }
   
-  if (!ppe) {
+  if (ppeError) {
     return (
-      <div className="p-4">
-        <h1 className="text-xl font-bold">PPE not found</h1>
-        <p className="mt-2">The requested PPE item could not be found.</p>
-        <Button onClick={() => navigate(-1)} className="mt-4">Go Back</Button>
+      <div className="text-center my-12">
+        <p className="text-destructive mb-4">{ppeError}</p>
+        <Button onClick={() => navigate(-1)}>Go Back</Button>
       </div>
     );
   }
   
   return (
     <div className="pb-20">
-      <div className="sticky top-0 bg-background z-10 p-4 border-b">
-        <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate(-1)}
-            className="mr-2"
-          >
-            <ArrowLeft size={20} />
-          </Button>
-          <h1 className="text-xl font-bold">Inspect PPE</h1>
-        </div>
+      <div className="flex items-center mb-6">
+        <Button 
+          variant="ghost" 
+          size="sm"
+          className="mr-2"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft size={18} />
+        </Button>
+        <h1 className="text-2xl font-bold">Inspection Form</h1>
       </div>
       
-      <div className="p-4 space-y-6">
-        <Card className="p-4">
-          <h2 className="font-semibold text-lg">{ppe.type}</h2>
-          <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
-            <div>
-              <p className="text-muted-foreground">Serial Number</p>
-              <p>{ppe.serialNumber}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Brand</p>
-              <p>{ppe.brand}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Model</p>
-              <p>{ppe.modelNumber}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Expiry Date</p>
-              <p>{new Date(ppe.expiryDate).toLocaleDateString()}</p>
-            </div>
-          </div>
-        </Card>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* PPE Item Details Card */}
+      <Card className="p-4 mb-6">
+        <h2 className="font-semibold mb-2">{ppeItem?.type}</h2>
+        <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
-            <label className="text-sm font-medium">Inspection Date</label>
-            <DatePicker 
-              date={inspectionDate} 
-              setDate={(date) => date && setInspectionDate(date)} 
-            />
+            <p className="text-muted-foreground">Serial Number</p>
+            <p>{ppeItem?.serialNumber}</p>
           </div>
-          
           <div>
-            <label className="text-sm font-medium">Inspection Type</label>
-            <RadioGroup 
-              value={inspectionType} 
-              onValueChange={(value) => setInspectionType(value as 'pre-use' | 'monthly' | 'quarterly')}
-              className="flex gap-4 mt-2"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="pre-use" id="pre-use" />
-                <Label htmlFor="pre-use">Pre-use</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="monthly" id="monthly" />
-                <Label htmlFor="monthly">Monthly</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="quarterly" id="quarterly" />
-                <Label htmlFor="quarterly">Quarterly</Label>
-              </div>
-            </RadioGroup>
+            <p className="text-muted-foreground">Brand</p>
+            <p>{ppeItem?.brand}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Model</p>
+            <p>{ppeItem?.modelNumber}</p>
           </div>
         </div>
-        
-        <Separator />
-        
-        <div>
-          <h2 className="font-semibold mb-4">Inspection Checkpoints</h2>
-          <div className="space-y-4">
-            {checkpoints.map((checkpoint) => (
-              <Card key={checkpoint.id} className="p-4">
-                <div className="flex flex-col space-y-3">
-                  <p className="font-medium">{checkpoint.description}</p>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      type="button"
-                      size="sm"
-                      onClick={() => updateCheckpointStatus(checkpoint.id, 'ok')}
-                      variant="outline"
-                      className={`flex-1 ${checkpointStatuses.find(s => s.checkpointId === checkpoint.id)?.status === 'ok' ? 'bg-green-500 text-white hover:bg-green-600' : ''}`}
-                    >
-                      <Check size={16} className="mr-1" />
-                      OK
-                    </Button>
-                    
-                    <Button 
-                      type="button"
-                      size="sm"
-                      onClick={() => updateCheckpointStatus(checkpoint.id, 'not-ok')}
-                      variant="outline"
-                      className={`flex-1 ${checkpointStatuses.find(s => s.checkpointId === checkpoint.id)?.status === 'not-ok' ? 'bg-red-500 text-white hover:bg-red-600' : ''}`}
-                    >
-                      <X size={16} className="mr-1" />
-                      NOT OK
-                    </Button>
-                    
-                    <Button 
-                      type="button"
-                      size="sm"
-                      onClick={() => updateCheckpointStatus(checkpoint.id, 'na')}
-                      variant="outline"
-                      className={`flex-1 ${checkpointStatuses.find(s => s.checkpointId === checkpoint.id)?.status === 'na' ? 'bg-gray-500 text-white hover:bg-gray-600' : ''}`}
-                    >
-                      N/A
-                    </Button>
-                    
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => capturePhoto(checkpoint.id)}
-                      className="p-2"
-                    >
-                      <Camera size={16} />
-                    </Button>
-                  </div>
-                  
-                  <Textarea
-                    placeholder="Add remarks..."
-                    value={checkpointStatuses.find(s => s.checkpointId === checkpoint.id)?.notes || ''}
-                    onChange={(e) => updateCheckpointNotes(checkpoint.id, e.target.value)}
-                    className="h-20"
-                  />
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-        
-        <div>
-          <h2 className="font-semibold mb-2">Overall Notes</h2>
-          <Textarea
-            placeholder="Add overall notes about the inspection..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="h-24"
+      </Card>
+      
+      {/* Step Indicator */}
+      <div className="relative mb-6">
+        <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-muted">
+          <div 
+            className={`w-${step}/3 shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary`} 
+            style={{ width: `${(step / 3) * 100}%` }}
           />
         </div>
-        
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${overallResult === 'pass' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span className="font-medium">
-              Overall: {overallResult === 'pass' ? 'PASS' : 'FAIL'}
-            </span>
+        <div className="flex justify-between">
+          <div className={`text-xs ${step >= 1 ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+            Inspection Type
           </div>
-          
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setSignatureDialogOpen(true)}
-            className="flex items-center"
-          >
-            {signatureImage ? 'Change Signature' : 'Add Signature'}
-          </Button>
-        </div>
-        
-        <div className="flex justify-center pt-4">
-          <Button
-            disabled={!signatureImage || submitting}
-            onClick={submitInspection}
-            className="w-full md:w-auto"
-          >
-            {submitting ? (
-              <span className="flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                Submitting...
-              </span>
-            ) : (
-              <span className="flex items-center">
-                <Save size={16} className="mr-2" />
-                Submit Inspection
-              </span>
-            )}
-          </Button>
+          <div className={`text-xs ${step >= 2 ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+            Checkpoints
+          </div>
+          <div className={`text-xs ${step >= 3 ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+            Sign Off
+          </div>
         </div>
       </div>
       
-      {/* Signature Dialog */}
-      <Dialog open={signatureDialogOpen} onOpenChange={setSignatureDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Your Signature</DialogTitle>
-          </DialogHeader>
-          <div className="border border-gray-300 rounded-md p-2 w-full h-40 mb-4">
-            <SignatureCanvas onEnd={handleSignatureEnd} />
+      {/* Step 1: Inspection Type */}
+      {step === 1 && (
+        <div className="fade-in">
+          <h2 className="text-lg font-medium mb-4">Select Inspection Type</h2>
+          
+          <div className="grid grid-cols-1 gap-3 mb-8">
+            <Card 
+              className={`p-4 cursor-pointer border-2 ${inspectionType === 'pre-use' ? 'border-primary' : 'border-transparent'}`}
+              onClick={() => setInspectionType('pre-use')}
+            >
+              <div className="flex items-center">
+                <div className={`w-5 h-5 rounded-full mr-3 flex items-center justify-center ${inspectionType === 'pre-use' ? 'bg-primary text-white' : 'border border-muted-foreground'}`}>
+                  {inspectionType === 'pre-use' && <Check size={12} />}
+                </div>
+                <div>
+                  <h3 className="font-medium">Pre-Use Inspection</h3>
+                  <p className="text-sm text-muted-foreground">Basic inspection before each use</p>
+                </div>
+              </div>
+            </Card>
+            
+            <Card 
+              className={`p-4 cursor-pointer border-2 ${inspectionType === 'monthly' ? 'border-primary' : 'border-transparent'}`}
+              onClick={() => setInspectionType('monthly')}
+            >
+              <div className="flex items-center">
+                <div className={`w-5 h-5 rounded-full mr-3 flex items-center justify-center ${inspectionType === 'monthly' ? 'bg-primary text-white' : 'border border-muted-foreground'}`}>
+                  {inspectionType === 'monthly' && <Check size={12} />}
+                </div>
+                <div>
+                  <h3 className="font-medium">Monthly Inspection</h3>
+                  <p className="text-sm text-muted-foreground">Detailed inspection on a monthly basis</p>
+                </div>
+              </div>
+            </Card>
+            
+            <Card 
+              className={`p-4 cursor-pointer border-2 ${inspectionType === 'quarterly' ? 'border-primary' : 'border-transparent'}`}
+              onClick={() => setInspectionType('quarterly')}
+            >
+              <div className="flex items-center">
+                <div className={`w-5 h-5 rounded-full mr-3 flex items-center justify-center ${inspectionType === 'quarterly' ? 'bg-primary text-white' : 'border border-muted-foreground'}`}>
+                  {inspectionType === 'quarterly' && <Check size={12} />}
+                </div>
+                <div>
+                  <h3 className="font-medium">Quarterly Inspection</h3>
+                  <p className="text-sm text-muted-foreground">Comprehensive inspection every 3 months</p>
+                </div>
+              </div>
+            </Card>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSignatureDialogOpen(false)}>
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
       
-      {/* Success Dialog */}
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center text-green-600">
-              <Check size={20} className="mr-2" />
-              Inspection Successfully Submitted
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-center">
-              The inspection has been successfully recorded in the system.
-            </p>
+      {/* Step 2: Checkpoints */}
+      {step === 2 && (
+        <div className="fade-in">
+          <h2 className="text-lg font-medium mb-4">Inspection Checkpoints</h2>
+          
+          {checkpointsError ? (
+            <div className="text-center my-8">
+              <p className="text-destructive mb-4">{checkpointsError}</p>
+            </div>
+          ) : checkpoints.length === 0 ? (
+            <div className="text-center my-8">
+              <p className="text-muted-foreground mb-4">No checkpoints defined for this equipment type</p>
+            </div>
+          ) : (
+            <div className="space-y-4 mb-6">
+              {checkpoints.map((checkpoint) => (
+                <CheckpointItem
+                  key={checkpoint.id}
+                  id={checkpoint.id}
+                  description={checkpoint.description}
+                  passed={results[checkpoint.id]?.passed || false}
+                  notes={results[checkpoint.id]?.notes || ''}
+                  photoUrl={results[checkpoint.id]?.photoUrl}
+                  onPassedChange={(value) => handleResultChange(checkpoint.id, value)}
+                  onNotesChange={(value) => handleNotesChange(checkpoint.id, value)}
+                  onPhotoCapture={(url) => handlePhotoCapture(checkpoint.id, url)}
+                  onPhotoDelete={() => handlePhotoDelete(checkpoint.id)}
+                />
+              ))}
+            </div>
+          )}
+          
+          {resultsError && (
+            <div className="p-3 mb-4 bg-destructive/10 text-destructive rounded-md text-sm">
+              <p>{resultsError}</p>
+            </div>
+          )}
+          
+          <div className="mt-8">
+            <h3 className="text-sm font-medium mb-2">Overall Result</h3>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant={overallResult === 'pass' ? 'default' : 'outline'}
+                className={overallResult === 'pass' ? 'bg-green-600 hover:bg-green-700' : ''}
+                onClick={() => setOverallResult('pass')}
+              >
+                <Check size={16} className="mr-2" />
+                Pass
+              </Button>
+              
+              <Button
+                type="button"
+                variant={overallResult === 'fail' ? 'default' : 'outline'}
+                className={overallResult === 'fail' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                onClick={() => setOverallResult('fail')}
+              >
+                <X size={16} className="mr-2" />
+                Fail
+              </Button>
+            </div>
           </div>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button 
-              variant="outline" 
-              className="flex-1 justify-center"
-              onClick={downloadReport}
-            >
-              <Download size={16} className="mr-2" />
-              Download Report
-            </Button>
-            <Button 
-              variant="outline"
-              className="flex-1 justify-center"
-              onClick={shareReport}
-            >
-              <Share size={16} className="mr-2" />
-              Share Report
-            </Button>
-            <Button 
-              className="flex-1 justify-center"
-              onClick={() => navigate('/equipment')}
-            >
-              <CheckCheckIcon size={16} className="mr-2" />
-              Done
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+      
+      {/* Step 3: Sign Off */}
+      {step === 3 && (
+        <div className="fade-in">
+          <h2 className="text-lg font-medium mb-4">Sign Off</h2>
+          
+          <div className="space-y-6">
+            <div>
+              <label className="text-sm font-medium block mb-2">Additional Notes (Optional)</label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add any general notes about the inspection..."
+                rows={4}
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium block mb-2">Inspector Signature</label>
+              <div className="border rounded-md p-2 bg-muted/30 mb-2">
+                <SignatureCanvas onSignatureEnd={(signatureData) => setSignature(signatureData)} />
+              </div>
+              
+              {signature && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setSignature(null)}
+                  className="text-xs"
+                >
+                  <Delete size={14} className="mr-1" />
+                  Clear Signature
+                </Button>
+              )}
+            </div>
+            
+            <div className="p-4 bg-muted rounded-md mt-4">
+              <div className="flex items-start gap-3">
+                <Info size={20} className="text-muted-foreground mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-sm">Inspection Summary</h4>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    By submitting this form, you confirm that you have inspected {ppeItem?.type} (Serial: {ppeItem?.serialNumber}) 
+                    and the overall result is {overallResult === 'pass' ? 'PASS' : 'FAIL'}.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <Separator className="my-6" />
+      
+      {/* Navigation Buttons */}
+      <div className="flex justify-between">
+        <Button
+          variant="outline"
+          onClick={handlePrevStep}
+          disabled={step === 1}
+        >
+          <ChevronLeft size={16} className="mr-2" />
+          Previous
+        </Button>
+        
+        {step < 3 ? (
+          <Button onClick={handleNextStep}>
+            Next
+            <ChevronRight size={16} className="ml-2" />
+          </Button>
+        ) : (
+          <Button 
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <Check size={16} className="mr-2" />
+                Submit Inspection
+              </>
+            )}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
