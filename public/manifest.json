@@ -1,0 +1,36 @@
+
+{
+  "name": "PPE Inspector Pro",
+  "short_name": "PPE Inspector",
+  "description": "Track and manage PPE inventory and inspections",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "categories": ["utilities", "business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Home",
+      "description": "View your dashboard",
+      "url": "/",
+      "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
+    },
+    {
+      "name": "Expiring PPE",
+      "short_name": "Expiring",
+      "description": "View expiring PPE items",
+      "url": "/expiring",
+      "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
+    }
+  ]
+}

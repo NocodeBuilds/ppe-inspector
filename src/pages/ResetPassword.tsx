@@ -3,75 +3,73 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Moon, Sun } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { ThemeToggler } from '@/components/ThemeToggler';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const ResetPasswordPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('theme') as 'dark' | 'light') || 
-      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
   
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { updatePassword } = useAuth();
   
   useEffect(() => {
     // Check if this is indeed a password reset flow
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-    if (!params.get('type') || params.get('type') !== 'recovery') {
-      setError('Invalid reset password link');
-    }
+    const verifyResetFlow = () => {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      if (!params.get('type') || params.get('type') !== 'recovery') {
+        setError('Invalid reset password link');
+      }
+      setIsPageLoading(false);
+    };
+    
+    verifyResetFlow();
   }, []);
-  
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-    localStorage.setItem('theme', newTheme);
-  };
   
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsSubmitting(true);
     
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      setIsSubmitting(false);
       return;
     }
     
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
+      setIsSubmitting(false);
       return;
     }
     
     try {
-      setLoading(true);
-      
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: 'Password updated',
-        description: 'Your password has been updated successfully.',
-      });
+      await updatePassword(password);
       
       // Redirect to login
-      navigate('/login');
+      navigate('/login', { 
+        state: { passwordResetSuccess: true }
+      });
     } catch (error: any) {
       setError(error.message || 'Failed to update password');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
+  
+  if (isPageLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
   
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -82,24 +80,23 @@ const ResetPasswordPage = () => {
               <span className="text-primary">PPE</span> Inspector
             </span>
           </h1>
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className="transition-transform hover:scale-110">
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-          </Button>
+          <ThemeToggler />
         </div>
       </header>
       
       <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20">
         <div className="w-full max-w-md">
-          <div className="text-center mb-10">
+          <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-primary mb-2">NEW PASSWORD</h1>
             <p className="text-muted-foreground">Create a new password</p>
           </div>
           
-          <div className="glass-card rounded-lg p-6">
+          <div className="glass-card rounded-lg p-6 shadow-lg border border-border/20">
             {error && (
-              <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-md mb-4">
-                {error}
-              </div>
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
             
             <form onSubmit={handleResetPassword} className="space-y-6">
@@ -112,6 +109,8 @@ const ResetPasswordPage = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isSubmitting}
+                  className="bg-background"
                 />
               </div>
               
@@ -124,15 +123,22 @@ const ResetPasswordPage = () => {
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isSubmitting}
+                  className="bg-background"
                 />
               </div>
               
               <Button 
                 type="submit" 
                 className="w-full"
-                disabled={loading}
+                disabled={isSubmitting}
               >
-                {loading ? 'Updating Password...' : 'Update Password'}
+                {isSubmitting ? (
+                  <div className="flex items-center">
+                    <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
+                    Updating Password...
+                  </div>
+                ) : 'Update Password'}
               </Button>
             </form>
           </div>
