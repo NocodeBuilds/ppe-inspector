@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { AlertTriangle, Calendar, ArrowRight, Info, Loader2, Search } from 'lucide-react';
+import { AlertTriangle, Calendar, ArrowRight, Info, Loader2, Search, Filter, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FlaggedItem {
   id: string;
@@ -22,27 +24,42 @@ interface FlaggedItem {
 
 const FlaggedIssues = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [flaggedItems, setFlaggedItems] = useState<FlaggedItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<FlaggedItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<string | null>(null);
   
   useEffect(() => {
-    fetchFlaggedIssues();
-  }, []);
+    if (user) {
+      fetchFlaggedIssues();
+    }
+  }, [user]);
   
   useEffect(() => {
-    if (searchQuery.trim() === '') {
+    if (searchQuery.trim() === '' && !filterType) {
       setFilteredItems(flaggedItems);
     } else {
-      const filtered = flaggedItems.filter(item => 
-        item.ppe_serial.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.ppe_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.inspector_name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      let filtered = flaggedItems;
+      
+      // Apply text search filter
+      if (searchQuery.trim() !== '') {
+        filtered = filtered.filter(item => 
+          item.ppe_serial.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.ppe_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.inspector_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+      
+      // Apply type filter
+      if (filterType) {
+        filtered = filtered.filter(item => item.ppe_type === filterType);
+      }
+      
       setFilteredItems(filtered);
     }
-  }, [searchQuery, flaggedItems]);
+  }, [searchQuery, filterType, flaggedItems]);
   
   const fetchFlaggedIssues = async () => {
     try {
@@ -124,6 +141,16 @@ const FlaggedIssues = () => {
   const handleViewDetails = (inspectionId: string) => {
     navigate(`/inspection/${inspectionId}`);
   };
+
+  const getUniqueTypes = () => {
+    const types = new Set(flaggedItems.map(item => item.ppe_type));
+    return Array.from(types);
+  };
+  
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilterType(null);
+  };
   
   return (
     <div className="fade-in pb-20">
@@ -133,15 +160,45 @@ const FlaggedIssues = () => {
           View PPE items that have failed inspection
         </p>
         
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search by serial number, type or inspector..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search by serial number, type or inspector..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex gap-2">
+                  <Filter size={16} />
+                  {filterType ? filterType : 'Filter by Type'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {getUniqueTypes().map((type) => (
+                  <DropdownMenuItem key={type} onClick={() => setFilterType(type)}>
+                    {type}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={clearFilters}
+              title="Clear filters"
+              disabled={!searchQuery && !filterType}
+            >
+              <RefreshCw size={16} />
+            </Button>
+          </div>
         </div>
       </div>
       
@@ -156,14 +213,27 @@ const FlaggedIssues = () => {
           </div>
           <h3 className="text-lg font-medium mb-2">No Flagged Issues</h3>
           <p className="text-muted-foreground mb-6">
-            There are no PPE items that have failed inspection.
+            {searchQuery || filterType ? 
+              'No items match your search criteria.' : 
+              'There are no PPE items that have failed inspection.'}
           </p>
-          <Button onClick={() => navigate('/start-inspection')}>
-            Start New Inspection
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button onClick={() => navigate('/start-inspection')}>
+              Start New Inspection
+            </Button>
+            {(searchQuery || filterType) && (
+              <Button variant="outline" onClick={clearFilters}>
+                Clear Filters
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-lg font-medium">Equipment with Issues</h2>
+            <p className="text-sm text-muted-foreground">{filteredItems.length} items found</p>
+          </div>
           {filteredItems.map((item) => (
             <Card 
               key={item.id}

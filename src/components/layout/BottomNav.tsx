@@ -1,45 +1,74 @@
 
-import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Clipboard, User, Settings } from 'lucide-react';
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { 
+  Home, 
+  CalendarClock, 
+  Plus, 
+  AlertTriangle, 
+  FileBox, 
+  User 
+} from 'lucide-react';
 
 const BottomNav = () => {
+  const navigate = useNavigate();
   const location = useLocation();
-  const [mounted, setMounted] = useState(false);
   
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  
-  if (!mounted) return null;
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
   
   const navItems = [
-    { path: '/', label: 'Home', icon: Home },
-    { path: '/equipment', label: 'Equipment', icon: Clipboard },
-    { path: '/profile', label: 'Profile', icon: User },
-    { path: '/settings', label: 'Settings', icon: Settings },
+    {
+      name: 'Home',
+      path: '/',
+      icon: <Home size={20} />,
+    },
+    {
+      name: 'Upcoming',
+      path: '/upcoming',
+      icon: <CalendarClock size={20} />,
+    },
+    {
+      name: 'Inspect',
+      path: '/start-inspection',
+      icon: <Plus size={24} />,
+      primary: true,
+    },
+    {
+      name: 'Flagged',
+      path: '/flagged',
+      icon: <AlertTriangle size={20} />,
+    },
+    {
+      name: 'Profile',
+      path: '/profile',
+      icon: <User size={20} />,
+    },
   ];
   
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border h-16 backdrop-blur-sm bg-opacity-80">
-      <div className="flex items-center justify-around h-full">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={`flex flex-col items-center justify-center w-1/4 h-full transition-colors ${
-                isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <item.icon size={24} className={isActive ? 'animate-pulse-glow' : ''} />
-              <span className="text-xs mt-1">{item.label}</span>
-            </NavLink>
-          );
-        })}
+    <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background backdrop-blur-sm">
+      <div className="max-w-5xl mx-auto px-3 py-1 flex items-center justify-around">
+        {navItems.map((item) => (
+          <Button
+            key={item.path}
+            variant="ghost"
+            size={item.primary ? 'default' : 'sm'}
+            onClick={() => navigate(item.path)}
+            className={`flex-col justify-center items-center ${
+              item.primary 
+                ? 'w-14 h-14 rounded-full shadow-md bg-primary hover:bg-primary/90 text-primary-foreground -mt-5' 
+                : 'h-16 text-xs rounded-none gap-1'
+            } ${isActive(item.path) && !item.primary ? 'bg-muted text-foreground' : ''}`}
+          >
+            {item.icon}
+            {!item.primary && <span>{item.name}</span>}
+          </Button>
+        ))}
       </div>
-    </nav>
+    </div>
   );
 };
 
