@@ -68,18 +68,32 @@ const FlaggedIssues = () => {
       if (data) {
         // Get counts of failed checkpoints for each inspection
         const inspectionIds = data.map(item => item.id);
-        const { data: resultCounts, error: countError } = await supabase
+        
+        // Changed approach: Instead of using group(), we'll fetch all failed results
+        // and count them for each inspection ID in JavaScript
+        const { data: failedResults, error: countError } = await supabase
           .from('inspection_results')
-          .select('inspection_id, count')
+          .select('inspection_id')
           .eq('passed', false)
-          .in('inspection_id', inspectionIds)
-          .group('inspection_id');
+          .in('inspection_id', inspectionIds);
           
         if (countError) throw countError;
         
+        // Count failed checkpoints for each inspection
+        const failCounts: Record<string, number> = {};
+        
+        if (failedResults) {
+          failedResults.forEach(result => {
+            const id = result.inspection_id;
+            if (id) {
+              failCounts[id] = (failCounts[id] || 0) + 1;
+            }
+          });
+        }
+        
         // Format data for display
         const formattedData = data.map(item => {
-          const failCount = resultCounts?.find(r => r.inspection_id === item.id)?.count || 0;
+          const failCount = failCounts[item.id] || 0;
           
           return {
             id: item.id,
@@ -87,7 +101,7 @@ const FlaggedIssues = () => {
             ppe_type: item.ppe_items?.type || 'Unknown',
             ppe_serial: item.ppe_items?.serial_number || 'Unknown',
             inspection_date: item.date,
-            issue_count: parseInt(failCount),
+            issue_count: failCount,
             inspector_name: item.profiles?.full_name || 'Unknown',
           };
         });
