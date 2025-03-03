@@ -2,10 +2,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 
 export interface SignatureCanvasProps {
-  onSignatureEnd: (signatureData: string) => void; // Add this prop to match usage in InspectionForm
+  onSignatureEnd: (signatureData: string) => void;
+  initialValue?: string | null;
 }
 
-const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSignatureEnd }) => {
+const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSignatureEnd, initialValue }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null);
@@ -16,10 +17,21 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSignatureEnd }) => 
     
     const context = canvas.getContext('2d');
     if (context) {
-      context.lineWidth = 2;
+      context.lineWidth = 2.5;
       context.lineCap = 'round';
+      context.lineJoin = 'round';
       context.strokeStyle = '#000';
       setCtx(context);
+      
+      // If there's an initial value, draw it
+      if (initialValue) {
+        const img = new Image();
+        img.onload = () => {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(img, 0, 0);
+        };
+        img.src = initialValue;
+      }
     }
     
     // Resize canvas to fit parent
@@ -39,7 +51,7 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSignatureEnd }) => 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
     };
-  }, []);
+  }, [initialValue]);
   
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     setIsDrawing(true);
@@ -73,7 +85,7 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSignatureEnd }) => 
       // Save signature data
       const canvas = canvasRef.current;
       if (canvas) {
-        const signatureData = canvas.toDataURL();
+        const signatureData = canvas.toDataURL('image/png');
         onSignatureEnd(signatureData);
       }
     }
@@ -102,18 +114,35 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSignatureEnd }) => 
     }
   };
   
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (canvas && ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      onSignatureEnd(''); // Clear the signature data
+    }
+  };
+  
   return (
-    <canvas
-      ref={canvasRef}
-      className="border border-muted-foreground/30 bg-white w-full cursor-crosshair"
-      onMouseDown={startDrawing}
-      onMouseMove={draw}
-      onMouseUp={endDrawing}
-      onMouseLeave={endDrawing}
-      onTouchStart={startDrawing}
-      onTouchMove={draw}
-      onTouchEnd={endDrawing}
-    />
+    <div className="w-full">
+      <canvas
+        ref={canvasRef}
+        className="border border-muted-foreground/30 bg-white w-full cursor-crosshair rounded-md"
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={endDrawing}
+        onMouseLeave={endDrawing}
+        onTouchStart={startDrawing}
+        onTouchMove={draw}
+        onTouchEnd={endDrawing}
+      />
+      <button 
+        type="button"
+        className="mt-2 text-sm text-muted-foreground hover:text-foreground"
+        onClick={clearCanvas}
+      >
+        Clear Signature
+      </button>
+    </div>
   );
 };
 

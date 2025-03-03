@@ -38,7 +38,7 @@ const MainLayout = () => {
         </header>
       )}
       
-      <main className="flex-1 container mx-auto px-4 py-4 max-w-md">
+      <main className="flex-1 container mx-auto px-4 py-4 w-full max-w-5xl overflow-y-auto">
         <Outlet />
       </main>
       

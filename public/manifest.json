@@ -14,7 +14,7 @@
       "type": "image/x-icon"
     }
   ],
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
   "prefer_related_applications": false,
   "categories": ["utilities", "business", "productivity"],
   "shortcuts": [
@@ -26,10 +26,24 @@
       "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
     },
     {
-      "name": "Expiring PPE",
-      "short_name": "Expiring",
-      "description": "View expiring PPE items",
-      "url": "/expiring",
+      "name": "Start Inspection",
+      "short_name": "Inspect",
+      "description": "Start a new inspection",
+      "url": "/start-inspection",
+      "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
+    },
+    {
+      "name": "Equipment",
+      "short_name": "Equipment",
+      "description": "View equipment list",
+      "url": "/equipment",
+      "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
+    },
+    {
+      "name": "Flagged Issues",
+      "short_name": "Issues",
+      "description": "View flagged PPE issues",
+      "url": "/flagged",
       "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
     }
   ]

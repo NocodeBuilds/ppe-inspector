@@ -19,13 +19,13 @@ const CardOverlay = ({
   
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 overflow-y-auto"
       onClick={onClose}
       {...props}
     >
       <div 
         className={cn(
-          "glass-card max-w-md w-full p-6 rounded-lg animate-in fade-in zoom-in-95 duration-300",
+          "glass-card max-w-md w-full p-6 rounded-lg animate-in fade-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto",
           className
         )}
         onClick={(e) => e.stopPropagation()}

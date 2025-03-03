@@ -24,6 +24,10 @@ const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
 const InspectionForm = lazy(() => import("./pages/InspectionForm"));
 const ReportsPage = lazy(() => import("./pages/Reports"));
+const StartInspection = lazy(() => import("./pages/StartInspection"));
+const ManualInspection = lazy(() => import("./pages/ManualInspection"));
+const FlaggedIssues = lazy(() => import("./pages/FlaggedIssues"));
+const InspectionDetails = lazy(() => import("./pages/InspectionDetails"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -157,10 +161,14 @@ const App = () => {
                     <Route path="expiring" element={<ExpiringPPE />} />
                     <Route path="upcoming" element={<UpcomingInspections />} />
                     <Route path="equipment" element={<Equipment />} />
+                    <Route path="flagged" element={<FlaggedIssues />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="profile" element={<Profile />} />
                     <Route path="edit-profile" element={<EditProfile />} />
+                    <Route path="start-inspection" element={<StartInspection />} />
+                    <Route path="inspect/new" element={<ManualInspection />} />
                     <Route path="inspect/:ppeId" element={<InspectionForm />} />
+                    <Route path="inspection/:id" element={<InspectionDetails />} />
                     <Route path="reports" element={<ReportsPage />} />
                   </Route>
                   
