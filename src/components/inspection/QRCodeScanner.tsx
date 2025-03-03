@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { ScanLine, Camera, X } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface QRCodeScannerProps {
   onScan: (data: string) => void;
@@ -17,6 +17,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onCancel }) => {
   const [error, setError] = useState<string | null>(null);
   const qrRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = 'qr-reader';
+  const { toast } = useToast();
   
   useEffect(() => {
     // Initialize QR code scanner
@@ -57,9 +58,19 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onCancel }) => {
             setPermissionDenied(true);
             setIsScanning(false);
             setError('Camera access denied. Please allow camera access and try again.');
+            toast({
+              title: 'Camera Access Required',
+              description: 'Please allow camera access to scan QR codes.',
+              variant: 'destructive',
+            });
           } else {
             setError(`Failed to start scanner: ${err.message}`);
             setIsScanning(false);
+            toast({
+              title: 'Scanner Error',
+              description: err.message || 'Failed to start QR scanner',
+              variant: 'destructive',
+            });
           }
         });
     }
@@ -79,8 +90,13 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onCancel }) => {
   };
   
   const onQRCodeSuccess = (decodedText: string) => {
+    console.log("QR code scanned:", decodedText);
     setHasScanned(true);
     stopScanner();
+    toast({
+      title: 'QR Code Scanned',
+      description: 'Successfully scanned QR code',
+    });
     onScan(decodedText);
   };
   

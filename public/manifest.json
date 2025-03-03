@@ -46,5 +46,12 @@
       "url": "/flagged",
       "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
     }
-  ]
+  ],
+  "related_applications": [],
+  "scope": "/",
+  "lang": "en-US",
+  "dir": "ltr",
+  "screenshots": [],
+  "iarc_rating_id": "",
+  "protocol_handlers": []
 }

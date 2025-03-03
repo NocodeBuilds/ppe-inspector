@@ -21,8 +21,8 @@ const Login = () => {
   const location = useLocation();
   const { toast } = useToast();
   
+  // Check for registration success message from location state
   useEffect(() => {
-    // Check if coming from successful registration
     if (location.state?.registrationSuccess) {
       toast({
         title: 'Registration successful',
@@ -33,10 +33,16 @@ const Login = () => {
       // Clear the state to prevent showing the message again on refresh
       window.history.replaceState({}, document.title);
     }
+  }, [location.state, toast]);
+  
+  // Handle authentication state
+  useEffect(() => {
+    console.log("Auth state in Login:", { user, isLoading });
     
-    // Redirect if already logged in
+    // If authenticated, redirect to home
     if (user) {
       navigate('/');
+      return;
     }
     
     // Set a timeout to prevent the page loading indicator from flickering
@@ -45,8 +51,7 @@ const Login = () => {
     }, 500);
     
     return () => clearTimeout(timer);
-  }, [user, navigate, location.state, toast]);
-  
+  }, [user, navigate]);
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,17 +59,19 @@ const Login = () => {
     setIsSubmitting(true);
     
     try {
+      console.log("Attempting login with:", email);
       await signIn(email, password);
       navigate('/');
     } catch (error: any) {
-      // The toast is already shown in the AuthContext, so just set the form error
+      console.error("Login error:", error);
       setError(error.message || 'Failed to sign in');
     } finally {
       setIsSubmitting(false);
     }
   };
   
-  if (isPageLoading) {
+  // Show loading spinner while checking auth state
+  if (isLoading || isPageLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>

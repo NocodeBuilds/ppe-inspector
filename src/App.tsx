@@ -34,6 +34,8 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
     },
   },
 });
@@ -116,6 +118,7 @@ const App = () => {
         // Register service worker for offline capabilities
         if ('serviceWorker' in navigator) {
           try {
+            console.log('Registering service worker...');
             const registration = await navigator.serviceWorker.register('/service-worker.js');
             console.log('ServiceWorker registration successful with scope: ', registration.scope);
           } catch (error) {

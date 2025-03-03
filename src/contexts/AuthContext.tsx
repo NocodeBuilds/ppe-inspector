@@ -43,61 +43,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  // Centralized error handler
+  const handleError = (error: any, title: string, defaultMessage: string) => {
+    console.error(`${title}:`, error);
+    toast({
+      title: title,
+      description: error.message || defaultMessage,
+      variant: 'destructive',
+    });
+    return error;
+  };
+
+  // Setup auth state listener
   useEffect(() => {
-    // Setup the auth state listener
-    const setupAuthListener = async () => {
+    console.log("Setting up auth listener");
+    
+    const setupAuth = async () => {
       try {
-        setIsLoading(true);
-        
         // Get initial session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
         
-        if (sessionError) {
-          throw sessionError;
+        if (error) {
+          throw error;
         }
         
-        setSession(session);
-        setUser(session?.user ?? null);
+        console.log("Initial session:", data?.session ? "Found" : "None");
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
         
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-          await fetchExtendedProfile();
-        } else {
-          setIsLoading(false);
+        if (data.session?.user) {
+          await fetchProfile(data.session.user.id);
         }
-        
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            console.log('Auth state changed:', event);
-            setSession(session);
-            setUser(session?.user ?? null);
-            
-            if (session?.user) {
-              await fetchProfile(session.user.id);
-              await fetchExtendedProfile();
-            } else {
-              setProfile(null);
-              setExtendedProfile(null);
-              setIsLoading(false);
-            }
-          }
-        );
-        
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch (error) {
-        console.error('Error setting up auth listener:', error);
+        console.error("Error getting session:", error);
+      } finally {
+        // Ensure we always set loading to false after initial check
         setIsLoading(false);
       }
+      
+      // Subscribe to auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          console.log("Auth state changed:", event);
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            await fetchProfile(session.user.id);
+            await fetchExtendedProfile();
+          } else {
+            setProfile(null);
+            setExtendedProfile(null);
+          }
+        }
+      );
+      
+      return () => {
+        subscription.unsubscribe();
+      };
     };
     
-    setupAuthListener();
+    setupAuth();
   }, []);
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log("Fetching profile for:", userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -109,22 +120,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data) {
+        console.log("Profile data:", data);
         setProfile({
           id: data.id,
           full_name: data.full_name,
-          role: data.role,
+          role: data.role || 'user',
           avatar_url: data.avatar_url
         });
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch user profile.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+      // Don't show toast here as it's not a user-facing operation
     }
   };
 
@@ -153,12 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await fetchExtendedProfile();
       }
     } catch (error) {
-      console.error('Error refreshing profile:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to refresh profile.',
-        variant: 'destructive',
-      });
+      handleError(error, 'Error', 'Failed to refresh profile');
     } finally {
       setIsLoading(false);
     }
@@ -185,14 +186,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Store auth status in local storage for PWA offline access
       localStorage.setItem('isAuthenticated', 'true');
       
-    } catch (error: any) {
       toast({
-        title: 'Login failed',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive',
+        title: 'Login successful',
+        description: 'Welcome back!',
       });
       
-      // Re-throw after showing toast to allow component to handle error state
+    } catch (error: any) {
+      handleError(error, 'Login failed', 'An unexpected error occurred');
       throw error;
     } finally {
       setIsLoading(false);
@@ -231,13 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       
     } catch (error: any) {
-      toast({
-        title: 'Signup failed',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive',
-      });
-      
-      // Re-throw after showing toast
+      handleError(error, 'Signup failed', 'An unexpected error occurred');
       throw error;
     } finally {
       setIsLoading(false);
@@ -253,12 +247,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear local storage
       localStorage.removeItem('isAuthenticated');
       
-    } catch (error: any) {
       toast({
-        title: 'Sign out failed',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive',
+        title: 'Signed out',
+        description: 'You have been successfully signed out.',
       });
+    } catch (error: any) {
+      handleError(error, 'Sign out failed', 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -277,11 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: 'Please check your email for the password reset link.',
       });
     } catch (error: any) {
-      toast({
-        title: 'Password reset failed',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive',
-      });
+      handleError(error, 'Password reset failed', 'An unexpected error occurred');
       throw error;
     } finally {
       setIsLoading(false);
@@ -302,11 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: 'Your password has been successfully updated.',
       });
     } catch (error: any) {
-      toast({
-        title: 'Failed to update password',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive',
-      });
+      handleError(error, 'Failed to update password', 'An unexpected error occurred');
       throw error;
     } finally {
       setIsLoading(false);
