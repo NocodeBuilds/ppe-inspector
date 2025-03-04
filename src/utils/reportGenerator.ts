@@ -1,4 +1,3 @@
-
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,8 +80,8 @@ export const generatePPEReport = async (ppeId: string): Promise<void> => {
         ['Inspection Date', new Date(inspection.date).toLocaleDateString()],
         ['Inspector', inspection.inspector_id],
         ['Result', inspection.overall_result === 'pass' ? 'PASS' : 'FAIL'],
-        ['Next Inspection Due', inspection.next_inspection_date ? 
-          new Date(inspection.next_inspection_date).toLocaleDateString() : 'N/A'],
+        ['Next Inspection Due', inspection.next_inspection ? 
+          new Date(inspection.next_inspection).toLocaleDateString() : 'N/A'],
       ];
       
       autoTable(doc, {

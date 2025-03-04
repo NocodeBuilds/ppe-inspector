@@ -22,12 +22,18 @@ interface SummaryStats {
 
 interface RecentInspection {
   id: string;
+  date: string;
+  overall_result: string;
   ppe_items?: {
     serial_number: string;
     type: string;
   };
-  pass_fail: boolean;
-  inspection_date: string;
+  created_at: string;
+  inspector_id: string;
+  notes: string;
+  ppe_id: string;
+  signature_url: string | null;
+  type: "pre-use" | "monthly" | "quarterly";
 }
 
 const ReportsPage = () => {
@@ -61,7 +67,6 @@ const ReportsPage = () => {
     try {
       setIsLoading(true);
       
-      // Fetch all PPE items for the inventory report
       const { data: ppeData, error: ppeError } = await supabase
         .from('ppe_items')
         .select('*')
@@ -69,7 +74,6 @@ const ReportsPage = () => {
       
       if (ppeError) throw ppeError;
       
-      // Map data to PPEItem type
       const mappedItems: PPEItem[] = ppeData.map((item: any) => ({
         id: item.id,
         serialNumber: item.serial_number,
@@ -87,42 +91,36 @@ const ReportsPage = () => {
       
       setPpeItems(mappedItems);
       
-      // Fetch recent inspections
       const { data: inspectionData, error: inspectionError } = await supabase
         .from('inspections')
         .select(`
           *,
           ppe_items (serial_number, type)
         `)
-        .order('inspection_date', { ascending: false })
+        .order('date', { ascending: false })
         .limit(10);
       
       if (inspectionError) throw inspectionError;
       
       setRecentInspections(inspectionData);
       
-      // Calculate summary statistics
-      // Total PPE
       const totalPPE = ppeData.length;
       
-      // Total inspections
       const { count: totalInspections, error: inspCountError } = await supabase
         .from('inspections')
         .select('*', { count: 'exact', head: true });
       
       if (inspCountError) throw inspCountError;
       
-      // Pass rate
       const { count: passedInspections, error: passCountError } = await supabase
         .from('inspections')
         .select('*', { count: 'exact', head: true })
-        .eq('pass_fail', true);
+        .eq('overall_result', 'pass');
       
       if (passCountError) throw passCountError;
       
       const passRate = totalInspections ? Math.round((passedInspections / totalInspections) * 100) : 0;
       
-      // Flagged items
       const { count: flaggedItems, error: flaggedCountError } = await supabase
         .from('ppe_items')
         .select('*', { count: 'exact', head: true })
@@ -151,7 +149,6 @@ const ReportsPage = () => {
 
   const handleGenerateInventoryReport = async () => {
     try {
-      // Find first item to generate a sample report
       if (ppeItems.length === 0) {
         toast({
           title: 'Error',
@@ -368,11 +365,11 @@ const ReportsPage = () => {
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className={inspection.pass_fail ? "text-green-500" : "text-destructive"}>
-                                {inspection.pass_fail ? "PASS" : "FAIL"}
+                              <span className={inspection.overall_result === 'pass' ? "text-green-500" : "text-destructive"}>
+                                {inspection.overall_result.toUpperCase()}
                               </span>
                               <span className="text-muted-foreground">
-                                {new Date(inspection.inspection_date).toLocaleDateString()}
+                                {new Date(inspection.date).toLocaleDateString()}
                               </span>
                             </div>
                           </div>
