@@ -1,4 +1,5 @@
-export type PPEType = 
+
+export type PPEType =
   | 'Full Body Harness'
   | 'Fall Arrester'
   | 'Double Lanyard'
@@ -6,11 +7,19 @@ export type PPEType =
   | 'Safety Boots'
   | 'Safety Gloves'
   | 'Safety Goggles'
-  | 'Ear Protection';
+  | 'Ear Protection'
+  | 'Respirator'
+  | 'Safety Vest'
+  | 'Face Shield'
+  | string;
 
-export type PPEStatus = 'active' | 'expired' | 'maintenance' | 'flagged';
-
-export type InspectionType = 'pre-use' | 'monthly' | 'quarterly';
+export type PPEStatus =
+  | 'active'
+  | 'expired'
+  | 'flagged'
+  | 'due'
+  | 'inspected'
+  | 'out-of-service';
 
 export interface PPEItem {
   id: string;
@@ -21,65 +30,38 @@ export interface PPEItem {
   manufacturingDate: string;
   expiryDate: string;
   status: PPEStatus;
-  imageUrl?: string;
-  lastInspection?: string;
-  nextInspection?: string;
+  imageUrl?: string | null;
+  nextInspection?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  latestInspection?: any;
 }
 
 export interface InspectionCheckpoint {
   id: string;
   description: string;
   ppeType: PPEType;
+  required: boolean;
 }
 
 export interface InspectionResult {
-  id: string;
-  ppeId: string;
-  date: string;
-  type: InspectionType;
-  inspectorId: string;
-  checkpoints: {
-    checkpointId: string;
-    passed: boolean;
-    notes?: string;
-  }[];
-  signature?: string;
-  photos?: string[];
-  overall: 'pass' | 'fail';
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'inspector' | 'user';
-  avatar?: string;
-}
-
-export interface DashboardCardProps {
-  to: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  iconBgColor: string;
-  className?: string;
-  onClick?: () => void;
-}
-
-export interface ExtendedProfile {
-  id: string;
-  user_id: string;
-  employee_id: string | null;
-  location: string | null;
-  department: string | null;
-  bio: string | null;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface CheckpointStatus {
+  id?: string;
+  inspectionId?: string;
   checkpointId: string;
-  status: 'ok' | 'not-ok' | 'na';
-  notes: string;
+  checkpointDescription: string;
+  passed: boolean;
+  notes?: string;
   photoUrl?: string;
+}
+
+export interface Inspection {
+  id?: string;
+  ppeId: string;
+  inspectionDate: string;
+  inspectorName: string;
+  passFail: boolean;
+  notes?: string;
+  nextInspectionDate?: string;
+  signatureData?: string;
+  results: InspectionResult[];
 }

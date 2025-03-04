@@ -1,114 +1,175 @@
 
-import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { PPEItem } from '@/types';
+import EquipmentCard from '@/components/equipment/EquipmentCard';
+import { Input } from '@/components/ui/input';
+import { Search, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CardOverlay from '@/components/ui/card-overlay';
 import AddPPEForm from '@/components/forms/AddPPEForm';
-import { supabase, PPEItem } from '@/integrations/supabase/client';
 
 const Equipment = () => {
-  const [showAddPPE, setShowAddPPE] = useState(false);
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<PPEItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddPPE, setShowAddPPE] = useState(false);
+  const [activeType, setActiveType] = useState<string>('all');
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
   useEffect(() => {
-    fetchPPEItems();
+    fetchEquipment();
   }, []);
-  
-  const fetchPPEItems = async () => {
+
+  useEffect(() => {
+    filterItems();
+  }, [searchQuery, ppeItems, activeType]);
+
+  const fetchEquipment = async () => {
     try {
       setIsLoading(true);
+      
+      // Fetch all PPE items
       const { data, error } = await supabase
         .from('ppe_items')
         .select('*')
         .order('created_at', { ascending: false });
-        
+      
       if (error) throw error;
       
-      setPpeItems(data || []);
-    } catch (error: any) {
-      console.error('Error fetching PPE items:', error);
+      // Map data to PPEItem type
+      const mappedItems: PPEItem[] = data.map((item: any) => ({
+        id: item.id,
+        serialNumber: item.serial_number,
+        type: item.type,
+        brand: item.brand,
+        modelNumber: item.model_number,
+        manufacturingDate: item.manufacturing_date,
+        expiryDate: item.expiry_date,
+        status: item.status,
+        imageUrl: item.image_url,
+        nextInspection: item.next_inspection,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+      }));
+      
+      setPpeItems(mappedItems);
+      setFilteredItems(mappedItems);
+    } catch (error) {
+      console.error('Error fetching equipment:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to load PPE items',
+        description: 'Failed to load equipment',
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
   };
-  
-  const handleEditPPE = (ppe: PPEItem) => {
+
+  const filterItems = () => {
+    let results = [...ppeItems];
+    
+    // Apply type filter
+    if (activeType !== 'all') {
+      results = results.filter(item => item.type === activeType);
+    }
+    
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      results = results.filter(
+        item =>
+          item.serialNumber.toLowerCase().includes(query) ||
+          item.type.toLowerCase().includes(query) ||
+          item.brand.toLowerCase().includes(query)
+      );
+    }
+    
+    setFilteredItems(results);
+  };
+
+  const getUniqueTypes = () => {
+    const types = new Set(ppeItems.map(item => item.type));
+    return ['all', ...Array.from(types)];
+  };
+
+  const handleInspect = (item: PPEItem) => {
+    navigate(`/inspect/${item.id}`);
+  };
+
+  const handleAddPPESuccess = () => {
+    setShowAddPPE(false);
+    fetchEquipment();
     toast({
-      title: 'Edit PPE',
-      description: `Editing ${ppe.type} (${ppe.serial_number})`,
+      title: 'Success',
+      description: 'PPE item added successfully',
     });
   };
-  
+
   return (
-    <div className="fade-in">
+    <div className="container mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Equipment</h1>
-        <Button 
-          onClick={() => setShowAddPPE(true)} 
-          className="bg-success hover:bg-success/90"
-        >
-          <Plus size={16} className="mr-1" /> Add New PPE
+        <Button onClick={() => setShowAddPPE(true)}>
+          <Plus size={18} className="mr-2" />
+          Add PPE
         </Button>
       </div>
       
-      {isLoading ? (
-        <div className="flex justify-center my-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+      <div className="mb-6">
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            type="text"
+            placeholder="Search by serial number, type or brand..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
         </div>
-      ) : ppeItems.length === 0 ? (
-        <div className="text-center my-12">
-          <p className="text-muted-foreground">No PPE items found</p>
-          <Button 
-            onClick={() => setShowAddPPE(true)} 
-            variant="outline" 
-            className="mt-4"
-          >
-            Add Your First PPE Item
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {ppeItems.map((ppe) => (
-            <div 
-              key={ppe.id}
-              className="glass-card rounded-lg p-4 transition-all hover:shadow-md"
-              onClick={() => handleEditPPE(ppe)}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold uppercase">{ppe.type}</h3>
-                  <p className="text-sm">SN: {ppe.serial_number}</p>
-                  <p className="text-sm">Brand: {ppe.brand}</p>
-                </div>
-                <div className={`
-                  px-2 py-1 rounded-full text-xs 
-                  ${ppe.status === 'active' ? 'bg-success/20 text-success' : 
-                    ppe.status === 'expired' ? 'bg-destructive/20 text-destructive' : 
-                    ppe.status === 'maintenance' ? 'bg-warning/20 text-warning' : 
-                    'bg-muted text-muted-foreground'}
-                `}>
-                  {ppe.status === 'active' && (
-                    <span className="flex items-center">
-                      <span className="w-2 h-2 bg-success rounded-full mr-1"></span>
-                      active
-                    </span>
-                  )}
-                  {ppe.status === 'expired' && 'expired'}
-                  {ppe.status === 'maintenance' && 'maintenance'}
-                  {ppe.status === 'flagged' && 'flagged'}
-                </div>
+        
+        <Tabs defaultValue="all" value={activeType} onValueChange={setActiveType}>
+          <TabsList className="mb-4 w-full overflow-x-auto flex-wrap">
+            {getUniqueTypes().map(type => (
+              <TabsTrigger key={type} value={type} className="capitalize">
+                {type === 'all' ? 'All Types' : type}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          
+          <TabsContent value={activeType} className="mt-0">
+            {isLoading ? (
+              <div className="flex justify-center items-center h-60">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ) : filteredItems.length > 0 ? (
+              <div className="space-y-4">
+                {filteredItems.map((item) => (
+                  <EquipmentCard
+                    key={item.id}
+                    item={item}
+                    type="equipment"
+                    onInspect={() => handleInspect(item)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 border border-dashed rounded-lg">
+                <p className="text-muted-foreground mb-4">No equipment found</p>
+                <Button variant="outline" onClick={() => setShowAddPPE(true)}>
+                  Add New PPE
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
       
       <CardOverlay show={showAddPPE} onClose={() => setShowAddPPE(false)}>
         <div className="mb-4 flex justify-between items-center">
@@ -122,10 +183,7 @@ const Equipment = () => {
             ✕
           </Button>
         </div>
-        <AddPPEForm onSuccess={() => {
-          setShowAddPPE(false);
-          fetchPPEItems();
-        }} />
+        <AddPPEForm onSuccess={handleAddPPESuccess} />
       </CardOverlay>
     </div>
   );

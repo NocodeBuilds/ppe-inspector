@@ -1,132 +1,124 @@
 
 import React, { useState, useEffect } from 'react';
-import { CalendarIcon, Download, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { DatePicker } from '@/components/ui/date-picker';
-import { format, subDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
+import { PPEItem } from '@/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { FileText, BarChart2, Calendar, Download } from 'lucide-react';
+import { 
+  generatePPEReport, 
+  generateInspectionsReport, 
+  generateAnalyticsReport 
+} from '@/utils/reportGenerator';
 
 const ReportsPage = () => {
-  const { profile } = useAuth();
-  const [reportType, setReportType] = useState('inspections');
-  const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
-  const [endDate, setEndDate] = useState<Date>(new Date());
-  const [ppeTypes, setPpeTypes] = useState<string[]>([]);
-  const [selectedPpeType, setSelectedPpeType] = useState<string>('all');
-  const [inspectors, setInspectors] = useState<{id: string, name: string}[]>([]);
-  const [selectedInspector, setSelectedInspector] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
-  const [reportData, setReportData] = useState([]);
+  const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
+  const [recentInspections, setRecentInspections] = useState<any[]>([]);
+  const [summary, setSummary] = useState({
+    totalPPE: 0,
+    totalInspections: 0,
+    passRate: 0,
+    flaggedItems: 0
+  });
+  const [reportStartDate, setReportStartDate] = useState(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 1);
+    return date.toISOString().split('T')[0];
+  });
+  const [reportEndDate, setReportEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+  
+  const { toast } = useToast();
 
   useEffect(() => {
-    fetchFilters();
+    fetchReportData();
   }, []);
 
-  useEffect(() => {
-    if (!isLoading) {
-      fetchReportData();
-    }
-  }, [reportType, startDate, endDate, selectedPpeType, selectedInspector, isLoading]);
-
-  const fetchFilters = async () => {
-    try {
-      // Fetch PPE types
-      const { data: typesData, error: typesError } = await supabase
-        .from('ppe_items')
-        .select('type')
-        .order('type');
-
-      if (typesError) throw typesError;
-
-      const uniqueTypes = [...new Set(typesData.map(item => item.type))];
-      setPpeTypes(uniqueTypes);
-
-      // Fetch inspectors
-      const { data: inspectorsData, error: inspectorsError } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .order('full_name');
-
-      if (inspectorsError) throw inspectorsError;
-
-      setInspectors(inspectorsData.map(user => ({
-        id: user.id,
-        name: user.full_name || 'Unknown'
-      })));
-
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error fetching filters:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load report filters',
-        variant: 'destructive',
-      });
-      setIsLoading(false);
-    }
-  };
-
   const fetchReportData = async () => {
-    setIsLoading(true);
-
     try {
-      if (reportType === 'inspections') {
-        let query = supabase
-          .from('inspections')
-          .select(`
-            id,
-            date,
-            type,
-            overall_result,
-            ppe_items(id, type, serial_number),
-            profiles(id, full_name)
-          `)
-          .gte('date', format(startDate, 'yyyy-MM-dd'))
-          .lte('date', format(endDate, 'yyyy-MM-dd'));
-
-        if (selectedInspector !== 'all') {
-          query = query.eq('inspector_id', selectedInspector);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        // Filter by PPE type if needed
-        let filteredData = data;
-        if (selectedPpeType !== 'all') {
-          filteredData = data.filter(record => 
-            record.ppe_items && record.ppe_items.type === selectedPpeType
-          );
-        }
-
-        setReportData(filteredData);
-      } else if (reportType === 'equipment') {
-        let query = supabase
-          .from('ppe_items')
-          .select('*');
-
-        if (selectedPpeType !== 'all') {
-          query = query.eq('type', selectedPpeType);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        setReportData(data);
-      }
+      setIsLoading(true);
+      
+      // Fetch all PPE items for the inventory report
+      const { data: ppeData, error: ppeError } = await supabase
+        .from('ppe_items')
+        .select('*')
+        .order('type');
+      
+      if (ppeError) throw ppeError;
+      
+      // Map data to PPEItem type
+      const mappedItems: PPEItem[] = ppeData.map((item: any) => ({
+        id: item.id,
+        serialNumber: item.serial_number,
+        type: item.type,
+        brand: item.brand,
+        modelNumber: item.model_number,
+        manufacturingDate: item.manufacturing_date,
+        expiryDate: item.expiry_date,
+        status: item.status,
+        imageUrl: item.image_url,
+        nextInspection: item.next_inspection,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+      }));
+      
+      setPpeItems(mappedItems);
+      
+      // Fetch recent inspections
+      const { data: inspectionData, error: inspectionError } = await supabase
+        .from('inspections')
+        .select(`
+          *,
+          ppe_items (serial_number, type)
+        `)
+        .order('inspection_date', { ascending: false })
+        .limit(10);
+      
+      if (inspectionError) throw inspectionError;
+      
+      setRecentInspections(inspectionData);
+      
+      // Calculate summary statistics
+      // Total PPE
+      const totalPPE = ppeData.length;
+      
+      // Total inspections
+      const { count: totalInspections, error: inspCountError } = await supabase
+        .from('inspections')
+        .select('*', { count: 'exact', head: true });
+      
+      if (inspCountError) throw inspCountError;
+      
+      // Pass rate
+      const { count: passedInspections, error: passCountError } = await supabase
+        .from('inspections')
+        .select('*', { count: 'exact', head: true })
+        .eq('pass_fail', true);
+      
+      if (passCountError) throw passCountError;
+      
+      const passRate = totalInspections ? Math.round((passedInspections / totalInspections) * 100) : 0;
+      
+      // Flagged items
+      const { count: flaggedItems, error: flaggedCountError } = await supabase
+        .from('ppe_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'flagged');
+      
+      if (flaggedCountError) throw flaggedCountError;
+      
+      setSummary({
+        totalPPE,
+        totalInspections: totalInspections || 0,
+        passRate,
+        flaggedItems: flaggedItems || 0
+      });
+      
     } catch (error) {
       console.error('Error fetching report data:', error);
       toast({
@@ -139,206 +131,290 @@ const ReportsPage = () => {
     }
   };
 
-  const downloadReport = () => {
-    toast({
-      title: 'Download Started',
-      description: 'Your report is being prepared for download',
-    });
-    
-    // This is a mock implementation
-    setTimeout(() => {
+  const handleGenerateInventoryReport = async () => {
+    try {
+      // Find first item to generate a sample report
+      if (ppeItems.length === 0) {
+        toast({
+          title: 'Error',
+          description: 'No equipment found to generate report',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      const itemId = ppeItems[0].id;
+      await generatePPEReport(itemId);
+      
       toast({
-        title: 'Download Complete',
-        description: 'Your report has been downloaded',
+        title: 'Report Generated',
+        description: 'Inventory report has been downloaded',
       });
-    }, 2000);
+    } catch (error) {
+      console.error('Error generating inventory report:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate inventory report',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleGenerateInspectionsReport = async () => {
+    try {
+      const startDate = new Date(reportStartDate);
+      const endDate = new Date(reportEndDate);
+      
+      if (startDate > endDate) {
+        toast({
+          title: 'Invalid Date Range',
+          description: 'Start date must be before end date',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      await generateInspectionsReport(startDate, endDate);
+      
+      toast({
+        title: 'Report Generated',
+        description: 'Inspections report has been downloaded',
+      });
+    } catch (error) {
+      console.error('Error generating inspections report:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate inspections report',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleGenerateAnalyticsReport = async () => {
+    try {
+      await generateAnalyticsReport();
+      
+      toast({
+        title: 'Report Generated',
+        description: 'Analytics report has been downloaded',
+      });
+    } catch (error) {
+      console.error('Error generating analytics report:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate analytics report',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
-    <div className="container mx-auto p-4 pb-20">
-      <h1 className="text-2xl font-bold mb-6">Reports & Analytics</h1>
-      
-      <Card className="mb-6">
-        <div className="p-4">
-          <h2 className="text-lg font-semibold mb-4">Generate Report</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Report Type</label>
-              <Select
-                value={reportType}
-                onValueChange={setReportType}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select report type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="inspections">Inspection Report</SelectItem>
-                  <SelectItem value="equipment">Equipment Status</SelectItem>
-                  <SelectItem value="expiring">Expiring PPE</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-2 block">Start Date</label>
-              <DatePicker date={startDate} setDate={setStartDate} />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-2 block">End Date</label>
-              <DatePicker date={endDate} setDate={setEndDate} />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-2 block">PPE Type</label>
-              <Select
-                value={selectedPpeType}
-                onValueChange={setSelectedPpeType}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select PPE type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {ppeTypes.map(type => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {reportType === 'inspections' && (
-              <div>
-                <label className="text-sm font-medium mb-2 block">Inspector</label>
-                <Select
-                  value={selectedInspector}
-                  onValueChange={setSelectedInspector}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select inspector" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Inspectors</SelectItem>
-                    {inspectors.map(inspector => (
-                      <SelectItem key={inspector.id} value={inspector.id}>
-                        {inspector.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          
-          <Separator className="my-4" />
-          
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-muted-foreground">
-              {reportData.length} records found
-            </div>
-            
-            <Button onClick={downloadReport}>
-              <Download size={16} className="mr-2" />
-              Download Report
-            </Button>
-          </div>
-        </div>
-      </Card>
-      
-      <div className="mb-4 flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Report Preview</h2>
-        <Button variant="outline" size="sm">
-          <Filter size={16} className="mr-2" />
-          More Filters
-        </Button>
-      </div>
+    <div className="container mx-auto px-4 py-6">
+      <h1 className="text-2xl font-bold mb-6">Reports</h1>
       
       {isLoading ? (
-        <div className="flex justify-center my-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      ) : reportData.length > 0 ? (
-        <div className="grid gap-4">
-          {reportType === 'inspections' ? (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-muted">
-                    <th className="p-2 text-left">Date</th>
-                    <th className="p-2 text-left">PPE Type</th>
-                    <th className="p-2 text-left">Serial Number</th>
-                    <th className="p-2 text-left">Inspector</th>
-                    <th className="p-2 text-left">Type</th>
-                    <th className="p-2 text-left">Result</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.map((record: any) => (
-                    <tr key={record.id} className="border-b border-gray-200">
-                      <td className="p-2">{format(new Date(record.date), 'MMM d, yyyy')}</td>
-                      <td className="p-2">{record.ppe_items?.type || 'Unknown'}</td>
-                      <td className="p-2">{record.ppe_items?.serial_number || 'Unknown'}</td>
-                      <td className="p-2">{record.profiles?.full_name || 'Unknown'}</td>
-                      <td className="p-2 capitalize">{record.type}</td>
-                      <td className="p-2">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          record.overall_result === 'pass' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {record.overall_result}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-muted">
-                    <th className="p-2 text-left">Type</th>
-                    <th className="p-2 text-left">Serial Number</th>
-                    <th className="p-2 text-left">Brand</th>
-                    <th className="p-2 text-left">Expiry Date</th>
-                    <th className="p-2 text-left">Last Inspection</th>
-                    <th className="p-2 text-left">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.map((item: any) => (
-                    <tr key={item.id} className="border-b border-gray-200">
-                      <td className="p-2">{item.type}</td>
-                      <td className="p-2">{item.serial_number}</td>
-                      <td className="p-2">{item.brand}</td>
-                      <td className="p-2">{format(new Date(item.expiry_date), 'MMM d, yyyy')}</td>
-                      <td className="p-2">{item.last_inspection ? format(new Date(item.last_inspection), 'MMM d, yyyy') : 'Never'}</td>
-                      <td className="p-2">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          item.status === 'active' ? 'bg-green-100 text-green-800' : 
-                          item.status === 'expired' ? 'bg-red-100 text-red-800' :
-                          item.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-orange-100 text-orange-800'
-                        }`}>
-                          {item.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        <div className="flex justify-center items-center h-60">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
       ) : (
-        <div className="text-center p-8 bg-muted rounded-lg">
-          <CalendarIcon size={48} className="mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">No data available</h3>
-          <p className="text-muted-foreground">
-            Try adjusting your filters to see more results
-          </p>
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Total PPE Items</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{summary.totalPPE}</p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Total Inspections</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{summary.totalInspections}</p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Inspection Pass Rate</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{summary.passRate}%</p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Flagged Items</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{summary.flaggedItems}</p>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <Tabs defaultValue="inventory">
+            <TabsList className="w-full mb-4">
+              <TabsTrigger value="inventory">Inventory Reports</TabsTrigger>
+              <TabsTrigger value="inspections">Inspection Reports</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="inventory">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Equipment Inventory Report</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="mb-4 text-muted-foreground">
+                    Generate a report of all PPE equipment in the system, including their status, expiry dates, and inspection history.
+                  </p>
+                  
+                  <div className="mb-6">
+                    <h3 className="text-sm font-medium mb-2">Equipment by Type</h3>
+                    <div className="space-y-2">
+                      {Array.from(new Set(ppeItems.map(item => item.type))).map(type => {
+                        const count = ppeItems.filter(item => item.type === type).length;
+                        return (
+                          <div key={type} className="flex justify-between items-center">
+                            <span>{type}</span>
+                            <span className="font-medium">{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  <Button className="w-full" onClick={handleGenerateInventoryReport}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Generate Inventory Report
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="inspections">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Inspection Reports</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="mb-4 text-muted-foreground">
+                    Generate reports for inspections conducted during a specific date range.
+                  </p>
+                  
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <label htmlFor="startDate" className="block text-sm font-medium mb-1">
+                        Start Date
+                      </label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        value={reportStartDate}
+                        onChange={(e) => setReportStartDate(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="endDate" className="block text-sm font-medium mb-1">
+                        End Date
+                      </label>
+                      <Input
+                        id="endDate"
+                        type="date"
+                        value={reportEndDate}
+                        onChange={(e) => setReportEndDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button className="w-full" onClick={handleGenerateInspectionsReport}>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Generate Inspection Report
+                  </Button>
+                  
+                  <div className="mt-6">
+                    <h3 className="text-sm font-medium mb-2">Recent Inspections</h3>
+                    <div className="space-y-2">
+                      {recentInspections.length > 0 ? (
+                        recentInspections.map((inspection) => (
+                          <div key={inspection.id} className="flex justify-between items-center text-sm border-b pb-2">
+                            <div>
+                              <span className="font-medium">{inspection.ppe_items?.type}</span>
+                              <span className="text-muted-foreground ml-2">
+                                {inspection.ppe_items?.serial_number}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={inspection.pass_fail ? "text-green-500" : "text-destructive"}>
+                                {inspection.pass_fail ? "PASS" : "FAIL"}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {new Date(inspection.inspection_date).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground text-sm">No recent inspections found.</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="analytics">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Analytics Report</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="mb-4 text-muted-foreground">
+                    Generate a comprehensive analytics report showing trends, statistics, and insights about your PPE inventory and inspections.
+                  </p>
+                  
+                  <div className="mb-6 space-y-4">
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">Inspection Pass Rate</h3>
+                      <div className="w-full bg-muted rounded-full h-2.5">
+                        <div 
+                          className="bg-primary h-2.5 rounded-full" 
+                          style={{ width: `${summary.passRate}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-right text-sm text-muted-foreground mt-1">
+                        {summary.passRate}%
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">Flagged Items Rate</h3>
+                      <div className="w-full bg-muted rounded-full h-2.5">
+                        <div 
+                          className="bg-destructive h-2.5 rounded-full" 
+                          style={{ width: `${summary.totalPPE ? (summary.flaggedItems / summary.totalPPE) * 100 : 0}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-right text-sm text-muted-foreground mt-1">
+                        {summary.totalPPE ? Math.round((summary.flaggedItems / summary.totalPPE) * 100) : 0}%
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <Button className="w-full" onClick={handleGenerateAnalyticsReport}>
+                    <BarChart2 className="mr-2 h-4 w-4" />
+                    Generate Analytics Report
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </>
       )}
     </div>
   );
