@@ -54,7 +54,7 @@ const EditProfile = () => {
         setExtendedProfile(profileData);
         
         // Populate form with existing data
-        setEmployeeId(profileData.employee_id || '');
+        setEmployeeId(profileData.employeeId || '');
         setLocation(profileData.location || '');
         setDepartment(profileData.department || '');
         setBio(profileData.bio || '');

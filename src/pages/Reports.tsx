@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PPEItem } from '@/types';
@@ -14,21 +13,40 @@ import {
   generateAnalyticsReport 
 } from '@/utils/reportGenerator';
 
+interface SummaryStats {
+  totalPPE: number;
+  totalInspections: number;
+  passRate: number;
+  flaggedItems: number;
+}
+
+interface RecentInspection {
+  id: string;
+  ppe_items?: {
+    serial_number: string;
+    type: string;
+  };
+  pass_fail: boolean;
+  inspection_date: string;
+}
+
 const ReportsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
-  const [recentInspections, setRecentInspections] = useState<any[]>([]);
-  const [summary, setSummary] = useState({
+  const [recentInspections, setRecentInspections] = useState<RecentInspection[]>([]);
+  const [summary, setSummary] = useState<SummaryStats>({
     totalPPE: 0,
     totalInspections: 0,
     passRate: 0,
     flaggedItems: 0
   });
+  
   const [reportStartDate, setReportStartDate] = useState(() => {
     const date = new Date();
     date.setMonth(date.getMonth() - 1);
     return date.toISOString().split('T')[0];
   });
+  
   const [reportEndDate, setReportEndDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
