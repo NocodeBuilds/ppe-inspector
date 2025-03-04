@@ -4,6 +4,15 @@ import autoTable from 'jspdf-autotable';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
+ * Extension of jsPDF to include the lastAutoTable property added by jspdf-autotable
+ */
+interface ExtendedJsPDF extends jsPDF {
+  lastAutoTable?: {
+    finalY: number;
+  };
+}
+
+/**
  * Generates and downloads a PDF report for a specific PPE item
  * @param ppeId - The ID of the PPE item to generate a report for
  */
@@ -27,13 +36,13 @@ export const generatePPEReport = async (ppeId: string): Promise<void> => {
         inspection_results (*)
       `)
       .eq('ppe_id', ppeId)
-      .order('inspection_date', { ascending: false })
+      .order('date', { ascending: false })
       .limit(1);
     
     if (inspectionError) throw inspectionError;
     
     // Initialize PDF document
-    const doc = new jsPDF();
+    const doc = new jsPDF() as ExtendedJsPDF;
     
     // Add title
     doc.setFontSize(20);
@@ -65,17 +74,18 @@ export const generatePPEReport = async (ppeId: string): Promise<void> => {
       const inspection = inspectionData[0];
       
       doc.setFontSize(14);
-      doc.text('Latest Inspection Details', 14, doc.lastAutoTable.finalY + 15);
+      const finalY = doc.lastAutoTable?.finalY || 35;
+      doc.text('Latest Inspection Details', 14, finalY + 15);
       
       const inspectionInfo = [
-        ['Inspection Date', new Date(inspection.inspection_date).toLocaleDateString()],
-        ['Inspector', inspection.inspector_name],
-        ['Result', inspection.pass_fail ? 'PASS' : 'FAIL'],
-        ['Next Inspection Due', inspection.next_inspection_date ? new Date(inspection.next_inspection_date).toLocaleDateString() : 'N/A'],
+        ['Inspection Date', new Date(inspection.date).toLocaleDateString()],
+        ['Inspector', inspection.inspector_id],
+        ['Result', inspection.overall_result === 'pass' ? 'PASS' : 'FAIL'],
+        ['Next Inspection Due', inspection.next_inspection ? new Date(inspection.next_inspection).toLocaleDateString() : 'N/A'],
       ];
       
       autoTable(doc, {
-        startY: doc.lastAutoTable.finalY + 20,
+        startY: (doc.lastAutoTable?.finalY || 35) + 20,
         head: [['Property', 'Value']],
         body: inspectionInfo,
         theme: 'grid',
@@ -84,16 +94,16 @@ export const generatePPEReport = async (ppeId: string): Promise<void> => {
       // Add inspection results if available
       if (inspection.inspection_results && inspection.inspection_results.length > 0) {
         doc.setFontSize(14);
-        doc.text('Inspection Checkpoints', 14, doc.lastAutoTable.finalY + 15);
+        doc.text('Inspection Checkpoints', 14, (doc.lastAutoTable?.finalY || 35) + 15);
         
         const checkpointData = inspection.inspection_results.map((result: any) => [
-          result.checkpoint_description,
+          result.checkpoint_description || result.checkpoint_id,
           result.passed ? 'PASS' : 'FAIL',
           result.notes || 'N/A'
         ]);
         
         autoTable(doc, {
-          startY: doc.lastAutoTable.finalY + 20,
+          startY: (doc.lastAutoTable?.finalY || 35) + 20,
           head: [['Checkpoint', 'Result', 'Notes']],
           body: checkpointData,
           theme: 'grid',
@@ -101,23 +111,23 @@ export const generatePPEReport = async (ppeId: string): Promise<void> => {
       }
       
       // Add signature if available
-      if (inspection.signature_data) {
+      if (inspection.signature_url) {
         doc.setFontSize(14);
-        doc.text('Inspector Signature', 14, doc.lastAutoTable.finalY + 15);
+        doc.text('Inspector Signature', 14, (doc.lastAutoTable?.finalY || 35) + 15);
         
         // Add signature image
         try {
           const img = new Image();
-          img.src = inspection.signature_data;
-          doc.addImage(img, 'PNG', 14, doc.lastAutoTable.finalY + 20, 80, 30);
+          img.src = inspection.signature_url;
+          doc.addImage(img, 'PNG', 14, (doc.lastAutoTable?.finalY || 35) + 20, 80, 30);
         } catch (e) {
           console.error('Error adding signature to PDF:', e);
-          doc.text('Signature available but could not be displayed', 14, doc.lastAutoTable.finalY + 25);
+          doc.text('Signature available but could not be displayed', 14, (doc.lastAutoTable?.finalY || 35) + 25);
         }
       }
     } else {
       doc.setFontSize(12);
-      doc.text('No inspection records found for this PPE item.', 14, doc.lastAutoTable.finalY + 15);
+      doc.text('No inspection records found for this PPE item.', 14, (doc.lastAutoTable?.finalY || 35) + 15);
     }
     
     // Add footer
@@ -159,9 +169,9 @@ export const generateInspectionsReport = async (startDate: Date, endDate: Date):
         *,
         ppe_items (*)
       `)
-      .gte('inspection_date', startDate.toISOString())
-      .lte('inspection_date', endDate.toISOString())
-      .order('inspection_date', { ascending: false });
+      .gte('date', startDate.toISOString())
+      .lte('date', endDate.toISOString())
+      .order('date', { ascending: false });
     
     if (inspectionsError) throw inspectionsError;
     if (!inspectionsData || inspectionsData.length === 0) {
@@ -169,7 +179,7 @@ export const generateInspectionsReport = async (startDate: Date, endDate: Date):
     }
     
     // Initialize PDF document
-    const doc = new jsPDF();
+    const doc = new jsPDF() as ExtendedJsPDF;
     
     // Add title
     doc.setFontSize(20);
@@ -187,7 +197,7 @@ export const generateInspectionsReport = async (startDate: Date, endDate: Date):
     doc.text('Summary', 14, 35);
     
     const totalInspections = inspectionsData.length;
-    const passedInspections = inspectionsData.filter(i => i.pass_fail).length;
+    const passedInspections = inspectionsData.filter(i => i.overall_result === 'pass').length;
     const failedInspections = totalInspections - passedInspections;
     
     const summaryData = [
@@ -206,18 +216,18 @@ export const generateInspectionsReport = async (startDate: Date, endDate: Date):
     
     // Add inspection details
     doc.setFontSize(14);
-    doc.text('Inspection Details', 14, doc.lastAutoTable.finalY + 15);
+    doc.text('Inspection Details', 14, (doc.lastAutoTable?.finalY || 40) + 15);
     
     const inspectionRows = inspectionsData.map(inspection => [
-      new Date(inspection.inspection_date).toLocaleDateString(),
+      new Date(inspection.date).toLocaleDateString(),
       inspection.ppe_items.serial_number,
       inspection.ppe_items.type,
-      inspection.inspector_name,
-      inspection.pass_fail ? 'PASS' : 'FAIL',
+      inspection.inspector_id,
+      inspection.overall_result === 'pass' ? 'PASS' : 'FAIL',
     ]);
     
     autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 20,
+      startY: (doc.lastAutoTable?.finalY || 40) + 20,
       head: [['Date', 'PPE Serial', 'PPE Type', 'Inspector', 'Result']],
       body: inspectionRows,
       theme: 'grid',
@@ -274,15 +284,15 @@ export const generateAnalyticsReport = async (): Promise<void> => {
     
     const { data: inspectionsByMonthData, error: inspectionsByMonthError } = await supabase
       .from('inspections')
-      .select('inspection_date')
-      .gte('inspection_date', sixMonthsAgo.toISOString());
+      .select('date')
+      .gte('date', sixMonthsAgo.toISOString());
     
     if (inspectionsByMonthError) throw inspectionsByMonthError;
     
     const inspectionsByMonth: Record<string, number> = {};
     
     inspectionsByMonthData.forEach((item: any) => {
-      const date = new Date(item.inspection_date);
+      const date = new Date(item.date);
       const monthYear = `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
       inspectionsByMonth[monthYear] = (inspectionsByMonth[monthYear] || 0) + 1;
     });
@@ -296,7 +306,7 @@ export const generateAnalyticsReport = async (): Promise<void> => {
     if (flaggedItemsError) throw flaggedItemsError;
     
     // Initialize PDF document
-    const doc = new jsPDF();
+    const doc = new jsPDF() as ExtendedJsPDF;
     
     // Add title
     doc.setFontSize(20);
@@ -321,7 +331,7 @@ export const generateAnalyticsReport = async (): Promise<void> => {
     
     // Inspections by Month
     doc.setFontSize(14);
-    doc.text('Inspections by Month (Last 6 Months)', 14, doc.lastAutoTable.finalY + 15);
+    doc.text('Inspections by Month (Last 6 Months)', 14, (doc.lastAutoTable?.finalY || 40) + 15);
     
     const inspectionsByMonthRows = Object.entries(inspectionsByMonth)
       .sort((a, b) => {
@@ -332,7 +342,7 @@ export const generateAnalyticsReport = async (): Promise<void> => {
       .map(([month, count]) => [month, count.toString()]);
     
     autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 20,
+      startY: (doc.lastAutoTable?.finalY || 40) + 20,
       head: [['Month', 'Inspections']],
       body: inspectionsByMonthRows,
       theme: 'grid',
@@ -340,7 +350,7 @@ export const generateAnalyticsReport = async (): Promise<void> => {
     
     // Flagged Items
     doc.setFontSize(14);
-    doc.text('Flagged Items', 14, doc.lastAutoTable.finalY + 15);
+    doc.text('Flagged Items', 14, (doc.lastAutoTable?.finalY || 40) + 15);
     
     const flaggedItemsRows = flaggedItemsData.map(item => [
       item.serial_number,
@@ -350,7 +360,7 @@ export const generateAnalyticsReport = async (): Promise<void> => {
     ]);
     
     autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 20,
+      startY: (doc.lastAutoTable?.finalY || 40) + 20,
       head: [['Serial Number', 'Type', 'Brand', 'Expiry Date']],
       body: flaggedItemsRows,
       theme: 'grid',

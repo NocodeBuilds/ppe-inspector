@@ -65,3 +65,21 @@ export interface Inspection {
   signatureData?: string;
   results: InspectionResult[];
 }
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'inspector' | 'user';
+}
+
+export interface ExtendedProfile {
+  id: string;
+  userId: string;
+  employeeId?: string | null;
+  location?: string | null;
+  department?: string | null;
+  bio?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
