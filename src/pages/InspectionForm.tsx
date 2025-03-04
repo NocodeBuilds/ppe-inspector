@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,7 +12,6 @@ import { InspectionCheckpoint } from '@/types';
 import CheckpointItem from '@/components/inspection/CheckpointItem';
 import SignatureCanvas from '@/components/inspection/SignatureCanvas';
 
-// Helper to convert a string to a known PPEType
 const toPPEType = (typeString: string): PPEType => {
   const validTypes: PPEType[] = [
     'Full Body Harness',
@@ -30,7 +28,6 @@ const toPPEType = (typeString: string): PPEType => {
     return typeString as PPEType;
   }
   
-  // Default fallback
   return 'Safety Helmet';
 };
 
@@ -39,7 +36,6 @@ const InspectionForm = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   
-  // PPE item state
   const [ppeItem, setPpeItem] = useState<{
     id: string;
     serialNumber: string;
@@ -48,7 +44,6 @@ const InspectionForm = () => {
     modelNumber: string;
   } | null>(null);
   
-  // Inspection state
   const [inspectionType, setInspectionType] = useState<InspectionType>('pre-use');
   const [checkpoints, setCheckpoints] = useState<InspectionCheckpoint[]>([]);
   const [results, setResults] = useState<Record<string, { passed: boolean; notes: string; photoUrl?: string }>>({});
@@ -56,11 +51,9 @@ const InspectionForm = () => {
   const [signature, setSignature] = useState<string | null>(null);
   const [overallResult, setOverallResult] = useState<'pass' | 'fail'>('pass');
   
-  // Form navigation
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Loading states
   const [isLoading, setIsLoading] = useState(true);
   const [ppeError, setPpeError] = useState<string | null>(null);
   const [checkpointsError, setCheckpointsError] = useState<string | null>(null);
@@ -75,7 +68,6 @@ const InspectionForm = () => {
     }
   }, [ppeId]);
   
-  // Fetch PPE item details
   const fetchPPEItem = async (id: string) => {
     try {
       const { data, error } = await supabase
@@ -95,7 +87,6 @@ const InspectionForm = () => {
           modelNumber: data.model_number,
         });
         
-        // After getting PPE item, fetch applicable checkpoints
         fetchCheckpoints(data.type);
       }
     } catch (error: any) {
@@ -104,7 +95,6 @@ const InspectionForm = () => {
     }
   };
   
-  // Fetch inspection checkpoints for the PPE type
   const fetchCheckpoints = async (ppeType: string) => {
     try {
       const { data, error } = await supabase
@@ -123,7 +113,6 @@ const InspectionForm = () => {
         
         setCheckpoints(formattedCheckpoints as InspectionCheckpoint[]);
         
-        // Initialize results object with default values
         const initialResults: Record<string, { passed: boolean; notes: string; photoUrl?: string }> = {};
         data.forEach(checkpoint => {
           initialResults[checkpoint.id] = { passed: true, notes: '' };
@@ -147,11 +136,9 @@ const InspectionForm = () => {
       [checkpointId]: { ...prev[checkpointId], passed: value }
     }));
     
-    // Update overall result if any checkpoint fails
     if (!value) {
       setOverallResult('fail');
     } else {
-      // Check if all checkpoints are passing now
       const allPassing = Object.values({ 
         ...results, 
         [checkpointId]: { ...results[checkpointId], passed: value } 
@@ -198,7 +185,6 @@ const InspectionForm = () => {
   };
   
   const validateForm = (): boolean => {
-    // Check if there are any failed checkpoints without notes
     const invalidResults = Object.entries(results).filter(
       ([_, result]) => !result.passed && !result.notes.trim()
     );
@@ -208,7 +194,6 @@ const InspectionForm = () => {
       return false;
     }
     
-    // In step 3, signature is required
     if (step === 3 && !signature) {
       toast({
         title: 'Signature Required',
@@ -228,7 +213,6 @@ const InspectionForm = () => {
     setIsSubmitting(true);
     
     try {
-      // 1. Create the inspection record
       const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
         .insert({
@@ -244,7 +228,6 @@ const InspectionForm = () => {
       
       if (inspectionError) throw inspectionError;
       
-      // 2. Create inspection results
       const resultsToInsert = Object.entries(results).map(([checkpointId, result]) => ({
         inspection_id: inspection.id,
         checkpoint_id: checkpointId,
@@ -259,7 +242,6 @@ const InspectionForm = () => {
       
       if (resultsError) throw resultsError;
       
-      // 3. Update PPE item with inspection date and next inspection date
       const now = new Date();
       let nextInspectionDate: Date;
       
@@ -274,13 +256,11 @@ const InspectionForm = () => {
           break;
         case 'pre-use':
         default:
-          // For pre-use, next inspection depends on usage pattern, default to 7 days
           nextInspectionDate = new Date(now);
           nextInspectionDate.setDate(now.getDate() + 7);
           break;
       }
       
-      // Update PPE status based on inspection result
       const newStatus = overallResult === 'pass' ? 'active' : 'flagged';
       
       const { error: ppeUpdateError } = await supabase
@@ -294,18 +274,14 @@ const InspectionForm = () => {
       
       if (ppeUpdateError) throw ppeUpdateError;
       
-      // 4. Success! Update cache and show success message
       queryClient.invalidateQueries({ queryKey: ['ppe-items'] });
       queryClient.invalidateQueries({ queryKey: ['upcoming-inspections'] });
       
-      // Show success message with overlay
-      // In a real app, this would trigger the success overlay screen
       toast({
         title: 'Inspection Completed',
         description: 'The inspection has been successfully recorded',
       });
       
-      // Navigate back or to success screen
       navigate(`/equipment/${ppeItem?.id}`);
     } catch (error: any) {
       console.error('Error submitting inspection:', error);
@@ -350,7 +326,6 @@ const InspectionForm = () => {
         <h1 className="text-2xl font-bold">Inspection Form</h1>
       </div>
       
-      {/* PPE Item Details Card */}
       <Card className="p-4 mb-6">
         <h2 className="font-semibold mb-2">{ppeItem?.type}</h2>
         <div className="grid grid-cols-2 gap-2 text-sm">
@@ -369,7 +344,6 @@ const InspectionForm = () => {
         </div>
       </Card>
       
-      {/* Step Indicator */}
       <div className="relative mb-6">
         <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-muted">
           <div 
@@ -390,7 +364,6 @@ const InspectionForm = () => {
         </div>
       </div>
       
-      {/* Step 1: Inspection Type */}
       {step === 1 && (
         <div className="fade-in">
           <h2 className="text-lg font-medium mb-4">Select Inspection Type</h2>
@@ -444,7 +417,6 @@ const InspectionForm = () => {
         </div>
       )}
       
-      {/* Step 2: Checkpoints */}
       {step === 2 && (
         <div className="fade-in">
           <h2 className="text-lg font-medium mb-4">Inspection Checkpoints</h2>
@@ -509,7 +481,6 @@ const InspectionForm = () => {
         </div>
       )}
       
-      {/* Step 3: Sign Off */}
       {step === 3 && (
         <div className="fade-in">
           <h2 className="text-lg font-medium mb-4">Sign Off</h2>
@@ -528,7 +499,11 @@ const InspectionForm = () => {
             <div>
               <label className="text-sm font-medium block mb-2">Inspector Signature</label>
               <div className="border rounded-md p-2 bg-muted/30 mb-2">
-                <SignatureCanvas onSignatureEnd={(signatureData) => setSignature(signatureData)} />
+                <SignatureCanvas 
+                  onSave={setSignature}
+                  existingSignature={signature}
+                  onSignatureEnd={(signatureData) => setSignature(signatureData)} 
+                />
               </div>
               
               {signature && (
@@ -562,7 +537,6 @@ const InspectionForm = () => {
       
       <Separator className="my-6" />
       
-      {/* Navigation Buttons */}
       <div className="flex justify-between">
         <Button
           variant="outline"
