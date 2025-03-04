@@ -76,12 +76,16 @@ export const generatePPEReport = async (ppeId: string): Promise<void> => {
       const finalY = doc.lastAutoTable?.finalY || 35;
       doc.text('Latest Inspection Details', 14, finalY + 15);
       
+      // Get next inspection date from the PPE item if available, as it might be more up-to-date
+      const nextInspectionDate = ppeData.next_inspection 
+        ? new Date(ppeData.next_inspection).toLocaleDateString() 
+        : 'N/A';
+      
       const inspectionInfo = [
         ['Inspection Date', new Date(inspection.date).toLocaleDateString()],
         ['Inspector', inspection.inspector_id],
         ['Result', inspection.overall_result === 'pass' ? 'PASS' : 'FAIL'],
-        ['Next Inspection Due', inspection.next_inspection ? 
-          new Date(inspection.next_inspection).toLocaleDateString() : 'N/A'],
+        ['Next Inspection Due', nextInspectionDate],
       ];
       
       autoTable(doc, {
