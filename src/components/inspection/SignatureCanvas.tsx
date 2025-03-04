@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 interface SignatureCanvasProps {
   onSave: (signatureData: string) => void;
   existingSignature: string | null;
+  onSignatureEnd?: (signatureData: string) => void; // Add this prop
 }
 
 const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ 
   onSave,
-  existingSignature
+  existingSignature,
+  onSignatureEnd
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -128,6 +130,11 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
     // Send signature data to parent
     const signatureData = canvas.toDataURL('image/png');
     onSave(signatureData);
+    
+    // Call the onSignatureEnd if provided
+    if (onSignatureEnd) {
+      onSignatureEnd(signatureData);
+    }
   };
 
   const clearCanvas = () => {
@@ -140,6 +147,11 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setHasSignature(false);
     onSave('');
+    
+    // Call onSignatureEnd with empty string if provided
+    if (onSignatureEnd) {
+      onSignatureEnd('');
+    }
   };
 
   return (
