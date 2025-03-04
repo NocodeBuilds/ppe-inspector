@@ -6,11 +6,11 @@ import { ScanLine, Camera, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface QRCodeScannerProps {
-  onScan: (data: string) => void;
-  onCancel: () => void;
+  onResult: (data: string) => void;
+  onError: (error: string) => void;
 }
 
-const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onCancel }) => {
+const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
@@ -63,6 +63,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onCancel }) => {
               description: 'Please allow camera access to scan QR codes.',
               variant: 'destructive',
             });
+            onError('Camera permission denied');
           } else {
             setError(`Failed to start scanner: ${err.message}`);
             setIsScanning(false);
@@ -71,6 +72,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onCancel }) => {
               description: err.message || 'Failed to start QR scanner',
               variant: 'destructive',
             });
+            onError(err.message || 'Failed to start scanner');
           }
         });
     }
@@ -97,7 +99,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onCancel }) => {
       title: 'QR Code Scanned',
       description: 'Successfully scanned QR code',
     });
-    onScan(decodedText);
+    onResult(decodedText);
   };
   
   const onQRCodeError = (errorMessage: string) => {
@@ -125,7 +127,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onCancel }) => {
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={onCancel}
+          onClick={() => onError('Scanning cancelled')}
           className="h-8 w-8"
         >
           <X size={18} />
@@ -173,7 +175,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onCancel }) => {
       <div className="mt-4 flex justify-center">
         <Button 
           variant="outline" 
-          onClick={onCancel}
+          onClick={() => onError('Scanning cancelled')}
           className="w-full"
         >
           Cancel

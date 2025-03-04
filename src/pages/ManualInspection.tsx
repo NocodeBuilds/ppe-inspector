@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -41,7 +40,6 @@ const ManualInspection = () => {
   const { toast } = useToast();
   const prefilledSerialNumber = location.state?.serialNumber || '';
 
-  // Form state
   const [serialNumber, setSerialNumber] = useState(prefilledSerialNumber);
   const [ppeType, setPpeType] = useState<PPEType | ''>('');
   const [brand, setBrand] = useState('');
@@ -125,7 +123,6 @@ const ManualInspection = () => {
           passed: false
         })));
       } else {
-        // Default checkpoints if none found
         setCheckpoints([
           { id: 'default-1', description: 'General condition is good', passed: false },
           { id: 'default-2', description: 'No visible damage', passed: false },
@@ -157,11 +154,9 @@ const ManualInspection = () => {
         return;
       }
       
-      // Create or update PPE Item
       let ppeId = foundPPE?.id;
       
       if (!ppeId) {
-        // Create new PPE item
         const { data: newPPE, error: ppeError } = await supabase
           .from('ppe_items')
           .insert({
@@ -181,12 +176,11 @@ const ManualInspection = () => {
         ppeId = newPPE.id;
       }
       
-      // Create inspection record
       const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
         .insert({
           ppe_id: ppeId,
-          inspector_id: '123', // This should be the current user's ID
+          inspector_id: '123',
           type: 'pre-use',
           date: new Date().toISOString(),
           overall_result: checkpoints.every(cp => cp.passed) ? 'pass' : 'fail',
@@ -198,7 +192,6 @@ const ManualInspection = () => {
       
       if (inspectionError) throw inspectionError;
       
-      // Create inspection results
       const results = checkpoints.map(cp => ({
         inspection_id: inspection.id,
         checkpoint_id: cp.id,

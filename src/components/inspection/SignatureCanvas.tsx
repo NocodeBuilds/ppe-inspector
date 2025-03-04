@@ -4,13 +4,13 @@ import { Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface SignatureCanvasProps {
-  onSignatureEnd: (signatureData: string) => void;
-  initialSignature?: string;
+  onSave: (signatureData: string) => void;
+  existingSignature: string | null;
 }
 
 const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ 
-  onSignatureEnd,
-  initialSignature
+  onSave,
+  existingSignature
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -46,19 +46,19 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
     window.addEventListener('resize', resizeCanvas);
 
     // Load initial signature if provided
-    if (initialSignature) {
+    if (existingSignature) {
       const img = new Image();
       img.onload = () => {
         ctx.drawImage(img, 0, 0);
         setHasSignature(true);
       };
-      img.src = initialSignature;
+      img.src = existingSignature;
     }
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
     };
-  }, [initialSignature]);
+  }, [existingSignature]);
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
@@ -127,7 +127,7 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
 
     // Send signature data to parent
     const signatureData = canvas.toDataURL('image/png');
-    onSignatureEnd(signatureData);
+    onSave(signatureData);
   };
 
   const clearCanvas = () => {
@@ -139,7 +139,7 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setHasSignature(false);
-    onSignatureEnd('');
+    onSave('');
   };
 
   return (

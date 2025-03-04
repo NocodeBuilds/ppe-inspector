@@ -1,11 +1,10 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { QRCodeScanner } from '@/components/inspection/QRCodeScanner';
+import QRCodeScanner from '@/components/inspection/QRCodeScanner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Search, QrCode, ClipboardList } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -117,13 +116,6 @@ const StartInspection = () => {
                   setIsScanning(false);
                 }}
               />
-              <Button 
-                variant="outline" 
-                className="absolute bottom-4 right-4"
-                onClick={() => setIsScanning(false)}
-              >
-                Cancel
-              </Button>
             </div>
           ) : (
             <Button 
