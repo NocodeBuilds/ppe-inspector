@@ -1,175 +1,200 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, PPEItem } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
-import { Search, Camera, ArrowRight, Loader2 } from 'lucide-react';
-import QRCodeScanner from '@/components/inspection/QRCodeScanner';
-import CardOverlay from '@/components/ui/card-overlay';
+import { Separator } from '@/components/ui/separator';
+import { QRCodeScanner } from '@/components/inspection/QRCodeScanner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, Search, QrCode, ClipboardList } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { PPEItem } from '@/integrations/supabase/client';
 
 const StartInspection = () => {
+  const [serialNumber, setSerialNumber] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<PPEItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showQRScanner, setShowQRScanner] = useState(false);
-  
-  useEffect(() => {
-    fetchPPEItems();
-  }, []);
-  
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredItems(ppeItems);
-    } else {
-      const filtered = ppeItems.filter(item => 
-        item.serial_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.brand.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredItems(filtered);
+
+  const handleSearch = async () => {
+    if (!serialNumber.trim()) {
+      setError('Please enter a serial number');
+      return;
     }
-  }, [searchQuery, ppeItems]);
-  
-  const fetchPPEItems = async () => {
+
+    setError(null);
+    setIsSearching(true);
+
     try {
-      setIsLoading(true);
-      const { data, error } = await supabase
+      const { data, error: searchError } = await supabase
         .from('ppe_items')
         .select('*')
-        .order('created_at', { ascending: false });
-        
-      if (error) throw error;
-      
-      setPpeItems(data || []);
-      setFilteredItems(data || []);
-    } catch (error: any) {
-      console.error('Error fetching PPE items:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to load PPE items',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleQRScan = (data: string) => {
-    setShowQRScanner(false);
-    if (!data) return;
-    
-    try {
-      // Assuming QR code contains the serial number
-      const serialNumber = data.trim();
-      const foundItem = ppeItems.find(item => item.serial_number === serialNumber);
-      
-      if (foundItem) {
-        navigate(`/inspect/${foundItem.id}`);
+        .eq('serial_number', serialNumber.trim())
+        .maybeSingle();
+
+      if (searchError) throw searchError;
+
+      if (data) {
+        // PPE found, navigate to inspection form
+        navigate(`/inspect/${data.id}`);
       } else {
+        // PPE not found, navigate to manual inspection
         toast({
-          title: 'PPE Not Found',
-          description: `No PPE found with serial number: ${serialNumber}`,
-          variant: 'destructive',
+          title: 'PPE not found',
+          description: 'Creating a new inspection record',
+          variant: 'default',
         });
-        setSearchQuery(serialNumber);
+        navigate('/inspect/new', { state: { serialNumber: serialNumber.trim() } });
       }
-    } catch (error) {
-      toast({
-        title: 'Invalid QR Code',
-        description: 'The scanned QR code is not in the expected format',
-        variant: 'destructive',
-      });
+    } catch (error: any) {
+      console.error('Error searching for PPE:', error);
+      setError(error.message || 'An error occurred while searching');
+    } finally {
+      setIsSearching(false);
     }
   };
-  
-  const handleSelect = (ppeId: string) => {
-    navigate(`/inspect/${ppeId}`);
+
+  const handleScanResult = (result: string) => {
+    setIsScanning(false);
+    setSerialNumber(result);
+    
+    // Automatically search after scan
+    toast({
+      title: 'QR Code Scanned',
+      description: `Serial number: ${result}`,
+    });
+    
+    // Set serial number and trigger search
+    setSerialNumber(result);
+    
+    // Wait a moment to update state before searching
+    setTimeout(() => {
+      handleSearch();
+    }, 500);
   };
-  
-  const handleManualEntry = () => {
+
+  const handleManualInspection = () => {
     navigate('/inspect/new');
   };
-  
+
   return (
-    <div className="fade-in pb-20">
-      <div className="flex flex-col mb-6">
-        <h1 className="text-2xl font-bold mb-2">Start Inspection</h1>
-        <p className="text-muted-foreground mb-6">
-          Scan a QR code or search for PPE by serial number
-        </p>
-        
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search by serial number, type or brand..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <div className="flex gap-2 mb-6">
-          <Button 
-            onClick={() => setShowQRScanner(true)}
-            className="flex-1"
-          >
-            <Camera size={16} className="mr-2" />
-            Scan QR Code
-          </Button>
-          
+    <div className="space-y-6 pb-20">
+      <div>
+        <h1 className="text-2xl font-bold">Start Inspection</h1>
+        <p className="text-muted-foreground">Scan a QR code or enter serial number to begin</p>
+      </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Scan QR Code</CardTitle>
+          <CardDescription>
+            Scan the QR code on a PPE item to quickly fetch its details
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isScanning ? (
+            <div className="relative">
+              <QRCodeScanner 
+                onResult={handleScanResult} 
+                onError={(error) => {
+                  toast({
+                    title: 'Scanning Error',
+                    description: error,
+                    variant: 'destructive',
+                  });
+                  setIsScanning(false);
+                }}
+              />
+              <Button 
+                variant="outline" 
+                className="absolute bottom-4 right-4"
+                onClick={() => setIsScanning(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button 
+              variant="outline" 
+              className="w-full py-8 text-lg h-auto"
+              onClick={() => setIsScanning(true)}
+            >
+              <QrCode className="mr-2 h-6 w-6" />
+              Tap to Start Scanning
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Separator className="my-4" />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Enter Serial Number</CardTitle>
+          <CardDescription>
+            Manually enter the PPE serial number
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Input
+                placeholder="Enter serial number"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <Button 
+              onClick={handleSearch}
+              disabled={isSearching || !serialNumber.trim()}
+            >
+              {isSearching ? (
+                <div className="flex items-center">
+                  <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
+                  Searching...
+                </div>
+              ) : (
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Search
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Manual Inspection</CardTitle>
+          <CardDescription>
+            Create a new inspection without scanning
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <Button 
             variant="outline" 
-            onClick={handleManualEntry}
-            className="flex-1"
+            className="w-full"
+            onClick={handleManualInspection}
           >
-            Manual Entry
+            <ClipboardList className="mr-2 h-4 w-4" />
+            New Manual Inspection
           </Button>
-        </div>
-      </div>
-      
-      {isLoading ? (
-        <div className="flex justify-center my-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="text-center my-8">
-          <p className="text-muted-foreground mb-4">No PPE items found matching your search.</p>
-          <Button onClick={handleManualEntry} variant="default">
-            Create New Inspection
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <h2 className="text-lg font-medium">Select Equipment</h2>
-          {filteredItems.map((ppe) => (
-            <Card 
-              key={ppe.id}
-              className="p-4 hover:bg-muted/50 cursor-pointer transition-colors flex justify-between items-center"
-              onClick={() => handleSelect(ppe.id)}
-            >
-              <div>
-                <h3 className="font-medium uppercase">{ppe.type}</h3>
-                <p className="text-sm text-muted-foreground">SN: {ppe.serial_number}</p>
-                <p className="text-sm text-muted-foreground">Brand: {ppe.brand}</p>
-              </div>
-              <ArrowRight size={16} className="text-muted-foreground" />
-            </Card>
-          ))}
-        </div>
-      )}
-      
-      <CardOverlay show={showQRScanner} onClose={() => setShowQRScanner(false)}>
-        <QRCodeScanner 
-          onScan={handleQRScan}
-          onCancel={() => setShowQRScanner(false)}
-        />
-      </CardOverlay>
+        </CardContent>
+      </Card>
     </div>
   );
 };

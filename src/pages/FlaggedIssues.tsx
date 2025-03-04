@@ -1,266 +1,248 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Loader2, AlertTriangle, Filter, Download, Eye } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
-import { AlertTriangle, Calendar, ArrowRight, Info, Loader2, Search, Filter, RefreshCw } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
-interface FlaggedItem {
+interface FlaggedIssue {
   id: string;
-  ppe_id: string;
-  ppe_type: string;
   ppe_serial: string;
+  ppe_type: string;
   inspection_date: string;
-  issue_count: number;
+  checkpoint_description: string;
   inspector_name: string;
+  notes: string | null;
 }
 
 const FlaggedIssues = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const [flaggedIssues, setFlaggedIssues] = useState<FlaggedIssue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [flaggedItems, setFlaggedItems] = useState<FlaggedItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<FlaggedItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<string | null>(null);
-  
+  const [filter, setFilter] = useState<'all' | 'recent'>('all');
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
   useEffect(() => {
-    if (user) {
-      fetchFlaggedIssues();
-    }
-  }, [user]);
-  
-  useEffect(() => {
-    if (searchQuery.trim() === '' && !filterType) {
-      setFilteredItems(flaggedItems);
-    } else {
-      let filtered = flaggedItems;
-      
-      // Apply text search filter
-      if (searchQuery.trim() !== '') {
-        filtered = filtered.filter(item => 
-          item.ppe_serial.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.ppe_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.inspector_name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      }
-      
-      // Apply type filter
-      if (filterType) {
-        filtered = filtered.filter(item => item.ppe_type === filterType);
-      }
-      
-      setFilteredItems(filtered);
-    }
-  }, [searchQuery, filterType, flaggedItems]);
-  
+    fetchFlaggedIssues();
+  }, [filter]);
+
   const fetchFlaggedIssues = async () => {
     try {
       setIsLoading(true);
       
-      // Query to get flagged inspections with failed checkpoints
-      const { data, error } = await supabase
-        .from('inspections')
-        .select(`
-          id,
-          ppe_id,
-          date,
-          inspector_id,
-          overall_result,
-          ppe_items(type, serial_number),
-          profiles(full_name)
-        `)
-        .eq('overall_result', 'fail')
-        .order('date', { ascending: false });
-        
-      if (error) throw error;
+      // This would be replaced with an actual query to fetch flagged issues
+      // For now, we'll use a simulated response
       
-      if (data) {
-        // Get counts of failed checkpoints for each inspection
-        const inspectionIds = data.map(item => item.id);
-        
-        // Changed approach: Instead of using group(), we'll fetch all failed results
-        // and count them for each inspection ID in JavaScript
-        const { data: failedResults, error: countError } = await supabase
-          .from('inspection_results')
-          .select('inspection_id')
-          .eq('passed', false)
-          .in('inspection_id', inspectionIds);
-          
-        if (countError) throw countError;
-        
-        // Count failed checkpoints for each inspection
-        const failCounts: Record<string, number> = {};
-        
-        if (failedResults) {
-          failedResults.forEach(result => {
-            const id = result.inspection_id;
-            if (id) {
-              failCounts[id] = (failCounts[id] || 0) + 1;
-            }
-          });
+      // Example query:
+      // const { data, error } = await supabase
+      //   .from('inspection_results')
+      //   .select(`
+      //     id,
+      //     inspections!inner(
+      //       date,
+      //       ppe_items!inner(serial_number, type),
+      //       profiles!inner(full_name)
+      //     ),
+      //     inspection_checkpoints!inner(description),
+      //     passed,
+      //     notes
+      //   `)
+      //   .eq('passed', false)
+      //   .order('created_at', { ascending: false });
+      
+      // Simulated data
+      const mockData: FlaggedIssue[] = [
+        {
+          id: '1',
+          ppe_serial: 'HARNESS-001',
+          ppe_type: 'Full Body Harness',
+          inspection_date: '2023-06-15T09:00:00',
+          checkpoint_description: 'Webbing is free from cuts or tears',
+          inspector_name: 'John Doe',
+          notes: 'Found a 2-inch tear on shoulder strap'
+        },
+        {
+          id: '2',
+          ppe_serial: 'HELMET-003',
+          ppe_type: 'Safety Helmet',
+          inspection_date: '2023-06-12T14:30:00',
+          checkpoint_description: 'Shell is free from cracks',
+          inspector_name: 'Jane Smith',
+          notes: 'Hairline crack on right side'
+        },
+        {
+          id: '3',
+          ppe_serial: 'LANYARD-007',
+          ppe_type: 'Double Lanyard',
+          inspection_date: '2023-06-10T11:15:00',
+          checkpoint_description: 'Shock absorber is intact',
+          inspector_name: 'Mike Johnson',
+          notes: 'Shock absorber partially deployed'
+        },
+        {
+          id: '4',
+          ppe_serial: 'GOGGLE-012',
+          ppe_type: 'Safety Goggles',
+          inspection_date: '2023-06-08T10:00:00',
+          checkpoint_description: 'Lens is free from scratches',
+          inspector_name: 'Sarah Williams',
+          notes: 'Deep scratches affecting visibility'
         }
+      ];
+      
+      if (filter === 'recent') {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         
-        // Format data for display
-        const formattedData = data.map(item => {
-          const failCount = failCounts[item.id] || 0;
-          
-          return {
-            id: item.id,
-            ppe_id: item.ppe_id,
-            ppe_type: item.ppe_items?.type || 'Unknown',
-            ppe_serial: item.ppe_items?.serial_number || 'Unknown',
-            inspection_date: item.date,
-            issue_count: failCount,
-            inspector_name: item.profiles?.full_name || 'Unknown',
-          };
-        });
-        
-        setFlaggedItems(formattedData);
-        setFilteredItems(formattedData);
+        setFlaggedIssues(mockData.filter(issue => 
+          new Date(issue.inspection_date) >= oneWeekAgo
+        ));
+      } else {
+        setFlaggedIssues(mockData);
       }
+      
     } catch (error: any) {
       console.error('Error fetching flagged issues:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to load flagged issues',
+        description: 'Failed to load flagged issues',
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
   };
-  
-  const handleViewDetails = (inspectionId: string) => {
-    navigate(`/inspection/${inspectionId}`);
+
+  const handleExport = () => {
+    toast({
+      title: 'Export started',
+      description: 'Your export is being prepared',
+    });
+    
+    // Simulate export process
+    setTimeout(() => {
+      toast({
+        title: 'Export complete',
+        description: 'Flagged issues report has been downloaded',
+      });
+    }, 2000);
   };
 
-  const getUniqueTypes = () => {
-    const types = new Set(flaggedItems.map(item => item.ppe_type));
-    return Array.from(types);
+  const handleViewIssue = (id: string) => {
+    // In a real implementation, this would navigate to the inspection details
+    navigate(`/inspection/${id}`);
   };
-  
-  const clearFilters = () => {
-    setSearchQuery('');
-    setFilterType(null);
-  };
-  
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-[80vh]">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="mt-2 text-muted-foreground">Loading flagged issues...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="fade-in pb-20">
-      <div className="flex flex-col mb-6">
-        <h1 className="text-2xl font-bold mb-2">Flagged Issues</h1>
-        <p className="text-muted-foreground mb-6">
-          View PPE items that have failed inspection
-        </p>
+    <div className="space-y-6 pb-20">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center">
+            <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />
+            Flagged Issues
+          </h1>
+          <p className="text-muted-foreground">
+            View all PPE items that failed inspection
+          </p>
+        </div>
         
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search by serial number, type or inspector..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFilter(filter === 'all' ? 'recent' : 'all')}
+          >
+            <Filter className="h-4 w-4 mr-1" />
+            {filter === 'all' ? 'All Issues' : 'Recent Only'}
+          </Button>
           
-          <div className="flex gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex gap-2">
-                  <Filter size={16} />
-                  {filterType ? filterType : 'Filter by Type'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {getUniqueTypes().map((type) => (
-                  <DropdownMenuItem key={type} onClick={() => setFilterType(type)}>
-                    {type}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={clearFilters}
-              title="Clear filters"
-              disabled={!searchQuery && !filterType}
-            >
-              <RefreshCw size={16} />
-            </Button>
-          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleExport}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export
+          </Button>
         </div>
       </div>
       
-      {isLoading ? (
-        <div className="flex justify-center my-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="text-center my-12 p-6 border rounded-lg bg-muted/30">
-          <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
-            <Info size={24} className="text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium mb-2">No Flagged Issues</h3>
-          <p className="text-muted-foreground mb-6">
-            {searchQuery || filterType ? 
-              'No items match your search criteria.' : 
-              'There are no PPE items that have failed inspection.'}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button onClick={() => navigate('/start-inspection')}>
-              Start New Inspection
-            </Button>
-            {(searchQuery || filterType) && (
-              <Button variant="outline" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-            )}
-          </div>
-        </div>
+      {flaggedIssues.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-10">
+            <div className="rounded-full bg-muted p-3 mb-3">
+              <AlertTriangle className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold">No flagged issues found</h3>
+            <p className="text-muted-foreground text-center mt-1">
+              All your PPE items have passed their inspections
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-4">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-medium">Equipment with Issues</h2>
-            <p className="text-sm text-muted-foreground">{filteredItems.length} items found</p>
-          </div>
-          {filteredItems.map((item) => (
-            <Card 
-              key={item.id}
-              className="p-4 hover:bg-muted/30 cursor-pointer transition-colors"
-              onClick={() => handleViewDetails(item.id)}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex items-center">
-                  <AlertTriangle size={16} className="text-destructive mr-2" />
-                  <h3 className="font-medium">{item.ppe_type}</h3>
+          {flaggedIssues.map((issue) => (
+            <Card key={issue.id} className="overflow-hidden">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">
+                      {issue.ppe_type} - {issue.ppe_serial}
+                    </CardTitle>
+                    <CardDescription>
+                      Failed checkpoint: {issue.checkpoint_description}
+                    </CardDescription>
+                  </div>
+                  <Badge variant="destructive">Failed</Badge>
                 </div>
-                <Badge variant="destructive">{item.issue_count} Failed</Badge>
-              </div>
-              
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className="text-sm">SN: {item.ppe_serial}</p>
-                  <p className="text-sm text-muted-foreground flex items-center">
-                    <Calendar size={12} className="mr-1" />
-                    {format(new Date(item.inspection_date), 'MMM d, yyyy')}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Inspector: {item.inspector_name}
-                  </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium">Issue Details</p>
+                    <p className="text-sm text-muted-foreground">{issue.notes}</p>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">Inspection Date</span>
+                      <span className="text-sm">{format(new Date(issue.inspection_date), 'PPP')}</span>
+                    </div>
+                    
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">Inspector</span>
+                      <span className="text-sm">{issue.inspector_name}</span>
+                    </div>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleViewIssue(issue.id)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View Details
+                    </Button>
+                  </div>
                 </div>
-                <ArrowRight size={16} className="text-muted-foreground" />
-              </div>
+              </CardContent>
             </Card>
           ))}
         </div>

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggler } from '@/components/ThemeToggler';
-import { AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 
@@ -80,19 +80,29 @@ const Login = () => {
   }
   
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border h-14 backdrop-blur-sm bg-opacity-80">
+    <div className="flex flex-col min-h-screen bg-background overflow-y-auto">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 border-b border-border h-14 backdrop-blur-sm">
         <div className="flex items-center justify-between h-full px-4">
-          <h1 className="text-xl font-bold">
-            <span>
-              <span className="text-primary">PPE</span> Inspector
-            </span>
-          </h1>
+          <div className="flex items-center">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate(-1)}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-bold">
+              <span>
+                <span className="text-primary">PPE</span> Inspector
+              </span>
+            </h1>
+          </div>
           <ThemeToggler />
         </div>
       </header>
       
-      <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20">
+      <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20 w-full">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-primary mb-2">RENEW</h1>
@@ -149,7 +159,7 @@ const Login = () => {
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <div className="flex items-center">
+                  <div className="flex items-center justify-center">
                     <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
                     Signing in...
                   </div>

@@ -1,22 +1,24 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase, PPEType } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/hooks/use-toast';
-import { Calendar, ArrowLeft, Loader2 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { format } from 'date-fns';
+import { AlertCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { PPEItem, PPEType } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import SignatureCanvas from '@/components/inspection/SignatureCanvas';
 
-const ppeTypes: PPEType[] = [
+const PPE_TYPES: PPEType[] = [
   'Full Body Harness',
   'Fall Arrester',
   'Double Lanyard',
@@ -27,251 +29,424 @@ const ppeTypes: PPEType[] = [
   'Ear Protection'
 ];
 
+interface CheckpointItem {
+  id: string;
+  description: string;
+  passed: boolean;
+}
+
 const ManualInspection = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const [serialNumber, setSerialNumber] = useState('');
+  const location = useLocation();
+  const { toast } = useToast();
+  const prefilledSerialNumber = location.state?.serialNumber || '';
+
+  // Form state
+  const [serialNumber, setSerialNumber] = useState(prefilledSerialNumber);
   const [ppeType, setPpeType] = useState<PPEType | ''>('');
   const [brand, setBrand] = useState('');
   const [modelNumber, setModelNumber] = useState('');
-  const [manufacturingDate, setManufacturingDate] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
+  const [manufacturingDate, setManufacturingDate] = useState<Date>();
+  const [expiryDate, setExpiryDate] = useState<Date>();
+  const [notes, setNotes] = useState('');
+  const [checkpoints, setCheckpoints] = useState<CheckpointItem[]>([]);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
   
-  // Check if serial number exists when user types it
-  const [isCheckingSerial, setIsCheckingSerial] = useState(false);
-  const [existingPPE, setExistingPPE] = useState<any>(null);
-  
-  const checkSerialNumber = async (value: string) => {
-    if (!value.trim()) return;
-    
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPPESearched, setIsPPESearched] = useState(false);
+  const [foundPPE, setFoundPPE] = useState<PPEItem | null>(null);
+
+  useEffect(() => {
+    if (prefilledSerialNumber) {
+      searchPPE(prefilledSerialNumber);
+    }
+  }, [prefilledSerialNumber]);
+
+  useEffect(() => {
+    if (ppeType) {
+      fetchCheckpoints(ppeType);
+    }
+  }, [ppeType]);
+
+  const searchPPE = async (serial: string) => {
     try {
-      setIsCheckingSerial(true);
-      const { data, error } = await supabase
+      setError(null);
+      
+      const { data, error: searchError } = await supabase
         .from('ppe_items')
         .select('*')
-        .eq('serial_number', value.trim())
-        .single();
-        
-      if (error && error.code !== 'PGRST116') throw error;
+        .eq('serial_number', serial)
+        .maybeSingle();
+      
+      if (searchError) throw searchError;
+      
+      setIsPPESearched(true);
       
       if (data) {
-        setExistingPPE(data);
-        // Auto-fill other fields
-        setPpeType(data.type as PPEType);
-        setBrand(data.brand);
-        setModelNumber(data.model_number);
-        setManufacturingDate(data.manufacturing_date);
-        setExpiryDate(data.expiry_date);
-        
+        setFoundPPE(data);
+        fillFormWithPPEData(data);
         toast({
           title: 'PPE Found',
-          description: 'Details have been auto-filled from database',
+          description: `Serial number: ${serial}`,
         });
-      } else {
-        setExistingPPE(null);
       }
-    } catch (error) {
-      console.error('Error checking serial number:', error);
-    } finally {
-      setIsCheckingSerial(false);
+    } catch (error: any) {
+      console.error('Error searching for PPE:', error);
+      setError(error.message || 'An error occurred while searching');
     }
   };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
-    if (!serialNumber || !ppeType || !brand || !modelNumber || !manufacturingDate || !expiryDate) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please fill in all required fields',
-        variant: 'destructive',
-      });
-      return;
+
+  const fillFormWithPPEData = (ppe: PPEItem) => {
+    setPpeType(ppe.type as PPEType);
+    setBrand(ppe.brand || '');
+    setModelNumber(ppe.model_number || '');
+    if (ppe.manufacturing_date) {
+      setManufacturingDate(new Date(ppe.manufacturing_date));
     }
-    
-    setIsLoading(true);
-    
+    if (ppe.expiry_date) {
+      setExpiryDate(new Date(ppe.expiry_date));
+    }
+  };
+
+  const fetchCheckpoints = async (type: PPEType) => {
     try {
-      // If PPE doesn't exist, create it first
-      let ppeId;
+      const { data, error: checkpointsError } = await supabase
+        .from('inspection_checkpoints')
+        .select('*')
+        .eq('ppe_type', type);
       
-      if (existingPPE) {
-        ppeId = existingPPE.id;
+      if (checkpointsError) throw checkpointsError;
+      
+      if (data && data.length > 0) {
+        setCheckpoints(data.map(cp => ({
+          id: cp.id,
+          description: cp.description,
+          passed: false
+        })));
       } else {
-        // Calculate next inspection date (3 months from manufacturing date)
-        const mfgDate = new Date(manufacturingDate);
-        const nextInspection = new Date(mfgDate);
-        nextInspection.setMonth(nextInspection.getMonth() + 3);
-        
-        // Create the PPE item
+        // Default checkpoints if none found
+        setCheckpoints([
+          { id: 'default-1', description: 'General condition is good', passed: false },
+          { id: 'default-2', description: 'No visible damage', passed: false },
+          { id: 'default-3', description: 'All components are functional', passed: false }
+        ]);
+      }
+    } catch (error: any) {
+      console.error('Error fetching checkpoints:', error);
+      setError(error.message || 'An error occurred while fetching checkpoints');
+    }
+  };
+
+  const toggleCheckpoint = (id: string) => {
+    setCheckpoints(
+      checkpoints.map(cp => 
+        cp.id === id ? { ...cp, passed: !cp.passed } : cp
+      )
+    );
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setError(null);
+      setIsSubmitting(true);
+      
+      if (!serialNumber || !ppeType || !signatureData) {
+        setError('Please fill all required fields and add your signature');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Create or update PPE Item
+      let ppeId = foundPPE?.id;
+      
+      if (!ppeId) {
+        // Create new PPE item
         const { data: newPPE, error: ppeError } = await supabase
           .from('ppe_items')
           .insert({
             serial_number: serialNumber,
             type: ppeType,
-            brand: brand,
+            brand,
             model_number: modelNumber,
-            manufacturing_date: manufacturingDate,
-            expiry_date: expiryDate,
-            status: new Date(expiryDate) < new Date() ? 'expired' : 'active',
-            created_by: user?.id,
-            next_inspection: nextInspection.toISOString(),
+            manufacturing_date: manufacturingDate?.toISOString(),
+            expiry_date: expiryDate?.toISOString(),
+            status: 'active',
+            last_inspection: new Date().toISOString()
           })
           .select('id')
           .single();
-          
+        
         if (ppeError) throw ppeError;
         ppeId = newPPE.id;
       }
       
-      // Redirect to inspection form with the PPE ID
-      navigate(`/inspect/${ppeId}`);
+      // Create inspection record
+      const { data: inspection, error: inspectionError } = await supabase
+        .from('inspections')
+        .insert({
+          ppe_id: ppeId,
+          inspector_id: '123', // This should be the current user's ID
+          type: 'pre-use',
+          date: new Date().toISOString(),
+          overall_result: checkpoints.every(cp => cp.passed) ? 'pass' : 'fail',
+          signature_url: signatureData,
+          notes
+        })
+        .select('id')
+        .single();
       
-    } catch (error: any) {
-      console.error('Error creating PPE:', error);
+      if (inspectionError) throw inspectionError;
+      
+      // Create inspection results
+      const results = checkpoints.map(cp => ({
+        inspection_id: inspection.id,
+        checkpoint_id: cp.id,
+        passed: cp.passed,
+        notes: ''
+      }));
+      
+      const { error: resultsError } = await supabase
+        .from('inspection_results')
+        .insert(results);
+      
+      if (resultsError) throw resultsError;
+      
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to create PPE record',
-        variant: 'destructive',
+        title: 'Inspection Complete',
+        description: 'The inspection has been successfully recorded.',
       });
+      
+      navigate('/');
+    } catch (error: any) {
+      console.error('Error submitting inspection:', error);
+      setError(error.message || 'An error occurred while submitting the inspection');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
-  
+
   return (
-    <div className="fade-in pb-20">
-      <div className="flex items-center mb-6">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          className="mr-2"
-          onClick={() => navigate('/start-inspection')}
-        >
-          <ArrowLeft size={18} />
-        </Button>
-        <h1 className="text-2xl font-bold">Manual Entry</h1>
+    <div className="space-y-6 pb-20">
+      <div>
+        <h1 className="text-2xl font-bold">New Inspection</h1>
+        <p className="text-muted-foreground">Create a new PPE inspection record</p>
       </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="serialNumber">Serial Number</Label>
-            <div className="relative mt-1">
-              <Input
-                id="serialNumber"
-                type="text"
-                value={serialNumber}
-                onChange={(e) => setSerialNumber(e.target.value)}
-                onBlur={(e) => checkSerialNumber(e.target.value)}
-                className="pr-8"
-              />
-              {isCheckingSerial && (
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                </div>
-              )}
-            </div>
-            {existingPPE && (
-              <p className="text-xs text-green-600 mt-1">
-                PPE with this serial number found in database
-              </p>
-            )}
-          </div>
 
-          <div>
-            <Label htmlFor="ppeType">PPE Type</Label>
-            <Select 
-              value={ppeType} 
-              onValueChange={(value) => setPpeType(value as PPEType)}
-              disabled={!!existingPPE}
-            >
-              <SelectTrigger id="ppeType" className="mt-1">
-                <SelectValue placeholder="Select PPE type" />
-              </SelectTrigger>
-              <SelectContent>
-                {ppeTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>PPE Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="serialNumber">Serial Number *</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="serialNumber"
+                  value={serialNumber}
+                  onChange={(e) => setSerialNumber(e.target.value)}
+                  placeholder="Enter serial number"
+                  disabled={isPPESearched}
+                  className="flex-1"
+                />
+                {!isPPESearched && (
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => searchPPE(serialNumber)}
+                    disabled={!serialNumber.trim()}
+                  >
+                    Search
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ppeType">PPE Type *</Label>
+              <Select 
+                value={ppeType} 
+                onValueChange={(value) => setPpeType(value as PPEType)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select PPE type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PPE_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="brand">Brand</Label>
+              <Input
+                id="brand"
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                placeholder="Enter brand name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="modelNumber">Model Number</Label>
+              <Input
+                id="modelNumber"
+                value={modelNumber}
+                onChange={(e) => setModelNumber(e.target.value)}
+                placeholder="Enter model number"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Manufacturing Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !manufacturingDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {manufacturingDate ? format(manufacturingDate, "PPP") : "Select date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={manufacturingDate}
+                      onSelect={setManufacturingDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Expiry Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !expiryDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {expiryDate ? format(expiryDate, "PPP") : "Select date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={expiryDate}
+                      onSelect={setExpiryDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {checkpoints.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Inspection Checkpoints</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {checkpoints.map((checkpoint) => (
+                  <div 
+                    key={checkpoint.id}
+                    className={cn(
+                      "p-4 rounded-lg border cursor-pointer transition-colors", 
+                      checkpoint.passed 
+                        ? "bg-success/10 border-success/30" 
+                        : "bg-destructive/10 border-destructive/30"
+                    )}
+                    onClick={() => toggleCheckpoint(checkpoint.id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={cn(
+                        "w-5 h-5 rounded-full flex items-center justify-center mt-0.5",
+                        checkpoint.passed ? "bg-success" : "bg-destructive"
+                      )}>
+                        {checkpoint.passed ? "✓" : "✗"}
+                      </div>
+                      <div>
+                        <p className="font-medium">{checkpoint.description}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {checkpoint.passed ? "Pass" : "Fail"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-          <div>
-            <Label htmlFor="brand">Brand</Label>
-            <Input
-              id="brand"
-              type="text"
-              className="mt-1"
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              disabled={!!existingPPE}
+        <Card>
+          <CardHeader>
+            <CardTitle>Additional Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              placeholder="Enter any additional notes or observations"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={4}
             />
-          </div>
+          </CardContent>
+        </Card>
 
-          <div>
-            <Label htmlFor="modelNumber">Model Number</Label>
-            <Input
-              id="modelNumber"
-              type="text"
-              className="mt-1"
-              value={modelNumber}
-              onChange={(e) => setModelNumber(e.target.value)}
-              disabled={!!existingPPE}
+        <Card>
+          <CardHeader>
+            <CardTitle>Inspector Signature *</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SignatureCanvas 
+              onSave={setSignatureData}
+              existingSignature={signatureData}
             />
-          </div>
-
-          <div>
-            <Label htmlFor="manufacturingDate">Manufacturing Date</Label>
-            <div className="relative mt-1">
-              <Input
-                id="manufacturingDate"
-                type="date"
-                className="mt-1 pl-10"
-                value={manufacturingDate}
-                onChange={(e) => setManufacturingDate(e.target.value)}
-                disabled={!!existingPPE}
-              />
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="expiryDate">Expiry Date</Label>
-            <div className="relative mt-1">
-              <Input
-                id="expiryDate"
-                type="date"
-                className="mt-1 pl-10"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-                disabled={!!existingPPE}
-              />
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            </div>
-          </div>
-        </div>
-
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            'Proceed to Inspection'
-          )}
-        </Button>
-      </form>
+            <p className="text-xs text-muted-foreground mt-2">
+              By signing, you certify that this inspection was conducted according to safety standards.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={isSubmitting || !signatureData}
+              className="w-full"
+            >
+              {isSubmitting ? (
+                <div className="flex items-center">
+                  <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
+                  Submitting...
+                </div>
+              ) : 'Complete Inspection'}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 };
