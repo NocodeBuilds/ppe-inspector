@@ -19,7 +19,8 @@ export type PPEStatus =
   | 'flagged'
   | 'due'
   | 'inspected'
-  | 'out-of-service';
+  | 'out-of-service'
+  | 'maintenance';
 
 export interface PPEItem {
   id: string;
@@ -82,4 +83,14 @@ export interface ExtendedProfile {
   bio?: string | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface InspectionData {
+  id: string;
+  date: string;
+  type: string;
+  inspector_name: string;
+  result: string;
+  ppe_type: string;
+  serial_number: string;
 }

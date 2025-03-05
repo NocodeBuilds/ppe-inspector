@@ -27,13 +27,15 @@ export const useSupabaseQuery = <T>(
     gcTime: options.cacheTime || 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: options.refetchOnWindowFocus ?? false,
     enabled: options.enabled,
-    onError: (error: any) => {
-      console.error(`Query error (${queryKey.join('/')}):`, error);
-      toast({
-        title: 'Error fetching data',
-        description: error.message || 'An error occurred while fetching data',
-        variant: 'destructive',
-      });
+    meta: {
+      errorHandler: (error: any) => {
+        console.error(`Query error (${queryKey.join('/')}):`, error);
+        toast({
+          title: 'Error fetching data',
+          description: error.message || 'An error occurred while fetching data',
+          variant: 'destructive',
+        });
+      }
     }
   });
 };
