@@ -4,7 +4,7 @@ import { PPEItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { generatePPEReport } from '@/utils/reportGenerator';
+import { generatePPEItemReport } from '@/utils/reportGeneratorService';
 import { useToast } from '@/hooks/use-toast';
 
 interface EquipmentCardProps {
@@ -85,7 +85,7 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
         description: "Please wait while we generate the report...",
       });
       
-      await generatePPEReport(item.id);
+      await generatePPEItemReport(item.id);
       
       toast({
         title: "Report downloaded",

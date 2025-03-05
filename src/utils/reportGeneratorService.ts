@@ -1,17 +1,15 @@
 
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-import { supabase } from '@/integrations/supabase/client';
-import { PPEItem, Inspection, InspectionData } from '@/types';
+import { PPEItem, InspectionData } from '@/types';
 import { generatePPEReport } from './reportGenerator/ppePDFReport';
 import { generateInspectionsReport } from './reportGenerator/inspectionsPDFReport';
 import { generateAnalyticsReport } from './reportGenerator/analyticsPDFReport';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Generate a PDF report for a specific PPE item
  * @param ppeId The ID of the PPE item
  */
-export const generatePPEReport = async (ppeId: string): Promise<void> => {
+export const generatePPEItemReport = async (ppeId: string): Promise<void> => {
   try {
     const { data: ppeData, error: ppeError } = await supabase
       .from('ppe_items')
@@ -51,7 +49,7 @@ export const generatePPEReport = async (ppeId: string): Promise<void> => {
  * @param startDate The start date for the report
  * @param endDate The end date for the report
  */
-export const generateInspectionsReport = async (startDate: Date, endDate: Date): Promise<void> => {
+export const generateInspectionsDateReport = async (startDate: Date, endDate: Date): Promise<void> => {
   try {
     // Format dates for Supabase query
     const startDateStr = startDate.toISOString().split('T')[0];
@@ -94,13 +92,12 @@ export const generateInspectionsReport = async (startDate: Date, endDate: Date):
 /**
  * Generate an analytics PDF report
  */
-export const generateAnalyticsReport = async (): Promise<void> => {
+export const generateAnalyticsDataReport = async (): Promise<void> => {
   try {
     // Get PPE counts by type
     const { data: ppeTypeData, error: ppeTypeError } = await supabase
       .from('ppe_items')
-      .select('type, count')
-      .select('type')
+      .select('type, count, status')
       .order('type');
     
     if (ppeTypeError) throw ppeTypeError;
@@ -114,7 +111,7 @@ export const generateAnalyticsReport = async (): Promise<void> => {
     // Get inspection pass/fail counts
     const { data: inspectionData, error: inspectionError } = await supabase
       .from('inspections')
-      .select('overall_result');
+      .select('overall_result, type');
     
     if (inspectionError) throw inspectionError;
     
@@ -123,6 +120,11 @@ export const generateAnalyticsReport = async (): Promise<void> => {
     
     const failCount = inspectionData.filter((item: any) => 
       item.overall_result.toLowerCase() === 'fail').length;
+    
+    const inspectionTypeCounts = inspectionData.reduce((acc: any, item: any) => {
+      acc[item.type] = (acc[item.type] || 0) + 1;
+      return acc;
+    }, { 'pre-use': 0, 'monthly': 0, 'quarterly': 0 });
     
     // Generate analytics PDF report
     await generateAnalyticsReport({
@@ -134,9 +136,9 @@ export const generateAnalyticsReport = async (): Promise<void> => {
         flagged: ppeTypeData.filter((item: any) => item.status === 'flagged').length || 0
       },
       inspectionTypeCounts: {
-        'pre-use': 0,
-        'monthly': 0,
-        'quarterly': 0
+        'pre-use': inspectionTypeCounts['pre-use'] || 0,
+        'monthly': inspectionTypeCounts['monthly'] || 0,
+        'quarterly': inspectionTypeCounts['quarterly'] || 0
       },
       inspectionResultCounts: {
         pass: passCount,

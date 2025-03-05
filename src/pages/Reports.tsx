@@ -8,10 +8,10 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { FileText, BarChart2, Calendar, Download } from 'lucide-react';
 import { 
-  generatePPEReport, 
-  generateInspectionsReport, 
-  generateAnalyticsReport 
-} from '@/utils/reportGenerator';
+  generatePPEItemReport, 
+  generateInspectionsDateReport, 
+  generateAnalyticsDataReport 
+} from '@/utils/reportGeneratorService';
 
 interface SummaryStats {
   totalPPE: number;
@@ -159,7 +159,7 @@ const ReportsPage = () => {
       }
       
       const itemId = ppeItems[0].id;
-      await generatePPEReport(itemId);
+      await generatePPEItemReport(itemId);
       
       toast({
         title: 'Report Generated',
@@ -189,7 +189,7 @@ const ReportsPage = () => {
         return;
       }
       
-      await generateInspectionsReport(startDate, endDate);
+      await generateInspectionsDateReport(startDate, endDate);
       
       toast({
         title: 'Report Generated',
@@ -207,7 +207,7 @@ const ReportsPage = () => {
 
   const handleGenerateAnalyticsReport = async () => {
     try {
-      await generateAnalyticsReport();
+      await generateAnalyticsDataReport();
       
       toast({
         title: 'Report Generated',
