@@ -6,7 +6,8 @@ import { ThemeToggler } from '@/components/ThemeToggler';
 import { useAuth } from '@/hooks/useAuth';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { memo } from 'react';
+import { memo, Suspense } from 'react';
+import ErrorBoundaryWithFallback from '@/components/ErrorBoundaryWithFallback';
 
 // Memoized header component to prevent unnecessary re-renders
 const Header = memo(({ canGoBack, navigate }: { canGoBack: boolean, navigate: (to: number) => void }) => (
@@ -41,6 +42,19 @@ const LoadingSpinner = () => (
   </div>
 );
 
+// Component-specific error fallback
+const LayoutErrorFallback = () => (
+  <div className="flex flex-col items-center justify-center p-8 h-screen">
+    <div className="max-w-md text-center">
+      <h2 className="text-2xl font-bold mb-4">Layout Error</h2>
+      <p className="mb-6">We're having trouble loading the application layout. Please try again or return to login.</p>
+      <Button asChild>
+        <a href="/login">Go to Login</a>
+      </Button>
+    </div>
+  </div>
+);
+
 const MainLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -56,21 +70,29 @@ const MainLayout = () => {
   
   // Protected routes require authentication
   if (!user && !hideNavPaths.includes(location.pathname)) {
+    // Save the current path to redirect back after login
+    sessionStorage.setItem('redirectPath', location.pathname);
     return <Navigate to="/login" />;
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
-      {shouldShowNav && <Header canGoBack={canGoBack} navigate={navigate} />}
-      
-      <main className="flex-1 container mx-auto px-4 py-4 w-full max-w-6xl overflow-y-auto">
-        <Outlet />
-      </main>
-      
-      {shouldShowNav && <BottomNav />}
-      
-      <Toaster />
-    </div>
+    <ErrorBoundaryWithFallback fallback={<LayoutErrorFallback />}>
+      <div className="flex flex-col min-h-screen bg-background text-foreground">
+        {shouldShowNav && <Header canGoBack={canGoBack} navigate={navigate} />}
+        
+        <main className="flex-1 container mx-auto px-4 py-4 w-full max-w-6xl overflow-y-auto">
+          <Suspense fallback={<LoadingSpinner />}>
+            <ErrorBoundaryWithFallback>
+              <Outlet />
+            </ErrorBoundaryWithFallback>
+          </Suspense>
+        </main>
+        
+        {shouldShowNav && <BottomNav />}
+        
+        <Toaster />
+      </div>
+    </ErrorBoundaryWithFallback>
   );
 };
 

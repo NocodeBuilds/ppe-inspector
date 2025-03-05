@@ -1,5 +1,5 @@
 
-import { createContext, useEffect } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { Profile } from '@/integrations/supabase/client';
 import { useAuthSession } from '@/hooks/useAuthSession';
@@ -67,6 +67,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-// Export the useAuth hook from its dedicated file
-export { useAuth } from '@/hooks/useAuth';
