@@ -32,7 +32,12 @@ export const useLoginForm = () => {
     
     try {
       await signIn(data.email, data.password);
-      navigate('/');
+      
+      // Get the redirect path from session storage or default to home
+      const redirectPath = sessionStorage.getItem('redirectPath') || '/';
+      sessionStorage.removeItem('redirectPath'); // Clear it after use
+      
+      navigate(redirectPath);
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message || 'Failed to sign in');

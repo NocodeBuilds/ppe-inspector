@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useEffect } from 'react';
+import { createContext, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { Profile } from '@/integrations/supabase/client';
 import { useAuthSession } from '@/hooks/useAuthSession';
@@ -34,7 +34,7 @@ type AuthContextType = {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   // Use our custom hooks to separate concerns
   const { session, user, isLoading: sessionLoading } = useAuthSession();
   const { profile, extendedProfile, refreshProfile, isLoading: profileLoading } = useProfile(user?.id);
