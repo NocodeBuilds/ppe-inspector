@@ -1,8 +1,9 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase, Profile } from '@/integrations/supabase/client';
 import { ExtendedProfile } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 
 type ProfileHook = {
   profile: Profile | null;
@@ -13,65 +14,78 @@ type ProfileHook = {
 
 /**
  * Hook to manage user profile data
- * Handles fetching and refreshing profile information
+ * Handles fetching and refreshing profile information with efficient caching
  */
 export const useProfile = (userId: string | undefined): ProfileHook => {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [extendedProfile, setExtendedProfile] = useState<ExtendedProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  
+  // Use React Query for profile data
+  const {
+    data: profile,
+    isLoading: isProfileLoading,
+    refetch: refetchProfile
+  } = useSupabaseQuery<Profile | null>(
+    ['profile', userId || ''],
+    async () => {
+      if (!userId) return null;
+      
+      try {
+        console.log("Fetching profile for:", userId);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
 
-  const fetchProfile = async (id: string) => {
-    try {
-      console.log("Fetching profile for:", id);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', id)
-        .single();
+        if (error) throw error;
 
-      if (error) {
+        if (data) {
+          console.log("Profile data:", data);
+          return {
+            id: data.id,
+            full_name: data.full_name,
+            role: data.role || 'user',
+            avatar_url: data.avatar_url
+          };
+        }
+        return null;
+      } catch (error) {
+        console.error('Error fetching profile:', error);
         throw error;
       }
-
-      if (data) {
-        console.log("Profile data:", data);
-        setProfile({
-          id: data.id,
-          full_name: data.full_name,
-          role: data.role || 'user',
-          avatar_url: data.avatar_url
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    }
-  };
-
-  const fetchExtendedProfile = async () => {
-    try {
-      const { data, error } = await supabase.rpc('get_extended_profile');
-      
-      if (error) {
+    },
+    { enabled: !!userId }
+  );
+  
+  // Use React Query for extended profile data
+  const {
+    data: extendedProfile,
+    isLoading: isExtendedProfileLoading,
+    refetch: refetchExtendedProfile
+  } = useSupabaseQuery<ExtendedProfile | null>(
+    ['extendedProfile', userId || ''],
+    async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_extended_profile');
+        
+        if (error) {
+          if (error.code === 'PGRST116') return null; // No rows returned
+          throw error;
+        }
+        
+        return data as ExtendedProfile;
+      } catch (error) {
         console.error('Error fetching extended profile:', error);
-        return;
+        throw error;
       }
-      
-      if (data) {
-        setExtendedProfile(data as ExtendedProfile);
-      }
-    } catch (error) {
-      console.error('Error fetching extended profile:', error);
-    }
-  };
-
+    },
+    { enabled: !!userId }
+  );
+  
+  // Combined refresh function
   const refreshProfile = async () => {
-    if (!userId) return;
-    
     try {
-      setIsLoading(true);
-      await fetchProfile(userId);
-      await fetchExtendedProfile();
+      await Promise.all([refetchProfile(), refetchExtendedProfile()]);
     } catch (error: any) {
       console.error('Error refreshing profile:', error);
       toast({
@@ -79,19 +93,12 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
         description: error.message || 'Failed to refresh profile',
         variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
     }
   };
-
-  // Initial fetch when userId is available
-  useEffect(() => {
-    if (userId) {
-      fetchProfile(userId);
-      fetchExtendedProfile();
-    }
-  }, [userId]);
-
+  
+  // Combined loading state
+  const isLoading = isProfileLoading || isExtendedProfileLoading;
+  
   return {
     profile,
     extendedProfile,

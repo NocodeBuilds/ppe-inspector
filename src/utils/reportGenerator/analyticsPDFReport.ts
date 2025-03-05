@@ -1,121 +1,187 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { 
-  createPDFDocument, 
-  addPDFHeader, 
-  addSectionTitle, 
-  addDataTable, 
-  addPDFFooter,
-  savePDF,
-  ExtendedJsPDF 
-} from '@/utils/pdfUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { formatInspectionDate } from '@/utils/inspectionUtils';
+
+interface AnalyticsData {
+  ppeStatusCounts: {
+    active: number;
+    expired: number;
+    maintenance: number;
+    flagged: number;
+  };
+  inspectionTypeCounts: {
+    'pre-use': number;
+    'monthly': number;
+    'quarterly': number;
+  };
+  inspectionResultCounts: {
+    pass: number;
+    fail: number;
+  };
+  ppeTypeDistribution: Record<string, number>;
+  upcomingInspections: {
+    id: string;
+    serial_number: string;
+    type: string;
+    next_inspection: string;
+    days_remaining: number;
+  }[];
+  expiringItems: {
+    id: string;
+    serial_number: string;
+    type: string;
+    expiry_date: string;
+    days_remaining: number;
+  }[];
+}
 
 /**
- * Generates and downloads a PDF analytics report
+ * Generate a PDF analytics report
  */
-export const generateAnalyticsReport = async (): Promise<void> => {
-  try {
-    // Fetch summary statistics from Supabase
-    // Total PPE items by type
-    const { data: ppeByTypeData, error: ppeByTypeError } = await supabase
-      .from('ppe_items')
-      .select('type, count')
-      .select('type')
-      .order('type');
-    
-    if (ppeByTypeError) throw ppeByTypeError;
-    
-    const ppeByType = ppeByTypeData.reduce((acc: Record<string, number>, item: any) => {
-      acc[item.type] = (acc[item.type] || 0) + 1;
-      return acc;
-    }, {});
-    
-    // Total inspections by month (last 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    
-    const { data: inspectionsByMonthData, error: inspectionsByMonthError } = await supabase
-      .from('inspections')
-      .select('date')
-      .gte('date', sixMonthsAgo.toISOString());
-    
-    if (inspectionsByMonthError) throw inspectionsByMonthError;
-    
-    const inspectionsByMonth: Record<string, number> = {};
-    
-    inspectionsByMonthData.forEach((item: any) => {
-      const date = new Date(item.date);
-      const monthYear = `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
-      inspectionsByMonth[monthYear] = (inspectionsByMonth[monthYear] || 0) + 1;
-    });
-    
-    // Flagged items by reason
-    const { data: flaggedItemsData, error: flaggedItemsError } = await supabase
-      .from('ppe_items')
-      .select('*')
-      .eq('status', 'flagged');
-    
-    if (flaggedItemsError) throw flaggedItemsError;
-    
-    // Initialize PDF document
-    const doc = createPDFDocument();
-    
-    // Add title
-    addPDFHeader(doc, 'PPE Analytics Report', `Generated on: ${new Date().toLocaleDateString()}`);
-    
-    // PPE by Type
-    addSectionTitle(doc, 'PPE Items by Type', 35);
-    
-    const ppeByTypeRows = Object.entries(ppeByType).map(([type, count]) => [type, count.toString()]);
-    
-    addDataTable(doc, [['PPE Type', 'Count']], ppeByTypeRows, 40);
-    
-    // Inspections by Month
-    addSectionTitle(doc, 'Inspections by Month (Last 6 Months)', (doc.lastAutoTable?.finalY || 40) + 15);
-    
-    const inspectionsByMonthRows = Object.entries(inspectionsByMonth)
-      .sort((a, b) => {
-        const monthA = new Date(a[0]);
-        const monthB = new Date(b[0]);
-        return monthA.getTime() - monthB.getTime();
-      })
-      .map(([month, count]) => [month, count.toString()]);
-    
-    addDataTable(
-      doc, 
-      [['Month', 'Inspections']], 
-      inspectionsByMonthRows, 
-      (doc.lastAutoTable?.finalY || 40) + 20
-    );
-    
-    // Flagged Items
-    addSectionTitle(doc, 'Flagged Items', (doc.lastAutoTable?.finalY || 40) + 15);
-    
-    const flaggedItemsRows = flaggedItemsData.map(item => [
+export const generateAnalyticsReport = (data: AnalyticsData) => {
+  const doc = new jsPDF();
+  
+  // Add title
+  doc.setFontSize(18);
+  doc.text('PPE Analytics Report', 14, 22);
+  
+  // Add generation date
+  doc.setFontSize(10);
+  doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+  
+  // PPE Status Summary
+  doc.setFontSize(14);
+  doc.text('PPE Status Summary', 14, 40);
+  
+  autoTable(doc, {
+    head: [['Status', 'Count']],
+    body: [
+      ['Active', data.ppeStatusCounts.active.toString()],
+      ['Expired', data.ppeStatusCounts.expired.toString()],
+      ['Maintenance', data.ppeStatusCounts.maintenance.toString()],
+      ['Flagged', data.ppeStatusCounts.flagged.toString()],
+      ['Total', (
+        data.ppeStatusCounts.active + 
+        data.ppeStatusCounts.expired + 
+        data.ppeStatusCounts.maintenance + 
+        data.ppeStatusCounts.flagged
+      ).toString()]
+    ],
+    startY: 45,
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+    alternateRowStyles: { fillColor: [240, 240, 240] }
+  });
+  
+  // PPE Type Distribution
+  doc.setFontSize(14);
+  let y = (doc as any).lastAutoTable.finalY + 15;
+  doc.text('PPE Type Distribution', 14, y);
+  
+  const typeData = Object.entries(data.ppeTypeDistribution).map(([type, count]) => [type, count.toString()]);
+  
+  autoTable(doc, {
+    head: [['PPE Type', 'Count']],
+    body: typeData,
+    startY: y + 5,
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+    alternateRowStyles: { fillColor: [240, 240, 240] }
+  });
+  
+  // Inspection Summary
+  doc.setFontSize(14);
+  y = (doc as any).lastAutoTable.finalY + 15;
+  doc.text('Inspection Summary', 14, y);
+  
+  autoTable(doc, {
+    head: [['Category', 'Count']],
+    body: [
+      ['Pre-use Inspections', data.inspectionTypeCounts['pre-use'].toString()],
+      ['Monthly Inspections', data.inspectionTypeCounts['monthly'].toString()],
+      ['Quarterly Inspections', data.inspectionTypeCounts['quarterly'].toString()],
+      ['Total Inspections', (
+        data.inspectionTypeCounts['pre-use'] + 
+        data.inspectionTypeCounts['monthly'] + 
+        data.inspectionTypeCounts['quarterly']
+      ).toString()],
+      ['Passed Inspections', data.inspectionResultCounts.pass.toString()],
+      ['Failed Inspections', data.inspectionResultCounts.fail.toString()]
+    ],
+    startY: y + 5,
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+    alternateRowStyles: { fillColor: [240, 240, 240] }
+  });
+  
+  // Check if we need to add a new page
+  if ((doc as any).lastAutoTable.finalY > 200) {
+    doc.addPage();
+    y = 20;
+  } else {
+    y = (doc as any).lastAutoTable.finalY + 15;
+  }
+  
+  // Upcoming Inspections
+  doc.setFontSize(14);
+  doc.text('Upcoming Inspections', 14, y);
+  
+  if (data.upcomingInspections.length > 0) {
+    const upcomingData = data.upcomingInspections.map(item => [
       item.serial_number,
       item.type,
-      item.brand,
-      new Date(item.expiry_date).toLocaleDateString(),
+      formatInspectionDate(item.next_inspection),
+      item.days_remaining.toString()
     ]);
     
-    addDataTable(
-      doc, 
-      [['Serial Number', 'Type', 'Brand', 'Expiry Date']], 
-      flaggedItemsRows, 
-      (doc.lastAutoTable?.finalY || 40) + 20
-    );
-    
-    // Add footer
-    addPDFFooter(doc, 'PPE Analytics Report');
-    
-    // Generate filename
-    const filename = `PPE_Analytics_Report_${new Date().toISOString().split('T')[0]}.pdf`;
-    
-    // Save the PDF
-    savePDF(doc, filename);
-    
-  } catch (error) {
-    console.error('Error generating analytics report:', error);
-    throw error;
+    autoTable(doc, {
+      head: [['Serial #', 'Type', 'Inspection Date', 'Days Left']],
+      body: upcomingData,
+      startY: y + 5,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+      alternateRowStyles: { fillColor: [240, 240, 240] }
+    });
+  } else {
+    doc.setFontSize(10);
+    doc.text('No upcoming inspections', 14, y + 10);
+    y += 20;
   }
+  
+  // Check if we need to add a new page
+  if ((doc as any).lastAutoTable?.finalY > 200) {
+    doc.addPage();
+    y = 20;
+  } else {
+    y = ((doc as any).lastAutoTable?.finalY || y + 20) + 15;
+  }
+  
+  // Expiring Items
+  doc.setFontSize(14);
+  doc.text('Expiring PPE Items', 14, y);
+  
+  if (data.expiringItems.length > 0) {
+    const expiringData = data.expiringItems.map(item => [
+      item.serial_number,
+      item.type,
+      formatInspectionDate(item.expiry_date),
+      item.days_remaining.toString()
+    ]);
+    
+    autoTable(doc, {
+      head: [['Serial #', 'Type', 'Expiry Date', 'Days Left']],
+      body: expiringData,
+      startY: y + 5,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+      alternateRowStyles: { fillColor: [240, 240, 240] }
+    });
+  } else {
+    doc.setFontSize(10);
+    doc.text('No expiring items', 14, y + 10);
+  }
+  
+  // Download the PDF
+  doc.save('ppe-analytics-report.pdf');
 };

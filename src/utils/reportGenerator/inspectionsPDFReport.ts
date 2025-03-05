@@ -1,96 +1,121 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { 
-  createPDFDocument, 
-  addPDFHeader, 
-  addSectionTitle, 
-  addDataTable, 
-  addPDFFooter,
-  savePDF,
-  ExtendedJsPDF 
-} from '@/utils/pdfUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { formatInspectionDate } from '@/utils/inspectionUtils';
+
+// Define the interface for inspection data
+interface InspectionData {
+  id: string;
+  ppe_id: string;
+  inspector_id: string;
+  type: "pre-use" | "monthly" | "quarterly";
+  date: string;
+  overall_result: string;
+  signature_url: string;
+  notes: string;
+  created_at: string;
+  inspection_results: {
+    id: string;
+    checkpoint_id: string;
+    passed: boolean;
+    notes: string;
+    checkpoint_description?: string;
+  }[];
+}
+
+// Define the interface for PPE data
+interface PPEData {
+  id: string;
+  serial_number: string;
+  type: string;
+  brand: string;
+  model_number: string;
+  manufacturing_date: string;
+  expiry_date: string;
+  status: string;
+  last_inspection: string | null;
+  next_inspection: string | null;
+}
 
 /**
- * Generates and downloads a PDF report for all inspections in a date range
- * @param startDate - Start date for the report
- * @param endDate - End date for the report
+ * Generate a PDF report for inspections
  */
-export const generateInspectionsReport = async (startDate: Date, endDate: Date): Promise<void> => {
-  try {
-    // Fetch inspection data within date range
-    const { data: inspectionsData, error: inspectionsError } = await supabase
-      .from('inspections')
-      .select(`
-        *,
-        ppe_items (*)
-      `)
-      .gte('date', startDate.toISOString())
-      .lte('date', endDate.toISOString())
-      .order('date', { ascending: false });
-    
-    if (inspectionsError) throw inspectionsError;
-    if (!inspectionsData || inspectionsData.length === 0) {
-      throw new Error('No inspection data found for the selected date range');
-    }
-    
-    // Initialize PDF document
-    const doc = createPDFDocument();
-    
-    // Add title
-    addPDFHeader(doc, 'Inspections Report');
-    
-    // Add date range
-    doc.setFontSize(12);
-    doc.text(
-      `Date Range: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`,
-      105, 25, { align: 'center' }
-    );
-    
-    // Add summary
-    addSectionTitle(doc, 'Summary', 35);
-    
-    const totalInspections = inspectionsData.length;
-    const passedInspections = inspectionsData.filter(i => i.overall_result === 'pass').length;
-    const failedInspections = totalInspections - passedInspections;
-    
-    const summaryData = [
-      ['Total Inspections', totalInspections.toString()],
-      ['Passed Inspections', passedInspections.toString()],
-      ['Failed Inspections', failedInspections.toString()],
-      ['Pass Rate', `${Math.round((passedInspections / totalInspections) * 100)}%`],
+export const generateInspectionsReport = (
+  inspections: InspectionData[],
+  ppeData?: Record<string, PPEData>
+) => {
+  const doc = new jsPDF();
+  
+  // Add title
+  doc.setFontSize(18);
+  doc.text('Inspections Report', 14, 22);
+  
+  // Add generation date
+  doc.setFontSize(10);
+  doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+  
+  // Generate table data
+  const tableData = inspections.map(inspection => {
+    const ppe = ppeData?.[inspection.ppe_id];
+    return [
+      formatInspectionDate(inspection.date),
+      inspection.type,
+      ppe?.serial_number || 'Unknown',
+      ppe?.type || 'Unknown',
+      inspection.overall_result,
+      formatInspectionDate(ppeData?.[inspection.ppe_id]?.next_inspection || null, 'Not scheduled')
     ];
-    
-    addDataTable(doc, [['Metric', 'Value']], summaryData, 40);
-    
-    // Add inspection details
-    addSectionTitle(doc, 'Inspection Details', (doc.lastAutoTable?.finalY || 40) + 15);
-    
-    const inspectionRows = inspectionsData.map(inspection => [
-      new Date(inspection.date).toLocaleDateString(),
-      inspection.ppe_items.serial_number,
-      inspection.ppe_items.type,
-      inspection.inspector_id,
-      inspection.overall_result === 'pass' ? 'PASS' : 'FAIL',
-    ]);
-    
-    addDataTable(
-      doc, 
-      [['Date', 'PPE Serial', 'PPE Type', 'Inspector', 'Result']], 
-      inspectionRows, 
-      (doc.lastAutoTable?.finalY || 40) + 20
-    );
-    
-    // Add footer
-    addPDFFooter(doc, `Generated on ${new Date().toLocaleString()}`);
-    
-    // Generate filename
-    const filename = `Inspections_Report_${startDate.toISOString().split('T')[0]}_to_${endDate.toISOString().split('T')[0]}.pdf`;
-    
-    // Save the PDF
-    savePDF(doc, filename);
-    
-  } catch (error) {
-    console.error('Error generating inspections report:', error);
-    throw error;
-  }
+  });
+  
+  // Add table
+  autoTable(doc, {
+    head: [['Date', 'Type', 'PPE Serial #', 'PPE Type', 'Result', 'Next Inspection']],
+    body: tableData,
+    startY: 35,
+    styles: { 
+      fontSize: 8,
+      cellPadding: 2
+    },
+    headStyles: {
+      fillColor: [41, 128, 185],
+      textColor: 255
+    },
+    columnStyles: {
+      0: { cellWidth: 25 },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 35 },
+      4: { cellWidth: 20 },
+      5: { cellWidth: 30 }
+    },
+    alternateRowStyles: {
+      fillColor: [240, 240, 240]
+    }
+  });
+  
+  // Add totals and summary
+  const totalInspections = inspections.length;
+  const passedInspections = inspections.filter(insp => insp.overall_result.toLowerCase() === 'pass').length;
+  const failedInspections = inspections.filter(insp => insp.overall_result.toLowerCase() === 'fail').length;
+  
+  const byType = {
+    'pre-use': inspections.filter(insp => insp.type === 'pre-use').length,
+    'monthly': inspections.filter(insp => insp.type === 'monthly').length,
+    'quarterly': inspections.filter(insp => insp.type === 'quarterly').length
+  };
+  
+  const finalY = (doc as any).lastAutoTable.finalY || 150;
+  
+  doc.setFontSize(12);
+  doc.text('Summary:', 14, finalY + 10);
+  doc.setFontSize(10);
+  doc.text(`Total Inspections: ${totalInspections}`, 14, finalY + 20);
+  doc.text(`Passed Inspections: ${passedInspections}`, 14, finalY + 30);
+  doc.text(`Failed Inspections: ${failedInspections}`, 14, finalY + 40);
+  doc.text(`Pre-use Inspections: ${byType['pre-use']}`, 14, finalY + 50);
+  doc.text(`Monthly Inspections: ${byType['monthly']}`, 14, finalY + 60);
+  doc.text(`Quarterly Inspections: ${byType['quarterly']}`, 14, finalY + 70);
+  
+  // Download the PDF
+  doc.save('inspections-report.pdf');
 };
