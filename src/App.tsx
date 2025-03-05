@@ -8,6 +8,7 @@ import { useEffect, useState, lazy, Suspense } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeToggler";
 import MainLayout from "./components/layout/MainLayout";
+import { setupPWAMetaTags, registerServiceWorker } from "./utils/pwaUtils";
 
 // Lazy load pages to improve initial load performance
 const Home = lazy(() => import("./pages/Home"));
@@ -29,6 +30,7 @@ const ManualInspection = lazy(() => import("./pages/ManualInspection"));
 const FlaggedIssues = lazy(() => import("./pages/FlaggedIssues"));
 const InspectionDetails = lazy(() => import("./pages/InspectionDetails"));
 
+// Configure React Query with improved settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -64,67 +66,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
 
+  // Set up PWA features
   useEffect(() => {
-    // Add PWA-specific meta tags and service worker dynamically
     const setupPWA = async () => {
       try {
-        // Set meta tags
-        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-        if (!themeColorMeta) {
-          const meta = document.createElement('meta');
-          meta.name = 'theme-color';
-          meta.content = '#111111';
-          document.head.appendChild(meta);
-        }
-        
-        // Add apple-touch-icon for iOS
-        const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
-        if (!appleIcon) {
-          const link = document.createElement('link');
-          link.rel = 'apple-touch-icon';
-          link.href = '/favicon.ico';
-          document.head.appendChild(link);
-        }
-        
-        // Add meta description
-        const descriptionMeta = document.querySelector('meta[name="description"]');
-        if (descriptionMeta) {
-          descriptionMeta.setAttribute('content', 'PPE Inspector Pro - Track and manage PPE inventory and inspections');
-        } else {
-          const meta = document.createElement('meta');
-          meta.name = 'description';
-          meta.content = 'PPE Inspector Pro - Track and manage PPE inventory and inspections';
-          document.head.appendChild(meta);
-        }
-        
-        // Add Web App Manifest for better PWA support
-        const manifestLink = document.querySelector('link[rel="manifest"]');
-        if (!manifestLink) {
-          const link = document.createElement('link');
-          link.rel = 'manifest';
-          link.href = '/manifest.json';
-          document.head.appendChild(link);
-        }
-        
-        // Add viewport meta tag for mobile responsiveness if not present
-        const viewportMeta = document.querySelector('meta[name="viewport"]');
-        if (!viewportMeta) {
-          const meta = document.createElement('meta');
-          meta.name = 'viewport';
-          meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-          document.head.appendChild(meta);
-        }
+        // Set up meta tags
+        setupPWAMetaTags();
         
         // Register service worker for offline capabilities
-        if ('serviceWorker' in navigator) {
-          try {
-            console.log('Registering service worker...');
-            const registration = await navigator.serviceWorker.register('/service-worker.js');
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          } catch (error) {
-            console.log('ServiceWorker registration failed: ', error);
-          }
-        }
+        await registerServiceWorker();
       } catch (error) {
         console.error('Error setting up PWA:', error);
       } finally {

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,15 +8,13 @@ import { ThemeToggler } from '@/components/ThemeToggler';
 import { AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
+import { useLoginForm } from '@/hooks/useLoginForm';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(true);
-  
-  const { signIn, isLoading, user } = useAuth();
+  const { form, error, setError, isSubmitting, onSubmit } = useLoginForm();
+  const { isLoading, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -52,23 +50,6 @@ const Login = () => {
     
     return () => clearTimeout(timer);
   }, [user, navigate]);
-  
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsSubmitting(true);
-    
-    try {
-      console.log("Attempting login with:", email);
-      await signIn(email, password);
-      navigate('/');
-    } catch (error: any) {
-      console.error("Login error:", error);
-      setError(error.message || 'Failed to sign in');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
   
   // Show loading spinner while checking auth state
   if (isLoading || isPageLoading) {
@@ -124,60 +105,74 @@ const Login = () => {
               </Alert>
             )}
             
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div className="space-y-2">
-                <label htmlFor="email" className="block text-sm">Email address</label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Your email address"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isSubmitting}
-                  className="bg-background"
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email address</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="Your email address"
+                          disabled={isSubmitting}
+                          className="bg-background"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm">Your Password</label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Your password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isSubmitting}
-                  className="bg-background"
+                
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Your Password</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="Your password"
+                          disabled={isSubmitting}
+                          className="bg-background"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full bg-success hover:bg-success/90"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center justify-center">
-                    <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
-                    Signing in...
-                  </div>
-                ) : 'Sign in'}
-              </Button>
-              
-              <div className="text-center space-y-2 mt-4">
-                <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground block">
-                  Forgot your password?
-                </Link>
-                <div className="block text-sm">
-                  Don't have an account?{' '}
-                  <Link to="/register" className="text-primary hover:underline">
-                    Sign up
+                
+                <Button 
+                  type="submit" 
+                  className="w-full bg-success hover:bg-success/90"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center justify-center">
+                      <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
+                      Signing in...
+                    </div>
+                  ) : 'Sign in'}
+                </Button>
+                
+                <div className="text-center space-y-2 mt-4">
+                  <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground block">
+                    Forgot your password?
                   </Link>
+                  <div className="block text-sm">
+                    Don't have an account?{' '}
+                    <Link to="/register" className="text-primary hover:underline">
+                      Sign up
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </form>
+              </form>
+            </Form>
           </div>
         </div>
       </div>
