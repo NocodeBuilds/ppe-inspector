@@ -19,7 +19,7 @@ export const generatePPEItemReport = async (ppeId: string): Promise<void> => {
     
     if (ppeError) throw ppeError;
     
-    // Map database item to PPEItem type
+    // Map database item to PPEItem type from Supabase schema to our app schema
     const ppeItem: PPEItem = {
       id: ppeData.id,
       serialNumber: ppeData.serial_number,
@@ -70,7 +70,7 @@ export const generateInspectionsDateReport = async (startDate: Date, endDate: Da
     if (inspectionsError) throw inspectionsError;
     
     // Map the data for the PDF report
-    const inspectionItems: InspectionData[] = inspectionsData.map((item: any) => ({
+    const formattedInspections = inspectionsData.map((item: any) => ({
       id: item.id,
       date: item.date,
       type: item.type,
@@ -81,7 +81,7 @@ export const generateInspectionsDateReport = async (startDate: Date, endDate: Da
     }));
     
     // Generate the PDF report using the inspection data
-    await generateInspectionsReport(inspectionItems);
+    await generateInspectionsReport(formattedInspections);
     
   } catch (error) {
     console.error('Error generating inspections report:', error);
@@ -97,7 +97,7 @@ export const generateAnalyticsDataReport = async (): Promise<void> => {
     // Get PPE counts by type
     const { data: ppeTypeData, error: ppeTypeError } = await supabase
       .from('ppe_items')
-      .select('type, count, status')
+      .select('type, status')
       .order('type');
     
     if (ppeTypeError) throw ppeTypeError;

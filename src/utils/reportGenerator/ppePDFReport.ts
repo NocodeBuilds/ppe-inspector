@@ -1,7 +1,7 @@
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { PPEItem, InspectionType } from '@/integrations/supabase/client';
+import { PPEItem } from '@/types';
 import { formatInspectionDate } from '@/utils/inspectionUtils';
 
 /**
@@ -20,20 +20,19 @@ export const generatePPEReport = (ppeItems: PPEItem[]) => {
   
   // Generate table data
   const tableData = ppeItems.map(item => [
-    item.serial_number,
+    item.serialNumber,
     item.type,
     item.brand,
-    item.model_number,
-    formatInspectionDate(item.manufacturing_date),
-    formatInspectionDate(item.expiry_date),
+    item.modelNumber,
+    formatInspectionDate(item.manufacturingDate),
+    formatInspectionDate(item.expiryDate),
     item.status,
-    formatInspectionDate(item.last_inspection),
-    formatInspectionDate(item.next_inspection, 'Not scheduled')
+    item.nextInspection ? formatInspectionDate(item.nextInspection) : 'Not scheduled'
   ]);
   
   // Add table
   autoTable(doc, {
-    head: [['Serial #', 'Type', 'Brand', 'Model', 'Mfg Date', 'Exp Date', 'Status', 'Last Insp', 'Next Insp']],
+    head: [['Serial #', 'Type', 'Brand', 'Model', 'Mfg Date', 'Exp Date', 'Status', 'Next Insp']],
     body: tableData,
     startY: 35,
     styles: { 
@@ -52,8 +51,7 @@ export const generatePPEReport = (ppeItems: PPEItem[]) => {
       4: { cellWidth: 20 },
       5: { cellWidth: 20 },
       6: { cellWidth: 15 },
-      7: { cellWidth: 20 },
-      8: { cellWidth: 20 }
+      7: { cellWidth: 20 }
     },
     alternateRowStyles: {
       fillColor: [240, 240, 240]
@@ -64,8 +62,8 @@ export const generatePPEReport = (ppeItems: PPEItem[]) => {
   const totalPPE = ppeItems.length;
   const activePPE = ppeItems.filter(item => item.status === 'active').length;
   const expiringPPE = ppeItems.filter(item => {
-    if (!item.expiry_date) return false;
-    const expiryDate = new Date(item.expiry_date);
+    if (!item.expiryDate) return false;
+    const expiryDate = new Date(item.expiryDate);
     const today = new Date();
     const diffTime = expiryDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

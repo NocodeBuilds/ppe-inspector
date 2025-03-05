@@ -2,48 +2,12 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatInspectionDate } from '@/utils/inspectionUtils';
-
-// Define the interface for inspection data
-interface InspectionData {
-  id: string;
-  ppe_id: string;
-  inspector_id: string;
-  type: "pre-use" | "monthly" | "quarterly";
-  date: string;
-  overall_result: string;
-  signature_url: string;
-  notes: string;
-  created_at: string;
-  inspection_results: {
-    id: string;
-    checkpoint_id: string;
-    passed: boolean;
-    notes: string;
-    checkpoint_description?: string;
-  }[];
-}
-
-// Define the interface for PPE data
-interface PPEData {
-  id: string;
-  serial_number: string;
-  type: string;
-  brand: string;
-  model_number: string;
-  manufacturing_date: string;
-  expiry_date: string;
-  status: string;
-  last_inspection: string | null;
-  next_inspection: string | null;
-}
+import { InspectionData } from '@/types';
 
 /**
  * Generate a PDF report for inspections
  */
-export const generateInspectionsReport = (
-  inspections: InspectionData[],
-  ppeData?: Record<string, PPEData>
-) => {
+export const generateInspectionsReport = (inspections: InspectionData[]) => {
   const doc = new jsPDF();
   
   // Add title
@@ -55,17 +19,14 @@ export const generateInspectionsReport = (
   doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
   
   // Generate table data
-  const tableData = inspections.map(inspection => {
-    const ppe = ppeData?.[inspection.ppe_id];
-    return [
-      formatInspectionDate(inspection.date),
-      inspection.type,
-      ppe?.serial_number || 'Unknown',
-      ppe?.type || 'Unknown',
-      inspection.overall_result,
-      formatInspectionDate(ppeData?.[inspection.ppe_id]?.next_inspection || null, 'Not scheduled')
-    ];
-  });
+  const tableData = inspections.map(inspection => [
+    formatInspectionDate(inspection.date),
+    inspection.type,
+    inspection.serial_number || 'Unknown',
+    inspection.ppe_type || 'Unknown',
+    inspection.result,
+    formatInspectionDate(inspection.date) // Using date as placeholder for next inspection
+  ]);
   
   // Add table
   autoTable(doc, {
@@ -95,9 +56,10 @@ export const generateInspectionsReport = (
   
   // Add totals and summary
   const totalInspections = inspections.length;
-  const passedInspections = inspections.filter(insp => insp.overall_result.toLowerCase() === 'pass').length;
-  const failedInspections = inspections.filter(insp => insp.overall_result.toLowerCase() === 'fail').length;
+  const passedInspections = inspections.filter(insp => insp.result.toLowerCase() === 'pass').length;
+  const failedInspections = inspections.filter(insp => insp.result.toLowerCase() === 'fail').length;
   
+  // Count by type
   const byType = {
     'pre-use': inspections.filter(insp => insp.type === 'pre-use').length,
     'monthly': inspections.filter(insp => insp.type === 'monthly').length,
