@@ -22,6 +22,21 @@ const Equipment = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Complete list of PPE types for consistency across the app
+  const allPPETypes = [
+    'Full Body Harness',
+    'Fall Arrester',
+    'Double Lanyard',
+    'Safety Helmet',
+    'Safety Boots',
+    'Safety Gloves',
+    'Safety Goggles',
+    'Ear Protection',
+    'Respirator',
+    'Safety Vest',
+    'Face Shield'
+  ];
+
   useEffect(() => {
     fetchEquipment();
   }, []);
@@ -95,8 +110,14 @@ const Equipment = () => {
   };
 
   const getUniqueTypes = () => {
-    const types = new Set(ppeItems.map(item => item.type));
-    return ['all', ...Array.from(types)];
+    // Start with all known PPE types
+    const typesSet = new Set(allPPETypes);
+    
+    // Add any additional types from the items
+    ppeItems.forEach(item => typesSet.add(item.type));
+    
+    // Return as array with 'all' first
+    return ['all', ...Array.from(typesSet)];
   };
 
   const handleInspect = (item: PPEItem) => {
@@ -135,13 +156,19 @@ const Equipment = () => {
         </div>
         
         <Tabs defaultValue="all" value={activeType} onValueChange={setActiveType}>
-          <TabsList className="mb-4 w-full overflow-x-auto flex-wrap">
-            {getUniqueTypes().map(type => (
-              <TabsTrigger key={type} value={type} className="capitalize">
-                {type === 'all' ? 'All Types' : type}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <div className="relative overflow-hidden mb-4">
+            <TabsList className="flex overflow-x-auto pb-2 -mb-2 no-scrollbar snap-x whitespace-nowrap">
+              {getUniqueTypes().map(type => (
+                <TabsTrigger 
+                  key={type} 
+                  value={type} 
+                  className="capitalize whitespace-nowrap snap-start"
+                >
+                  {type === 'all' ? 'All Types' : type}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
           
           <TabsContent value={activeType} className="mt-0">
             {isLoading ? (

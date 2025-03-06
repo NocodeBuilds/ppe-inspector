@@ -3,16 +3,16 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, X, Camera, Trash2 } from 'lucide-react';
+import { Check, X, Camera, Trash2, Ban } from 'lucide-react';
 import CardOverlay from '@/components/ui/card-overlay';
 
 interface CheckpointItemProps {
   id: string;
   description: string;
-  passed: boolean;
+  passed: boolean | null;
   notes: string;
   photoUrl?: string;
-  onPassedChange: (passed: boolean) => void;
+  onPassedChange: (passed: boolean | null) => void;
   onNotesChange: (notes: string) => void;
   onPhotoCapture: (photoUrl: string) => void;
   onPhotoDelete: () => void;
@@ -87,18 +87,26 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     // Stop camera
     stopCamera();
   };
+
+  // Determine border color based on passed state
+  const getBorderColor = () => {
+    if (passed === true) return 'border-l-green-500';
+    if (passed === false) return 'border-l-destructive';
+    if (passed === null) return 'border-l-yellow-500';
+    return 'border-l-gray-300';
+  };
   
   return (
-    <Card className={`p-4 border-l-4 ${passed ? 'border-l-green-500' : 'border-l-destructive'}`}>
+    <Card className={`p-4 border-l-4 ${getBorderColor()}`}>
       <div className="mb-3">
         <h4 className="font-medium mb-2">{description}</h4>
         
         <div className="flex gap-2 mb-3">
           <Button
             type="button"
-            variant={passed ? 'default' : 'outline'}
+            variant={passed === true ? 'default' : 'outline'}
             size="sm"
-            className={passed ? 'bg-green-600 hover:bg-green-700' : ''}
+            className={passed === true ? 'bg-green-600 hover:bg-green-700' : ''}
             onClick={() => onPassedChange(true)}
           >
             <Check size={16} className="mr-2" />
@@ -107,18 +115,29 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
           
           <Button
             type="button"
-            variant={!passed ? 'default' : 'outline'}
+            variant={passed === false ? 'default' : 'outline'}
             size="sm"
-            className={!passed ? 'bg-destructive hover:bg-destructive/90' : ''}
+            className={passed === false ? 'bg-destructive hover:bg-destructive/90' : ''}
             onClick={() => onPassedChange(false)}
           >
             <X size={16} className="mr-2" />
             Fail
           </Button>
+
+          <Button
+            type="button"
+            variant={passed === null ? 'default' : 'outline'}
+            size="sm"
+            className={passed === null ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
+            onClick={() => onPassedChange(null)}
+          >
+            <Ban size={16} className="mr-2" />
+            N/A
+          </Button>
         </div>
       </div>
       
-      {!passed && (
+      {passed === false && (
         <div className="space-y-3">
           <Textarea
             placeholder="Add notes describing the issue..."

@@ -38,7 +38,10 @@ const ppeTypes: PPEType[] = [
   'Safety Boots',
   'Safety Gloves',
   'Safety Goggles',
-  'Ear Protection'
+  'Ear Protection',
+  'Respirator',
+  'Safety Vest',
+  'Face Shield'
 ];
 
 const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
@@ -83,7 +86,7 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
       const nextInspection = new Date(manufacturingDate);
       nextInspection.setMonth(nextInspection.getMonth() + 3);
       
-      // Insert PPE item - ensure user_id is set for Row Level Security
+      // Insert PPE item - explicitly set created_by for Row Level Security
       const { error: insertError } = await supabase
         .from('ppe_items')
         .insert({
@@ -95,11 +98,14 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
           expiry_date: data.expiryDate,
           status: new Date(data.expiryDate) < new Date() ? 'expired' : 'active',
           image_url: imageUrl,
-          created_by: user.id,
+          created_by: user.id, // Explicitly set created_by to the current user's ID
           next_inspection: nextInspection.toISOString(),
         });
         
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('PPE insert error:', insertError);
+        throw insertError;
+      }
       
       toast({
         title: 'Success!',

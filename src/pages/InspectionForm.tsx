@@ -49,10 +49,10 @@ const InspectionForm = () => {
   
   const [inspectionType, setInspectionType] = useState<'pre-use' | 'monthly' | 'quarterly'>('pre-use');
   const [checkpoints, setCheckpoints] = useState<InspectionCheckpoint[]>([]);
-  const [results, setResults] = useState<Record<string, { passed: boolean; notes: string; photoUrl?: string }>>({});
+  const [results, setResults] = useState<Record<string, { passed: boolean | null; notes: string; photoUrl?: string }>>({});
   const [notes, setNotes] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
-  const [overallResult, setOverallResult] = useState<'pass' | 'fail'>('pass');
+  const [overallResult, setOverallResult] = useState<'pass' | 'fail' | null>(null);
   
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,9 +118,9 @@ const InspectionForm = () => {
       
       setCheckpoints(formattedCheckpoints);
       
-      const initialResults: Record<string, { passed: boolean; notes: string; photoUrl?: string }> = {};
+      const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
       formattedCheckpoints.forEach(checkpoint => {
-        initialResults[checkpoint.id] = { passed: true, notes: '' };
+        initialResults[checkpoint.id] = { passed: null, notes: '' };
       });
       
       setResults(initialResults);
@@ -133,22 +133,27 @@ const InspectionForm = () => {
     }
   };
   
-  const handleResultChange = (checkpointId: string, value: boolean) => {
+  const handleResultChange = (checkpointId: string, value: boolean | null) => {
     setResults(prev => ({
       ...prev,
       [checkpointId]: { ...prev[checkpointId], passed: value }
     }));
     
-    if (!value) {
+    if (value === false) {
       setOverallResult('fail');
     } else {
-      const allPassing = Object.values({ 
+      const allResults = Object.values({ 
         ...results, 
         [checkpointId]: { ...results[checkpointId], passed: value } 
-      }).every(result => result.passed);
+      });
+      
+      const allPassing = allResults.every(result => result.passed === true);
+      const anyFailing = allResults.some(result => result.passed === false);
       
       if (allPassing) {
         setOverallResult('pass');
+      } else if (anyFailing) {
+        setOverallResult('fail');
       }
     }
   };
@@ -188,8 +193,17 @@ const InspectionForm = () => {
   };
   
   const validateForm = (): boolean => {
+    const unselectedRequired = checkpoints
+      .filter(cp => cp.required)
+      .filter(cp => results[cp.id]?.passed === null);
+      
+    if (unselectedRequired.length > 0) {
+      setResultsError('Please select Pass or Fail for all required checkpoints');
+      return false;
+    }
+
     const invalidResults = Object.entries(results).filter(
-      ([_, result]) => !result.passed && !result.notes.trim()
+      ([_, result]) => result.passed === false && !result.notes.trim()
     );
     
     if (invalidResults.length > 0) {
@@ -224,11 +238,13 @@ const InspectionForm = () => {
     setIsSubmitting(true);
     
     try {
+      const inspectionTypeEnum = inspectionType as "pre-use" | "monthly" | "quarterly";
+      
       const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
         .insert({
           ppe_id: ppeItem?.id,
-          type: inspectionType,
+          type: inspectionTypeEnum,
           date: new Date().toISOString(),
           overall_result: overallResult,
           notes: notes,
@@ -238,7 +254,10 @@ const InspectionForm = () => {
         .select('id')
         .single();
       
-      if (inspectionError) throw inspectionError;
+      if (inspectionError) {
+        console.error("Inspection insert error:", inspectionError);
+        throw inspectionError;
+      }
       
       const resultsToInsert = Object.entries(results).map(([checkpointId, result]) => ({
         inspection_id: inspection.id,
