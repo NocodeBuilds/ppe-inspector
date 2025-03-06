@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   Home, 
-  Tool, 
+  HardHat, 
   Plus, 
   Settings, 
   User 
@@ -27,7 +27,7 @@ const BottomNav = () => {
     {
       name: 'Equipment',
       path: '/equipment',
-      icon: <Tool size={20} />,
+      icon: <HardHat size={20} />,
     },
     {
       name: 'Inspect',

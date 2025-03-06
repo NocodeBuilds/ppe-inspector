@@ -47,7 +47,7 @@ const InspectionForm = () => {
     modelNumber: string;
   } | null>(null);
   
-  const [inspectionType, setInspectionType] = useState('pre-use');
+  const [inspectionType, setInspectionType] = useState<'pre-use' | 'monthly' | 'quarterly'>('pre-use');
   const [checkpoints, setCheckpoints] = useState<InspectionCheckpoint[]>([]);
   const [results, setResults] = useState<Record<string, { passed: boolean; notes: string; photoUrl?: string }>>({});
   const [notes, setNotes] = useState('');
