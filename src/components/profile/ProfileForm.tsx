@@ -2,6 +2,13 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 interface ProfileFormProps {
   fullName: string;
@@ -10,9 +17,44 @@ interface ProfileFormProps {
   department: string;
   bio: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onSelectChange: (field: string, value: string) => void;
 }
 
-const ProfileForm = ({ fullName, employeeId, location, department, bio, onChange }: ProfileFormProps) => {
+const locations = [
+  'Molagavalli 1 & 2', 
+  'Molagavalli 3', 
+  'Nimbagallu', 
+  'Kalyandurga', 
+  'Ralla South', 
+  'Ralla North', 
+  'Veerabdra', 
+  'Ellutla'
+];
+
+const departments = [
+  'Wind O&M', 
+  'Solar O&M', 
+  'Wind EPC', 
+  'Solar EPC', 
+  'Wind Asset Management', 
+  'Solar Asset Management', 
+  'Hydrogen', 
+  'Transmission', 
+  'Projects', 
+  'Corporate Office', 
+  'Area Office', 
+  'Others'
+];
+
+const ProfileForm = ({ 
+  fullName, 
+  employeeId, 
+  location, 
+  department, 
+  bio, 
+  onChange,
+  onSelectChange 
+}: ProfileFormProps) => {
   return (
     <div className="space-y-4">
       <div>
@@ -37,22 +79,40 @@ const ProfileForm = ({ fullName, employeeId, location, department, bio, onChange
       
       <div>
         <label htmlFor="location" className="text-sm font-medium block mb-1">Location (Optional)</label>
-        <Input
-          id="location"
+        <Select
           value={location}
-          onChange={onChange}
-          placeholder="Your location or site"
-        />
+          onValueChange={(value) => onSelectChange('location', value)}
+        >
+          <SelectTrigger id="location" className="w-full">
+            <SelectValue placeholder="Select your location" />
+          </SelectTrigger>
+          <SelectContent>
+            {locations.map((loc) => (
+              <SelectItem key={loc} value={loc}>
+                {loc}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <div>
         <label htmlFor="department" className="text-sm font-medium block mb-1">Department (Optional)</label>
-        <Input
-          id="department"
+        <Select
           value={department}
-          onChange={onChange}
-          placeholder="Your department"
-        />
+          onValueChange={(value) => onSelectChange('department', value)}
+        >
+          <SelectTrigger id="department" className="w-full">
+            <SelectValue placeholder="Select your department" />
+          </SelectTrigger>
+          <SelectContent>
+            {departments.map((dept) => (
+              <SelectItem key={dept} value={dept}>
+                {dept}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <div>

@@ -45,6 +45,14 @@ export const useProfileForm = () => {
     }));
   };
   
+  // Handle select changes
+  const handleSelectChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
   useEffect(() => {
     if (!profile) {
       navigate('/login');
@@ -192,6 +200,7 @@ export const useProfileForm = () => {
   return {
     formData,
     handleInputChange,
+    handleSelectChange,
     isLoading,
     isSaving,
     profile,

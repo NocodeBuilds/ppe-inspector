@@ -11,6 +11,7 @@ const EditProfile = () => {
   const {
     formData,
     handleInputChange,
+    handleSelectChange,
     isLoading,
     isSaving,
     profile,
@@ -29,7 +30,7 @@ const EditProfile = () => {
   }
   
   return (
-    <div className="fade-in">
+    <div className="fade-in pb-20">
       <div className="flex items-center mb-6">
         <Button 
           variant="ghost" 
@@ -56,6 +57,7 @@ const EditProfile = () => {
           department={formData.department}
           bio={formData.bio}
           onChange={handleInputChange}
+          onSelectChange={handleSelectChange}
         />
         
         <ProfileFormActions
