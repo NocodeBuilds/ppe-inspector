@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Calendar, Upload } from 'lucide-react';
@@ -28,6 +29,7 @@ interface FormValues {
   expiryDate: string;
 }
 
+// Standardized PPE types across the application
 const ppeTypes: PPEType[] = [
   'Full Body Harness',
   'Fall Arrester',
@@ -81,7 +83,7 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
       const nextInspection = new Date(manufacturingDate);
       nextInspection.setMonth(nextInspection.getMonth() + 3);
       
-      // Insert PPE item
+      // Insert PPE item - ensure user_id is set for Row Level Security
       const { error: insertError } = await supabase
         .from('ppe_items')
         .insert({

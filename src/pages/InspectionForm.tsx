@@ -7,13 +7,15 @@ import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { supabase, PPEType, InspectionType } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { InspectionCheckpoint } from '@/types';
 import CheckpointItem from '@/components/inspection/CheckpointItem';
 import SignatureCanvas from '@/components/inspection/SignatureCanvas';
+import { getStandardCheckpoints } from '@/services/checkpointService';
+import { useAuth } from '@/hooks/useAuth';
 
-const toPPEType = (typeString: string): PPEType => {
-  const validTypes: PPEType[] = [
+const toPPEType = (typeString: string) => {
+  const validTypes = [
     'Full Body Harness',
     'Fall Arrester',
     'Double Lanyard',
@@ -24,8 +26,8 @@ const toPPEType = (typeString: string): PPEType => {
     'Ear Protection'
   ];
   
-  if (validTypes.includes(typeString as PPEType)) {
-    return typeString as PPEType;
+  if (validTypes.includes(typeString)) {
+    return typeString;
   }
   
   return 'Safety Helmet';
@@ -35,16 +37,17 @@ const InspectionForm = () => {
   const { ppeId } = useParams<{ ppeId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   
   const [ppeItem, setPpeItem] = useState<{
     id: string;
     serialNumber: string;
-    type: PPEType;
+    type: string;
     brand: string;
     modelNumber: string;
   } | null>(null);
   
-  const [inspectionType, setInspectionType] = useState<InspectionType>('pre-use');
+  const [inspectionType, setInspectionType] = useState('pre-use');
   const [checkpoints, setCheckpoints] = useState<InspectionCheckpoint[]>([]);
   const [results, setResults] = useState<Record<string, { passed: boolean; notes: string; photoUrl?: string }>>({});
   const [notes, setNotes] = useState('');
@@ -87,45 +90,45 @@ const InspectionForm = () => {
           modelNumber: data.model_number,
         });
         
-        fetchCheckpoints(data.type);
+        loadCheckpoints(data.type);
       }
     } catch (error: any) {
       console.error('Error fetching PPE item:', error);
       setPpeError(error.message || 'Failed to load PPE item');
+      setIsLoading(false);
     }
   };
   
-  const fetchCheckpoints = async (ppeType: string) => {
+  const loadCheckpoints = (ppeType: string) => {
     try {
-      const { data, error } = await supabase
-        .from('inspection_checkpoints')
-        .select('*')
-        .eq('ppe_type', ppeType);
+      const standardCheckpoints = getStandardCheckpoints(ppeType);
       
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        const formattedCheckpoints = data.map(checkpoint => ({
-          id: checkpoint.id,
-          description: checkpoint.description,
-          ppeType: toPPEType(checkpoint.ppe_type)
-        }));
-        
-        setCheckpoints(formattedCheckpoints as InspectionCheckpoint[]);
-        
-        const initialResults: Record<string, { passed: boolean; notes: string; photoUrl?: string }> = {};
-        data.forEach(checkpoint => {
-          initialResults[checkpoint.id] = { passed: true, notes: '' };
-        });
-        
-        setResults(initialResults);
-      } else {
-        setCheckpointsError('No checkpoints found for this PPE type');
+      if (standardCheckpoints.length === 0) {
+        setCheckpointsError('No checkpoints defined for this PPE type');
+        setIsLoading(false);
+        return;
       }
+      
+      const formattedCheckpoints = standardCheckpoints.map((checkpoint, index) => ({
+        id: `${ppeType.replace(/\s+/g, '-').toLowerCase()}-${index}`,
+        description: checkpoint.description,
+        ppeType: checkpoint.ppeType as any,
+        required: checkpoint.required
+      }));
+      
+      setCheckpoints(formattedCheckpoints);
+      
+      const initialResults: Record<string, { passed: boolean; notes: string; photoUrl?: string }> = {};
+      formattedCheckpoints.forEach(checkpoint => {
+        initialResults[checkpoint.id] = { passed: true, notes: '' };
+      });
+      
+      setResults(initialResults);
+      setIsLoading(false);
+      
     } catch (error: any) {
-      console.error('Error fetching checkpoints:', error);
+      console.error('Error loading checkpoints:', error);
       setCheckpointsError(error.message || 'Failed to load inspection checkpoints');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -209,6 +212,14 @@ const InspectionForm = () => {
   
   const handleSubmit = async () => {
     if (!validateForm()) return;
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'You must be logged in to submit inspections',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -222,6 +233,7 @@ const InspectionForm = () => {
           overall_result: overallResult,
           notes: notes,
           signature_url: signature,
+          inspector_id: user.id,
         })
         .select('id')
         .single();
@@ -326,7 +338,7 @@ const InspectionForm = () => {
         <h1 className="text-2xl font-bold">Inspection Form</h1>
       </div>
       
-      <Card className="p-4 mb-6">
+      <Card className="p-4 mb-6 border border-border/40 shadow-sm">
         <h2 className="font-semibold mb-2">{ppeItem?.type}</h2>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
@@ -347,7 +359,7 @@ const InspectionForm = () => {
       <div className="relative mb-6">
         <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-muted">
           <div 
-            className={`w-${step}/3 shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary`} 
+            className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary" 
             style={{ width: `${(step / 3) * 100}%` }}
           />
         </div>
@@ -460,7 +472,7 @@ const InspectionForm = () => {
               <Button
                 type="button"
                 variant={overallResult === 'pass' ? 'default' : 'outline'}
-                className={overallResult === 'pass' ? 'bg-green-600 hover:bg-green-700' : ''}
+                className={overallResult === 'pass' ? 'bg-success hover:bg-success/90' : ''}
                 onClick={() => setOverallResult('pass')}
               >
                 <Check size={16} className="mr-2" />

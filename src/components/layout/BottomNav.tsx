@@ -4,10 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   Home, 
-  CalendarClock, 
+  Tool, 
   Plus, 
-  AlertTriangle, 
-  FileBox, 
+  Settings, 
   User 
 } from 'lucide-react';
 
@@ -26,9 +25,9 @@ const BottomNav = () => {
       icon: <Home size={20} />,
     },
     {
-      name: 'Upcoming',
-      path: '/upcoming',
-      icon: <CalendarClock size={20} />,
+      name: 'Equipment',
+      path: '/equipment',
+      icon: <Tool size={20} />,
     },
     {
       name: 'Inspect',
@@ -37,9 +36,9 @@ const BottomNav = () => {
       primary: true,
     },
     {
-      name: 'Flagged',
-      path: '/flagged',
-      icon: <AlertTriangle size={20} />,
+      name: 'Settings',
+      path: '/settings',
+      icon: <Settings size={20} />,
     },
     {
       name: 'Profile',

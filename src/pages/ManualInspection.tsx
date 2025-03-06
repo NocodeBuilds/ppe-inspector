@@ -17,7 +17,8 @@ import {
 import { Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import QRCodeScanner from '@/components/inspection/QRCodeScanner';
-import { PPEItem, PPEType } from '@/types';
+import { PPEType } from '@/types';
+import { getAllPPETypes } from '@/services/checkpointService';
 
 const ManualInspection = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -36,24 +37,9 @@ const ManualInspection = () => {
   } = useForm();
   
   useEffect(() => {
-    fetchPPETypes();
+    // Use standardized PPE types
+    setPpeTypes(getAllPPETypes());
   }, []);
-  
-  const fetchPPETypes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('ppe_items')
-        .select('type')
-        .order('type');
-      
-      if (error) throw error;
-      
-      const uniqueTypes = Array.from(new Set(data.map((item: any) => item.type))) as PPEType[];
-      setPpeTypes(uniqueTypes);
-    } catch (error) {
-      console.error('Error fetching PPE types:', error);
-    }
-  };
   
   const onSubmit = async (data: any) => {
     try {
@@ -158,7 +144,7 @@ const ManualInspection = () => {
         </Button>
       </div>
       
-      <Card>
+      <Card className="border border-border/40 shadow-sm">
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
@@ -250,7 +236,7 @@ const ManualInspection = () => {
       
       {isScanning && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-lg shadow-lg max-w-md w-full p-6">
+          <div className="bg-card rounded-lg shadow-lg max-w-md w-full p-6 border border-border/40">
             <QRCodeScanner 
               onResult={handleQRCodeResult} 
               onError={handleScanError} 
