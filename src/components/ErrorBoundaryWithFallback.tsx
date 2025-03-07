@@ -52,6 +52,11 @@ class ErrorBoundaryWithFallback extends Component<Props, State> {
     const { showResetButton = true, showHomeButton = true } = this.props;
     
     if (this.state.hasError) {
+      // Check for module loading errors
+      const isModuleLoadingError = 
+        this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
+        this.state.error?.message?.includes('Importing a module script failed');
+      
       // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;
@@ -60,9 +65,13 @@ class ErrorBoundaryWithFallback extends Component<Props, State> {
       return (
         <div className="flex flex-col items-center justify-center p-6 text-center h-full min-h-[200px] bg-muted/20 rounded-lg border border-muted">
           <AlertCircle className="h-10 w-10 text-destructive mb-2" />
-          <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
+          <h2 className="text-xl font-bold mb-2">
+            {isModuleLoadingError ? "Failed to load page" : "Something went wrong"}
+          </h2>
           <p className="text-muted-foreground mb-4 max-w-md">
-            {this.state.error?.message || 'An unexpected error occurred'}
+            {isModuleLoadingError 
+              ? "There was a problem loading this page. This could be due to a network issue or an application error."
+              : this.state.error?.message || 'An unexpected error occurred'}
           </p>
           <div className="flex gap-2">
             {showResetButton && (

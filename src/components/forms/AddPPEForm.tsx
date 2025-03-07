@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Calendar, Upload } from 'lucide-react';
@@ -15,6 +14,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { supabase, PPEType } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import ErrorBoundaryWithFallback from '@/components/ErrorBoundaryWithFallback';
 
 interface AddPPEFormProps {
   onSuccess?: () => void;
@@ -64,6 +64,8 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
     setIsSubmitting(true);
     
     try {
+      console.log("Adding PPE with user ID:", user.id);
+      
       // Upload image if selected
       let imageUrl = null;
       if (imageFile) {
@@ -86,7 +88,7 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
       const nextInspection = new Date(manufacturingDate);
       nextInspection.setMonth(nextInspection.getMonth() + 3);
       
-      // Insert PPE item - explicitly set created_by for Row Level Security
+      // Insert PPE item with explicit created_by
       const { error: insertError } = await supabase
         .from('ppe_items')
         .insert({
@@ -133,134 +135,136 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="serialNumber">Serial Number</Label>
-          <Input
-            id="serialNumber"
-            type="text"
-            className="mt-1"
-            {...register('serialNumber', { required: 'Serial number is required' })}
-          />
-          {errors.serialNumber && (
-            <p className="text-xs text-destructive mt-1">{errors.serialNumber.message}</p>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="ppeType">PPE Type</Label>
-          <Select 
-            onValueChange={(value) => setValue('type', value as PPEType)} 
-            required
-          >
-            <SelectTrigger id="ppeType" className="mt-1">
-              <SelectValue placeholder="Select PPE type" />
-            </SelectTrigger>
-            <SelectContent>
-              {ppeTypes.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label htmlFor="brand">Brand</Label>
-          <Input
-            id="brand"
-            type="text"
-            className="mt-1"
-            {...register('brand', { required: 'Brand is required' })}
-          />
-          {errors.brand && (
-            <p className="text-xs text-destructive mt-1">{errors.brand.message}</p>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="modelNumber">Model Number</Label>
-          <Input
-            id="modelNumber"
-            type="text"
-            className="mt-1"
-            {...register('modelNumber', { required: 'Model number is required' })}
-          />
-          {errors.modelNumber && (
-            <p className="text-xs text-destructive mt-1">{errors.modelNumber.message}</p>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="manufacturingDate">Manufacturing Date</Label>
-          <div className="relative mt-1">
+    <ErrorBoundaryWithFallback>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="serialNumber">Serial Number</Label>
             <Input
-              id="manufacturingDate"
-              type="date"
-              className="mt-1 pl-10"
-              {...register('manufacturingDate', { required: 'Manufacturing date is required' })}
+              id="serialNumber"
+              type="text"
+              className="mt-1"
+              {...register('serialNumber', { required: 'Serial number is required' })}
             />
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          </div>
-          {errors.manufacturingDate && (
-            <p className="text-xs text-destructive mt-1">{errors.manufacturingDate.message}</p>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="expiryDate">Expiry Date</Label>
-          <div className="relative mt-1">
-            <Input
-              id="expiryDate"
-              type="date"
-              className="mt-1 pl-10"
-              {...register('expiryDate', { required: 'Expiry date is required' })}
-            />
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          </div>
-          {errors.expiryDate && (
-            <p className="text-xs text-destructive mt-1">{errors.expiryDate.message}</p>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="image">Upload Image</Label>
-          <div className="mt-1">
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full flex items-center justify-center gap-2 h-auto py-3"
-              onClick={() => document.getElementById('image-upload')?.click()}
-            >
-              <Upload size={20} />
-              <span>Upload Photo</span>
-            </Button>
-            <Input
-              id="image-upload"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageChange}
-            />
-            {imageFile && (
-              <p className="text-xs text-muted-foreground mt-2">
-                File selected: {imageFile.name}
-              </p>
+            {errors.serialNumber && (
+              <p className="text-xs text-destructive mt-1">{errors.serialNumber.message}</p>
             )}
           </div>
-        </div>
-      </div>
 
-      <Button 
-        type="submit" 
-        className="w-full" 
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? 'Saving...' : 'Save PPE Item'}
-      </Button>
-    </form>
+          <div>
+            <Label htmlFor="ppeType">PPE Type</Label>
+            <Select 
+              onValueChange={(value) => setValue('type', value as PPEType)} 
+              required
+            >
+              <SelectTrigger id="ppeType" className="mt-1">
+                <SelectValue placeholder="Select PPE type" />
+              </SelectTrigger>
+              <SelectContent>
+                {ppeTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="brand">Brand</Label>
+            <Input
+              id="brand"
+              type="text"
+              className="mt-1"
+              {...register('brand', { required: 'Brand is required' })}
+            />
+            {errors.brand && (
+              <p className="text-xs text-destructive mt-1">{errors.brand.message}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="modelNumber">Model Number</Label>
+            <Input
+              id="modelNumber"
+              type="text"
+              className="mt-1"
+              {...register('modelNumber', { required: 'Model number is required' })}
+            />
+            {errors.modelNumber && (
+              <p className="text-xs text-destructive mt-1">{errors.modelNumber.message}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="manufacturingDate">Manufacturing Date</Label>
+            <div className="relative mt-1">
+              <Input
+                id="manufacturingDate"
+                type="date"
+                className="mt-1 pl-10"
+                {...register('manufacturingDate', { required: 'Manufacturing date is required' })}
+              />
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            </div>
+            {errors.manufacturingDate && (
+              <p className="text-xs text-destructive mt-1">{errors.manufacturingDate.message}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="expiryDate">Expiry Date</Label>
+            <div className="relative mt-1">
+              <Input
+                id="expiryDate"
+                type="date"
+                className="mt-1 pl-10"
+                {...register('expiryDate', { required: 'Expiry date is required' })}
+              />
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            </div>
+            {errors.expiryDate && (
+              <p className="text-xs text-destructive mt-1">{errors.expiryDate.message}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="image">Upload Image</Label>
+            <div className="mt-1">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full flex items-center justify-center gap-2 h-auto py-3"
+                onClick={() => document.getElementById('image-upload')?.click()}
+              >
+                <Upload size={20} />
+                <span>Upload Photo</span>
+              </Button>
+              <Input
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+              />
+              {imageFile && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  File selected: {imageFile.name}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Saving...' : 'Save PPE Item'}
+        </Button>
+      </form>
+    </ErrorBoundaryWithFallback>
   );
 };
 
