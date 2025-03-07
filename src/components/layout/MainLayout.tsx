@@ -28,7 +28,7 @@ const Header = memo(({
   isInspector 
 }: { 
   canGoBack: boolean, 
-  navigate: (to: number | string) => void,
+  navigate: (to: number) => void,
   profile: any,
   signOut: () => Promise<void>,
   isAdmin: boolean,

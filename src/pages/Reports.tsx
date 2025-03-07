@@ -8,11 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRoleAccess } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  generatePPEItemReport, 
-  generateInspectionsDateReport, 
-  generateAnalyticsDataReport 
-} from '@/utils/reportGeneratorService';
+import { generatePPEReport, generateInspectionsReport, generateAnalyticsReport } from '@/utils/reportGeneratorService';
 import { InspectionData } from '@/types';
 import { useNotifications } from '@/hooks/useNotifications';
 
@@ -85,21 +81,47 @@ const ReportsPage = () => {
         
         if (ppeError) throw ppeError;
         
-        // Generate report for all PPE items
-        await generatePPEItemReport('all');
+        // Generate report
+        await generatePPEReport(ppeData);
         
       } else if (type === 'inspections') {
-        // Get current date for date range
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setMonth(startDate.getMonth() - 6); // Last 6 months
+        // Fetch inspection data
+        const { data: inspData, error: inspError } = await supabase
+          .from('inspections')
+          .select(`
+            id, 
+            date, 
+            type,
+            overall_result,
+            ppe_id,
+            inspector_id,
+            profiles:inspector_id (full_name),
+            ppe_items:ppe_id (type, serial_number)
+          `);
         
-        // Generate report for date range
-        await generateInspectionsDateReport(startDate, endDate);
+        if (inspError) throw inspError;
+        
+        // Format the data for the report
+        const formattedData = inspData.map((insp: any) => ({
+          id: insp.id,
+          date: insp.date,
+          type: insp.type,
+          inspector_name: insp?.profiles?.full_name || 'Unknown',
+          result: insp.overall_result,
+          ppe_type: insp?.ppe_items?.type || 'Unknown',
+          serial_number: insp?.ppe_items?.serial_number || 'Unknown'
+        })) as InspectionData[];
+        
+        // Generate report
+        await generateInspectionsReport(formattedData);
         
       } else if (type === 'analytics') {
-        // Generate analytics report
-        await generateAnalyticsDataReport();
+        // Generate analytics report with the counts
+        await generateAnalyticsReport({
+          totalPPE: ppeCount,
+          totalInspections: inspectionCount,
+          flaggedItems: flaggedCount
+        });
       }
       
       showNotification('Success', 'success', {
