@@ -1,4 +1,3 @@
-
 export type PPEType =
   | 'Full Body Harness'
   | 'Fall Arrester'

@@ -18,7 +18,10 @@ export type PPEType =
   | 'Safety Boots'
   | 'Safety Gloves'
   | 'Safety Goggles'
-  | 'Ear Protection';
+  | 'Ear Protection'
+  | 'Respirator'
+  | 'Safety Vest'
+  | 'Face Shield';
 
 export type Profile = {
   id: string;
