@@ -19,13 +19,18 @@ export const useAuth = () => {
  * @param role - The role to check for
  * @param userRole - The current user's role
  */
-export const hasRole = (requiredRole: 'admin' | 'user', userRole?: string | null): boolean => {
+export const hasRole = (requiredRole: 'admin' | 'inspector' | 'user', userRole?: string | null): boolean => {
   if (!userRole) return false;
   
-  // Simplified role hierarchy: admin > user
+  // Role hierarchy: admin > inspector > user
   if (requiredRole === 'user') {
     // Any authenticated user can access user-level features
-    return ['admin', 'user'].includes(userRole);
+    return ['admin', 'inspector', 'user'].includes(userRole);
+  }
+  
+  if (requiredRole === 'inspector') {
+    // Only admins and inspectors can access inspector-level features
+    return ['admin', 'inspector'].includes(userRole);
   }
   
   if (requiredRole === 'admin') {
@@ -44,6 +49,7 @@ export const useRoleAccess = () => {
   
   return {
     isAdmin: hasRole('admin', profile?.role),
+    isInspector: hasRole('inspector', profile?.role) || hasRole('admin', profile?.role),
     isUser: !!profile?.role, // Any authenticated user with a role
   };
 };

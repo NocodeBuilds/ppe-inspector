@@ -1,4 +1,3 @@
-
 import { Download, Edit, FileText } from 'lucide-react';
 import { PPEItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -19,14 +18,14 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
   const { toast } = useToast();
   
   const borderColor = 
-    type === 'expiring' ? 'border-destructive/70' : 
-    type === 'upcoming' ? 'border-yellow-500/70' : 
+    type === 'expiring' ? 'border-destructive/50' : 
+    type === 'upcoming' ? 'border-warning/50' : 
     type === 'flagged' ? 'border-destructive/70' :
     'border-border';
   
   const statusIcon = 
     type === 'expiring' ? (
-      <div className="w-10 h-10 bg-destructive/30 text-destructive rounded-lg flex items-center justify-center shadow-inner border border-destructive/50">
+      <div className="w-10 h-10 bg-destructive/20 text-destructive rounded-lg flex items-center justify-center">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
           <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
           <path d="M12 9v4"></path>
@@ -34,7 +33,7 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
         </svg>
       </div>
     ) : type === 'upcoming' ? (
-      <div className="w-10 h-10 bg-yellow-500/30 text-yellow-500 rounded-lg flex items-center justify-center shadow-inner border border-yellow-500/50">
+      <div className="w-10 h-10 bg-warning/20 text-warning rounded-lg flex items-center justify-center">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
           <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
           <line x1="16" x2="16" y1="2" y2="6"></line>
@@ -49,23 +48,14 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
         </svg>
       </div>
     ) : type === 'flagged' ? (
-      <div className="w-10 h-10 bg-destructive/30 text-destructive rounded-lg flex items-center justify-center shadow-inner border border-destructive/50">
+      <div className="w-10 h-10 bg-destructive/20 text-destructive rounded-lg flex items-center justify-center">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0-3.42 0z"></path>
           <line x1="12" y1="9" x2="12" y2="13"></line>
           <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
       </div>
-    ) : (
-      <div className="w-10 h-10 bg-primary/30 text-primary rounded-lg flex items-center justify-center shadow-inner border border-primary/50">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-          <path d="M20 7h-9"></path>
-          <path d="M14 17H5"></path>
-          <circle cx="17" cy="17" r="3"></circle>
-          <circle cx="7" cy="7" r="3"></circle>
-        </svg>
-      </div>
-    );
+    ) : null;
 
   const getStatusText = () => {
     if (type === 'expiring') {
@@ -120,8 +110,7 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
 
   return (
     <div className={cn(
-      'backdrop-blur-sm rounded-lg p-4 my-3 transition-all duration-300 hover:shadow-lg border-2',
-      'bg-card/50', 
+      'glass-card rounded-lg p-4 my-3 transition-all duration-300 hover:shadow-lg',
       borderColor
     )}>
       <div className="flex items-center gap-4">
@@ -137,7 +126,7 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
               <FileText size={20} />
             </Button>
           )}
-          <Button variant="outline" size="icon" onClick={handleDownloadReport} className="bg-background/50 h-10 w-10">
+          <Button variant="outline" size="icon" onClick={handleDownloadReport} className="bg-background h-10 w-10">
             <Download size={20} />
           </Button>
           {onEdit && (

@@ -14,6 +14,26 @@ import RoleProtectedRoute from "./components/auth/RoleProtectedRoute";
 // Pages with no lazy loading to prevent flashing
 import MainLayout from "./components/layout/MainLayout";
 
+// Lazy load pages with better chunk naming and error handling
+const Home = lazy(() => import(/* webpackChunkName: "home-page" */ "./pages/Home"));
+const ExpiringPPE = lazy(() => import(/* webpackChunkName: "expiring-ppe-page" */ "./pages/ExpiringPPE"));
+const UpcomingInspections = lazy(() => import(/* webpackChunkName: "upcoming-inspections-page" */ "./pages/UpcomingInspections"));
+const Equipment = lazy(() => import(/* webpackChunkName: "equipment-page" */ "./pages/Equipment"));
+const Settings = lazy(() => import(/* webpackChunkName: "settings-page" */ "./pages/Settings"));
+const Profile = lazy(() => import(/* webpackChunkName: "profile-page" */ "./pages/Profile"));
+const Login = lazy(() => import(/* webpackChunkName: "login-page" */ "./pages/Login"));
+const NotFound = lazy(() => import(/* webpackChunkName: "not-found-page" */ "./pages/NotFound"));
+const RegisterPage = lazy(() => import(/* webpackChunkName: "register-page" */ "./pages/Register"));
+const ForgotPasswordPage = lazy(() => import(/* webpackChunkName: "forgot-password-page" */ "./pages/ForgotPassword"));
+const ResetPasswordPage = lazy(() => import(/* webpackChunkName: "reset-password-page" */ "./pages/ResetPassword"));
+const EditProfile = lazy(() => import(/* webpackChunkName: "edit-profile-page" */ "./pages/EditProfile"));
+const InspectionForm = lazy(() => import(/* webpackChunkName: "inspection-form-page" */ "./pages/InspectionForm"));
+const ReportsPage = lazy(() => import(/* webpackChunkName: "reports-page" */ "./pages/Reports"));
+const StartInspection = lazy(() => import(/* webpackChunkName: "start-inspection-page" */ "./pages/StartInspection"));
+const ManualInspection = lazy(() => import(/* webpackChunkName: "manual-inspection-page" */ "./pages/ManualInspection"));
+const FlaggedIssues = lazy(() => import(/* webpackChunkName: "flagged-issues-page" */ "./pages/FlaggedIssues"));
+const InspectionDetails = lazy(() => import(/* webpackChunkName: "inspection-details-page" */ "./pages/InspectionDetails"));
+
 // Loading component for Suspense with better UI
 const PageLoader = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -23,38 +43,6 @@ const PageLoader = () => (
     </div>
   </div>
 );
-
-// Improved error handler for lazy loading
-const lazyLoad = (importFunc) => {
-  const Component = lazy(importFunc);
-  return (props) => (
-    <ErrorBoundaryWithFallback>
-      <Suspense fallback={<PageLoader />}>
-        <Component {...props} />
-      </Suspense>
-    </ErrorBoundaryWithFallback>
-  );
-};
-
-// Lazy load pages with better error handling
-const Home = lazyLoad(() => import("./pages/Home"));
-const ExpiringPPE = lazyLoad(() => import("./pages/ExpiringPPE"));
-const UpcomingInspections = lazyLoad(() => import("./pages/UpcomingInspections"));
-const Equipment = lazyLoad(() => import("./pages/Equipment"));
-const Settings = lazyLoad(() => import("./pages/Settings"));
-const Profile = lazyLoad(() => import("./pages/Profile"));
-const Login = lazyLoad(() => import("./pages/Login"));
-const NotFound = lazyLoad(() => import("./pages/NotFound"));
-const RegisterPage = lazyLoad(() => import("./pages/Register"));
-const ForgotPasswordPage = lazyLoad(() => import("./pages/ForgotPassword"));
-const ResetPasswordPage = lazyLoad(() => import("./pages/ResetPassword"));
-const EditProfile = lazyLoad(() => import("./pages/EditProfile"));
-const InspectionForm = lazyLoad(() => import("./pages/InspectionForm"));
-const ReportsPage = lazyLoad(() => import("./pages/Reports"));
-const StartInspection = lazyLoad(() => import("./pages/StartInspection"));
-const ManualInspection = lazyLoad(() => import("./pages/ManualInspection"));
-const FlaggedIssues = lazyLoad(() => import("./pages/FlaggedIssues"));
-const InspectionDetails = lazyLoad(() => import("./pages/InspectionDetails"));
 
 // Configure React Query with improved settings and error handling
 const queryClient = new QueryClient({
@@ -104,37 +92,41 @@ const App = () => {
               <AuthProvider>
                 <Toaster />
                 <Sonner />
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<RegisterPage />} />
-                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                  <Route path="/reset-password" element={<ResetPasswordPage />} />
-                  
-                  <Route path="/" element={<MainLayout />}>
-                    <Route index element={<Home />} />
-                    <Route path="expiring" element={<ExpiringPPE />} />
-                    <Route path="upcoming" element={<UpcomingInspections />} />
-                    <Route path="equipment" element={<Equipment />} />
-                    <Route path="flagged" element={<FlaggedIssues />} />
-                    <Route path="settings" element={<Settings />} />
-                    <Route path="profile" element={<Profile />} />
-                    <Route path="edit-profile" element={<EditProfile />} />
-                    <Route path="start-inspection" element={<StartInspection />} />
-                    <Route path="inspect/new" element={<ManualInspection />} />
-                    <Route path="inspect/:ppeId" element={<InspectionForm />} />
-                    <Route path="inspection/:id" element={<InspectionDetails />} />
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
                     
-                    {/* Admin-only routes */}
-                    <Route path="reports" element={
-                      <RoleProtectedRoute requiredRole="admin" fallbackPath="access-denied">
-                        <ReportsPage />
-                      </RoleProtectedRoute>
-                    } />
-                    
-                    {/* Allow all other paths - let layout handle unauthorized access */}
-                    <Route path="*" element={<NotFound />} />
-                  </Route>
-                </Routes>
+                    <Route path="/" element={<MainLayout />}>
+                      <Route index element={<Home />} />
+                      <Route path="expiring" element={<ExpiringPPE />} />
+                      <Route path="upcoming" element={<UpcomingInspections />} />
+                      <Route path="equipment" element={<Equipment />} />
+                      <Route path="flagged" element={<FlaggedIssues />} />
+                      <Route path="settings" element={<Settings />} />
+                      <Route path="profile" element={<Profile />} />
+                      <Route path="edit-profile" element={<EditProfile />} />
+                      <Route path="start-inspection" element={<StartInspection />} />
+                      <Route path="inspect/new" element={<ManualInspection />} />
+                      <Route path="inspect/:ppeId" element={<InspectionForm />} />
+                      <Route path="inspection/:id" element={<InspectionDetails />} />
+                      
+                      {/* Admin-only routes */}
+                      <Route path="reports" element={
+                        <ErrorBoundaryWithFallback>
+                          <RoleProtectedRoute requiredRole="admin" fallbackPath="access-denied">
+                            <ReportsPage />
+                          </RoleProtectedRoute>
+                        </ErrorBoundaryWithFallback>
+                      } />
+                      
+                      {/* Allow all other paths - let layout handle unauthorized access */}
+                      <Route path="*" element={<NotFound />} />
+                    </Route>
+                  </Routes>
+                </Suspense>
               </AuthProvider>
             </TooltipProvider>
           </ThemeProvider>
