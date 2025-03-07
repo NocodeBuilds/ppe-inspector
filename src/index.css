@@ -14,6 +14,16 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+
+  /* Glass card styling for better visibility */
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-sm border-2 shadow-sm;
+  }
+
+  /* Dark mode glass styling */
+  .dark .glass-card {
+    @apply bg-card/40 backdrop-blur-sm border-2 shadow-md;
+  }
 }
 
 @layer base {

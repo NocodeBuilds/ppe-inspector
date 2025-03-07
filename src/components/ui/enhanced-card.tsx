@@ -56,6 +56,7 @@ const EnhancedCard = ({
     "hover:shadow-md",
     "border-2",
     cardBorderColor,
+    "bg-card/50 backdrop-blur-sm",
     className
   );
 

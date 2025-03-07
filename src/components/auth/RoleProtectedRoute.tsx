@@ -9,7 +9,7 @@ import { Shield } from 'lucide-react';
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole: 'admin' | 'inspector' | 'user';
+  requiredRole: 'admin' | 'user';
   fallbackPath?: string;
 }
 

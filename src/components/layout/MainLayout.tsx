@@ -24,15 +24,13 @@ const Header = memo(({
   navigate, 
   profile, 
   signOut,
-  isAdmin,
-  isInspector 
+  isAdmin
 }: { 
   canGoBack: boolean, 
   navigate: (to: number | string) => void,
   profile: any,
   signOut: () => Promise<void>,
   isAdmin: boolean,
-  isInspector: boolean
 }) => (
   <header className="sticky top-0 z-50 flex justify-between items-center px-4 py-2 border-b bg-background/80 backdrop-blur-sm">
     <div className="flex items-center">
@@ -50,7 +48,6 @@ const Header = memo(({
         <span>
           <span className="text-primary">PPE</span> Inspector
           {isAdmin && <span className="ml-2 text-xs font-normal bg-primary/10 text-primary px-2 py-0.5 rounded-full">Admin</span>}
-          {isInspector && !isAdmin && <span className="ml-2 text-xs font-normal bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">Inspector</span>}
         </span>
       </h1>
     </div>
@@ -127,7 +124,7 @@ const MainLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, isLoading, signOut } = useAuth();
-  const { isAdmin, isInspector } = useRoleAccess();
+  const { isAdmin } = useRoleAccess();
   const { showNotification } = useNotifications();
   
   const hideNavPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
@@ -168,7 +165,6 @@ const MainLayout = () => {
             profile={profile} 
             signOut={signOut}
             isAdmin={isAdmin}
-            isInspector={isInspector}
           />
         )}
         
