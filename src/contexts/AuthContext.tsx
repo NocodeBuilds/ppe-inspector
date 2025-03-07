@@ -5,6 +5,7 @@ import { Profile } from '@/integrations/supabase/client';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthActions } from '@/hooks/useAuthActions';
+import { toast } from '@/hooks/use-toast';
 
 // Define the ExtendedProfile type to match the database structure
 export type ExtendedProfile = {
@@ -49,6 +50,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Combined loading state
   const isLoading = sessionLoading || profileLoading || authActionsLoading;
+  
+  // Log role for debugging
+  useEffect(() => {
+    if (profile && profile.role) {
+      console.log(`User role loaded from profile: ${profile.role}`);
+    }
+  }, [profile]);
+  
+  // Check if profile is missing when user is authenticated
+  useEffect(() => {
+    // Wait for loading to complete
+    if (isLoading) return;
+    
+    // If user is logged in but no profile found
+    if (user && !profile && !sessionLoading && !profileLoading) {
+      console.error("User authenticated but profile not found. This may indicate a database issue.");
+      toast({
+        title: "Profile Error",
+        description: "Your user profile could not be loaded. Please contact support.",
+        variant: "destructive",
+      });
+    }
+  }, [user, profile, isLoading, sessionLoading, profileLoading]);
 
   // Create the combined auth context value
   const value: AuthContextType = {

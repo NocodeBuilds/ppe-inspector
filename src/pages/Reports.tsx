@@ -1,440 +1,277 @@
+
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { PPEItem } from '@/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { FileText, BarChart2, Calendar, Download } from 'lucide-react';
-import { 
-  generatePPEItemReport, 
-  generateInspectionsDateReport, 
-  generateAnalyticsDataReport 
-} from '@/utils/reportGeneratorService';
-import ErrorBoundaryWithFallback from '@/components/ErrorBoundaryWithFallback';
-
-interface SummaryStats {
-  totalPPE: number;
-  totalInspections: number;
-  passRate: number;
-  flaggedItems: number;
-}
-
-interface RecentInspection {
-  id: string;
-  date: string;
-  overall_result: string;
-  ppe_items?: {
-    serial_number: string;
-    type: string;
-  };
-  created_at: string;
-  inspector_id: string;
-  notes: string;
-  ppe_id: string;
-  signature_url: string | null;
-  type: "pre-use" | "monthly" | "quarterly";
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Download, FileText, BarChart3, Calendar } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useRoleAccess } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { generatePPEReport, generateInspectionsReport, generateAnalyticsReport } from '@/utils/reportGeneratorService';
+import { InspectionData } from '@/types';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const ReportsPage = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
-  const [recentInspections, setRecentInspections] = useState<RecentInspection[]>([]);
-  const [summary, setSummary] = useState<SummaryStats>({
-    totalPPE: 0,
-    totalInspections: 0,
-    passRate: 0,
-    flaggedItems: 0
-  });
+  const [activeTab, setActiveTab] = useState('ppe');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [inspectionCount, setInspectionCount] = useState(0);
+  const [ppeCount, setPpeCount] = useState(0);
+  const [flaggedCount, setFlaggedCount] = useState(0);
+  const { isAdmin } = useRoleAccess();
+  const navigate = useNavigate();
+  const { showNotification } = useNotifications();
   
-  const [reportStartDate, setReportStartDate] = useState(() => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - 1);
-    return date.toISOString().split('T')[0];
-  });
-  
-  const [reportEndDate, setReportEndDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
-  });
-  
-  const { toast } = useToast();
-
   useEffect(() => {
-    fetchReportData();
-  }, []);
-
-  const fetchReportData = async () => {
+    if (!isAdmin) {
+      showNotification('Access Restricted', 'error', {
+        description: 'Only administrators can access the reports page',
+      });
+      navigate('/');
+      return;
+    }
+    
+    fetchStatistics();
+  }, [isAdmin, navigate]);
+  
+  const fetchStatistics = async () => {
     try {
-      setIsLoading(true);
-      
-      const { data: ppeData, error: ppeError } = await supabase
-        .from('ppe_items')
-        .select('*')
-        .order('type');
-      
-      if (ppeError) throw ppeError;
-      
-      const mappedItems: PPEItem[] = ppeData.map((item: any) => ({
-        id: item.id,
-        serialNumber: item.serial_number,
-        type: item.type,
-        brand: item.brand,
-        modelNumber: item.model_number,
-        manufacturingDate: item.manufacturing_date,
-        expiryDate: item.expiry_date,
-        status: item.status,
-        imageUrl: item.image_url,
-        nextInspection: item.next_inspection,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-      }));
-      
-      setPpeItems(mappedItems);
-      
-      const { data: inspectionData, error: inspectionError } = await supabase
-        .from('inspections')
-        .select(`
-          *,
-          ppe_items (serial_number, type)
-        `)
-        .order('date', { ascending: false })
-        .limit(10);
-      
-      if (inspectionError) throw inspectionError;
-      
-      setRecentInspections(inspectionData);
-      
-      const totalPPE = ppeData.length;
-      
-      const { count: totalInspections, error: inspCountError } = await supabase
+      // Get inspection count
+      const { count: inspCount, error: inspError } = await supabase
         .from('inspections')
         .select('*', { count: 'exact', head: true });
       
-      if (inspCountError) throw inspCountError;
+      if (inspError) throw inspError;
+      setInspectionCount(inspCount || 0);
       
-      const { count: passedInspections, error: passCountError } = await supabase
-        .from('inspections')
-        .select('*', { count: 'exact', head: true })
-        .eq('overall_result', 'pass');
+      // Get PPE count
+      const { count: ppeCountResult, error: ppeError } = await supabase
+        .from('ppe_items')
+        .select('*', { count: 'exact', head: true });
       
-      if (passCountError) throw passCountError;
+      if (ppeError) throw ppeError;
+      setPpeCount(ppeCountResult || 0);
       
-      const passRate = totalInspections ? Math.round((passedInspections / totalInspections) * 100) : 0;
-      
-      const { count: flaggedItems, error: flaggedCountError } = await supabase
+      // Get flagged count
+      const { count: flaggedCountResult, error: flaggedError } = await supabase
         .from('ppe_items')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'flagged');
       
-      if (flaggedCountError) throw flaggedCountError;
+      if (flaggedError) throw flaggedError;
+      setFlaggedCount(flaggedCountResult || 0);
       
-      setSummary({
-        totalPPE,
-        totalInspections: totalInspections || 0,
-        passRate,
-        flaggedItems: flaggedItems || 0
+    } catch (error) {
+      console.error('Error fetching report statistics:', error);
+      showNotification('Error', 'error', {
+        description: 'Failed to load report statistics',
+      });
+    }
+  };
+
+  const handleGenerateReport = async (type: 'ppe' | 'inspections' | 'analytics') => {
+    try {
+      setIsGenerating(true);
+      
+      if (type === 'ppe') {
+        // Fetch PPE data
+        const { data: ppeData, error: ppeError } = await supabase
+          .from('ppe_items')
+          .select('*');
+        
+        if (ppeError) throw ppeError;
+        
+        // Generate report
+        await generatePPEReport(ppeData);
+        
+      } else if (type === 'inspections') {
+        // Fetch inspection data
+        const { data: inspData, error: inspError } = await supabase
+          .from('inspections')
+          .select(`
+            id, 
+            date, 
+            type,
+            overall_result,
+            ppe_id,
+            inspector_id,
+            profiles:inspector_id (full_name),
+            ppe_items:ppe_id (type, serial_number)
+          `);
+        
+        if (inspError) throw inspError;
+        
+        // Format the data for the report
+        const formattedData = inspData.map((insp: any) => ({
+          id: insp.id,
+          date: insp.date,
+          type: insp.type,
+          inspector_name: insp?.profiles?.full_name || 'Unknown',
+          result: insp.overall_result,
+          ppe_type: insp?.ppe_items?.type || 'Unknown',
+          serial_number: insp?.ppe_items?.serial_number || 'Unknown'
+        })) as InspectionData[];
+        
+        // Generate report
+        await generateInspectionsReport(formattedData);
+        
+      } else if (type === 'analytics') {
+        // Generate analytics report with the counts
+        await generateAnalyticsReport({
+          totalPPE: ppeCount,
+          totalInspections: inspectionCount,
+          flaggedItems: flaggedCount
+        });
+      }
+      
+      showNotification('Success', 'success', {
+        description: 'Report generated and downloaded successfully',
       });
       
     } catch (error) {
-      console.error('Error fetching report data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load report data',
-        variant: 'destructive',
+      console.error('Error generating report:', error);
+      showNotification('Error', 'error', {
+        description: 'Failed to generate report',
       });
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
-  const handleGenerateInventoryReport = async () => {
-    try {
-      if (ppeItems.length === 0) {
-        toast({
-          title: 'Error',
-          description: 'No equipment found to generate report',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      const itemId = ppeItems[0].id;
-      await generatePPEItemReport(itemId);
-      
-      toast({
-        title: 'Report Generated',
-        description: 'Inventory report has been downloaded',
-      });
-    } catch (error) {
-      console.error('Error generating inventory report:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to generate inventory report',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleGenerateInspectionsReport = async () => {
-    try {
-      const startDate = new Date(reportStartDate);
-      const endDate = new Date(reportEndDate);
-      
-      if (startDate > endDate) {
-        toast({
-          title: 'Invalid Date Range',
-          description: 'Start date must be before end date',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      await generateInspectionsDateReport(startDate, endDate);
-      
-      toast({
-        title: 'Report Generated',
-        description: 'Inspections report has been downloaded',
-      });
-    } catch (error) {
-      console.error('Error generating inspections report:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to generate inspections report',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleGenerateAnalyticsReport = async () => {
-    try {
-      await generateAnalyticsDataReport();
-      
-      toast({
-        title: 'Report Generated',
-        description: 'Analytics report has been downloaded',
-      });
-    } catch (error) {
-      console.error('Error generating analytics report:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to generate analytics report',
-        variant: 'destructive',
-      });
-    }
-  };
+  if (!isAdmin) {
+    return null; // Prevent rendering if not admin
+  }
 
   return (
-    <ErrorBoundaryWithFallback>
-      <div className="container mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6">Reports</h1>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Reports</h1>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-3 mb-6">
+          <TabsTrigger value="ppe">PPE Inventory</TabsTrigger>
+          <TabsTrigger value="inspections">Inspections</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
         
-        {isLoading ? (
-          <div className="flex justify-center items-center h-60">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Total PPE Items</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold">{summary.totalPPE}</p>
-                </CardContent>
-              </Card>
+        <TabsContent value="ppe">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <FileText className="mr-2 h-5 w-5" />
+                PPE Inventory Report
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Generate a comprehensive report of all PPE items in the system, including status, expiry dates, and last inspection details.
+              </p>
               
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Total Inspections</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold">{summary.totalInspections}</p>
-                </CardContent>
-              </Card>
+              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-md border mb-4">
+                <div>
+                  <p className="font-medium">Total PPE Items</p>
+                  <p className="text-2xl font-bold">{ppeCount}</p>
+                </div>
+                <Button 
+                  onClick={() => handleGenerateReport('ppe')}
+                  disabled={isGenerating || ppeCount === 0}
+                >
+                  {isGenerating ? 'Generating...' : 'Generate Report'}
+                  <Download className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
               
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Inspection Pass Rate</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold">{summary.passRate}%</p>
-                </CardContent>
-              </Card>
+              {ppeCount === 0 && (
+                <Alert className="mt-4">
+                  <AlertDescription>
+                    No PPE items found in the system. Add PPE items to generate a report.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="inspections">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Calendar className="mr-2 h-5 w-5" />
+                Inspections Report
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Generate a detailed report of all inspections, including dates, inspectors, and results.
+              </p>
               
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Flagged Items</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold">{summary.flaggedItems}</p>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <Tabs defaultValue="inventory">
-              <TabsList className="w-full mb-4">
-                <TabsTrigger value="inventory">Inventory Reports</TabsTrigger>
-                <TabsTrigger value="inspections">Inspection Reports</TabsTrigger>
-                <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              </TabsList>
+              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-md border mb-4">
+                <div>
+                  <p className="font-medium">Total Inspections</p>
+                  <p className="text-2xl font-bold">{inspectionCount}</p>
+                </div>
+                <Button 
+                  onClick={() => handleGenerateReport('inspections')}
+                  disabled={isGenerating || inspectionCount === 0}
+                >
+                  {isGenerating ? 'Generating...' : 'Generate Report'}
+                  <Download className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
               
-              <TabsContent value="inventory">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Equipment Inventory Report</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="mb-4 text-muted-foreground">
-                      Generate a report of all PPE equipment in the system, including their status, expiry dates, and inspection history.
-                    </p>
-                    
-                    <div className="mb-6">
-                      <h3 className="text-sm font-medium mb-2">Equipment by Type</h3>
-                      <div className="space-y-2">
-                        {Array.from(new Set(ppeItems.map(item => item.type))).map(type => {
-                          const count = ppeItems.filter(item => item.type === type).length;
-                          return (
-                            <div key={type} className="flex justify-between items-center">
-                              <span>{type}</span>
-                              <span className="font-medium">{count}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    
-                    <Button className="w-full" onClick={handleGenerateInventoryReport}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Generate Inventory Report
-                    </Button>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+              {inspectionCount === 0 && (
+                <Alert className="mt-4">
+                  <AlertDescription>
+                    No inspections found in the system. Complete inspections to generate a report.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="analytics">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <BarChart3 className="mr-2 h-5 w-5" />
+                Analytics Report
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Generate a summary report with key statistics and analytics data.
+              </p>
               
-              <TabsContent value="inspections">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Inspection Reports</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="mb-4 text-muted-foreground">
-                      Generate reports for inspections conducted during a specific date range.
-                    </p>
-                    
-                    <div className="space-y-4 mb-6">
-                      <div>
-                        <label htmlFor="startDate" className="block text-sm font-medium mb-1">
-                          Start Date
-                        </label>
-                        <Input
-                          id="startDate"
-                          type="date"
-                          value={reportStartDate}
-                          onChange={(e) => setReportStartDate(e.target.value)}
-                        />
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="endDate" className="block text-sm font-medium mb-1">
-                          End Date
-                        </label>
-                        <Input
-                          id="endDate"
-                          type="date"
-                          value={reportEndDate}
-                          onChange={(e) => setReportEndDate(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    
-                    <Button className="w-full" onClick={handleGenerateInspectionsReport}>
-                      <Calendar className="mr-2 h-4 w-4" />
-                      Generate Inspection Report
-                    </Button>
-                    
-                    <div className="mt-6">
-                      <h3 className="text-sm font-medium mb-2">Recent Inspections</h3>
-                      <div className="space-y-2">
-                        {recentInspections.length > 0 ? (
-                          recentInspections.map((inspection) => (
-                            <div key={inspection.id} className="flex justify-between items-center text-sm border-b pb-2">
-                              <div>
-                                <span className="font-medium">{inspection.ppe_items?.type}</span>
-                                <span className="text-muted-foreground ml-2">
-                                  {inspection.ppe_items?.serial_number}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className={inspection.overall_result === 'pass' ? "text-green-500" : "text-destructive"}>
-                                  {inspection.overall_result.toUpperCase()}
-                                </span>
-                                <span className="text-muted-foreground">
-                                  {new Date(inspection.date).toLocaleDateString()}
-                                </span>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-muted-foreground text-sm">No recent inspections found.</p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="p-4 bg-muted/30 rounded-md border text-center">
+                  <p className="font-medium text-muted-foreground">Total PPE Items</p>
+                  <p className="text-2xl font-bold">{ppeCount}</p>
+                </div>
+                <div className="p-4 bg-muted/30 rounded-md border text-center">
+                  <p className="font-medium text-muted-foreground">Total Inspections</p>
+                  <p className="text-2xl font-bold">{inspectionCount}</p>
+                </div>
+                <div className="p-4 bg-muted/30 rounded-md border text-center">
+                  <p className="font-medium text-muted-foreground">Flagged Items</p>
+                  <p className="text-2xl font-bold text-destructive">{flaggedCount}</p>
+                </div>
+              </div>
               
-              <TabsContent value="analytics">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Analytics Report</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="mb-4 text-muted-foreground">
-                      Generate a comprehensive analytics report showing trends, statistics, and insights about your PPE inventory and inspections.
-                    </p>
-                    
-                    <div className="mb-6 space-y-4">
-                      <div>
-                        <h3 className="text-sm font-medium mb-2">Inspection Pass Rate</h3>
-                        <div className="w-full bg-muted rounded-full h-2.5">
-                          <div 
-                            className="bg-primary h-2.5 rounded-full" 
-                            style={{ width: `${summary.passRate}%` }}
-                          ></div>
-                        </div>
-                        <p className="text-right text-sm text-muted-foreground mt-1">
-                          {summary.passRate}%
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-sm font-medium mb-2">Flagged Items Rate</h3>
-                        <div className="w-full bg-muted rounded-full h-2.5">
-                          <div 
-                            className="bg-destructive h-2.5 rounded-full" 
-                            style={{ width: `${summary.totalPPE ? (summary.flaggedItems / summary.totalPPE) * 100 : 0}%` }}
-                          ></div>
-                        </div>
-                        <p className="text-right text-sm text-muted-foreground mt-1">
-                          {summary.totalPPE ? Math.round((summary.flaggedItems / summary.totalPPE) * 100) : 0}%
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <Button className="w-full" onClick={handleGenerateAnalyticsReport}>
-                      <BarChart2 className="mr-2 h-4 w-4" />
-                      Generate Analytics Report
-                    </Button>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </>
-        )}
-      </div>
-    </ErrorBoundaryWithFallback>
+              <div className="flex justify-center">
+                <Button 
+                  onClick={() => handleGenerateReport('analytics')}
+                  disabled={isGenerating}
+                  className="px-8"
+                >
+                  {isGenerating ? 'Generating...' : 'Generate Analytics Report'}
+                  <Download className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 

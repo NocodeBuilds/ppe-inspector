@@ -8,12 +8,13 @@ import { useEffect, useState, lazy, Suspense } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeToggler";
 import { setupPWAMetaTags, registerServiceWorker } from "./utils/pwaUtils";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundaryWithFallback from "./components/ErrorBoundaryWithFallback";
+import RoleProtectedRoute from "./components/auth/RoleProtectedRoute";
 
-// Lazy loading with better naming for code splitting chunks
-const MainLayout = lazy(() => import(/* webpackChunkName: "main-layout" */ "./components/layout/MainLayout"));
+// Pages with no lazy loading to prevent flashing
+import MainLayout from "./components/layout/MainLayout";
 
-// Lazy load pages with chunk naming for better debugging
+// Lazy load pages with better chunk naming and error handling
 const Home = lazy(() => import(/* webpackChunkName: "home-page" */ "./pages/Home"));
 const ExpiringPPE = lazy(() => import(/* webpackChunkName: "expiring-ppe-page" */ "./pages/ExpiringPPE"));
 const UpcomingInspections = lazy(() => import(/* webpackChunkName: "upcoming-inspections-page" */ "./pages/UpcomingInspections"));
@@ -83,7 +84,7 @@ const App = () => {
   }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundaryWithFallback>
       <BrowserRouter>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
@@ -111,10 +112,19 @@ const App = () => {
                       <Route path="inspect/new" element={<ManualInspection />} />
                       <Route path="inspect/:ppeId" element={<InspectionForm />} />
                       <Route path="inspection/:id" element={<InspectionDetails />} />
-                      <Route path="reports" element={<ReportsPage />} />
+                      
+                      {/* Admin-only routes */}
+                      <Route path="reports" element={
+                        <ErrorBoundaryWithFallback>
+                          <RoleProtectedRoute requiredRole="admin" fallbackPath="access-denied">
+                            <ReportsPage />
+                          </RoleProtectedRoute>
+                        </ErrorBoundaryWithFallback>
+                      } />
+                      
+                      {/* Allow all other paths - let layout handle unauthorized access */}
+                      <Route path="*" element={<NotFound />} />
                     </Route>
-                    
-                    <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
               </AuthProvider>
@@ -122,7 +132,7 @@ const App = () => {
           </ThemeProvider>
         </QueryClientProvider>
       </BrowserRouter>
-    </ErrorBoundary>
+    </ErrorBoundaryWithFallback>
   );
 };
 

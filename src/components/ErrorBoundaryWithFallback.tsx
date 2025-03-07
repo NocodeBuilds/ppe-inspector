@@ -1,8 +1,9 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, RefreshCw, Home } from 'lucide-react';
+import { AlertCircle, RefreshCw, Home, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 interface Props {
   children: ReactNode;
@@ -55,7 +56,15 @@ class ErrorBoundaryWithFallback extends Component<Props, State> {
       // Check for module loading errors
       const isModuleLoadingError = 
         this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
-        this.state.error?.message?.includes('Importing a module script failed');
+        this.state.error?.message?.includes('Importing a module script failed') ||
+        this.state.error?.message?.includes('ChunkLoadError') ||
+        this.state.error?.message?.includes('Loading chunk') ||
+        (this.state.errorInfo?.componentStack || '').includes('lazy');
+      
+      // Check for null/undefined props errors
+      const isNullPropsError =
+        this.state.error?.message?.includes('Cannot read properties of null') ||
+        this.state.error?.message?.includes('Cannot read properties of undefined');
       
       // Custom fallback UI
       if (this.props.fallback) {
@@ -71,8 +80,21 @@ class ErrorBoundaryWithFallback extends Component<Props, State> {
           <p className="text-muted-foreground mb-4 max-w-md">
             {isModuleLoadingError 
               ? "There was a problem loading this page. This could be due to a network issue or an application error."
-              : this.state.error?.message || 'An unexpected error occurred'}
+              : isNullPropsError
+                ? "The application tried to access a property of an object that doesn't exist. This is likely due to data not being loaded yet."
+                : this.state.error?.message || 'An unexpected error occurred'}
           </p>
+          
+          {isModuleLoadingError && (
+            <Alert variant="warning" className="mb-4 max-w-md text-left">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Network Issue Detected</AlertTitle>
+              <AlertDescription>
+                The application failed to load required components. This may be due to a poor network connection or a browser caching issue.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <div className="flex gap-2">
             {showResetButton && (
               <Button onClick={this.handleReset} variant="outline" className="flex items-center">

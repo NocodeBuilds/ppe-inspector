@@ -1,14 +1,14 @@
 
 import { Plus, Shield, Calendar, AlertTriangle, Download, FileText } from 'lucide-react';
-import DashboardCard from '@/components/dashboard/DashboardCard';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import CardOverlay from '@/components/ui/card-overlay';
 import AddPPEForm from '@/components/forms/AddPPEForm';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, useRoleAccess } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import EnhancedCard from '@/components/ui/enhanced-card';
 
 const Home = () => {
   const [showAddPPE, setShowAddPPE] = useState(false);
@@ -20,6 +20,7 @@ const Home = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const { profile } = useAuth();
+  const { isAdmin, isInspector } = useRoleAccess();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -103,8 +104,13 @@ const Home = () => {
       
       {profile && (
         <div className="mb-6 fade-in">
-          <p className="text-center text-muted-foreground">
+          <p className="text-center">
             Welcome back, <span className="font-semibold">{profile.full_name || 'User'}</span>
+            {profile.role && (
+              <span className="ml-2 text-sm px-2 py-1 bg-primary/10 text-primary rounded-full">
+                {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
+              </span>
+            )}
           </p>
         </div>
       )}
@@ -115,61 +121,75 @@ const Home = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4">
-          <DashboardCard
-            to="/equipment"
-            title="Add PPE"
-            description="Add new equipment"
-            icon={<Plus size={28} className="text-primary-foreground" />}
-            iconBgColor="bg-success"
-            className="slide-up"
-            onClick={() => setShowAddPPE(true)}
-          />
+          {(isAdmin || isInspector) && (
+            <EnhancedCard
+              title="Add PPE"
+              description="Add new equipment"
+              icon={<Plus size={28} className="text-primary-foreground" />}
+              iconBgColor="bg-success"
+              iconBorderColor="border-success/20"
+              cardBorderColor="border-success/30"
+              className="slide-up"
+              onClick={() => setShowAddPPE(true)}
+            />
+          )}
           
-          <DashboardCard
+          <EnhancedCard
             to="/equipment"
             title="Start Inspection"
             description="Begin inspection"
             icon={<Shield size={28} className="text-primary-foreground" />}
-            iconBgColor="bg-info"
+            iconBgColor="bg-blue-500"
+            iconBorderColor="border-blue-300"
+            cardBorderColor="border-blue-200 dark:border-blue-900"
             className="slide-up"
-            onClick={() => navigate('/equipment')}
           />
           
-          <DashboardCard
+          <EnhancedCard
             to="/upcoming"
             title="Upcoming Inspections"
             description={`${stats.upcomingInspections} inspection${stats.upcomingInspections !== 1 ? 's' : ''} due`}
             icon={<Calendar size={28} className="text-primary-foreground" />}
-            iconBgColor="bg-warning"
+            iconBgColor="bg-amber-500"
+            iconBorderColor="border-amber-300"
+            cardBorderColor="border-amber-200 dark:border-amber-900"
             className="slide-up"
           />
           
-          <DashboardCard
+          <EnhancedCard
             to="/expiring"
             title="Expiring PPE"
             description={`${stats.expiringPPE} item${stats.expiringPPE !== 1 ? 's' : ''} expiring soon`}
             icon={<AlertTriangle size={28} className="text-primary-foreground" />}
-            iconBgColor="bg-destructive"
+            iconBgColor="bg-red-500"
+            iconBorderColor="border-red-300"
+            cardBorderColor="border-red-200 dark:border-red-900"
             className="slide-up"
           />
           
-          <DashboardCard
+          <EnhancedCard
             to="/flagged"
             title="Flagged Issues"
             description={`${stats.flaggedPPE} item${stats.flaggedPPE !== 1 ? 's' : ''} need action`}
             icon={<AlertTriangle size={28} className="text-primary-foreground" />}
-            iconBgColor="bg-destructive"
+            iconBgColor="bg-orange-500"
+            iconBorderColor="border-orange-300"
+            cardBorderColor="border-orange-200 dark:border-orange-900"
             className="slide-up col-span-1"
           />
           
-          <DashboardCard
-            to="/reports"
-            title="Reports"
-            description="View & download"
-            icon={<FileText size={28} className="text-primary-foreground" />}
-            iconBgColor="bg-accent"
-            className="slide-up col-span-1"
-          />
+          {isAdmin && (
+            <EnhancedCard
+              to="/reports"
+              title="Reports"
+              description="View & download"
+              icon={<FileText size={28} className="text-primary-foreground" />}
+              iconBgColor="bg-purple-500"
+              iconBorderColor="border-purple-300"
+              cardBorderColor="border-purple-200 dark:border-purple-900"
+              className="slide-up col-span-1"
+            />
+          )}
         </div>
       )}
 
