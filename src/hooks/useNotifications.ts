@@ -44,11 +44,14 @@ export const useNotifications = () => {
     // Mark as shown
     shownNotifications.add(key);
     
+    // Map notification types to toast variants
+    const variant = type === 'error' || type === 'warning' ? 'destructive' : 'default';
+    
     // Use UI toast for more complex notifications
     toast({
       title,
       description,
-      variant: type === 'success' ? 'default' : type,
+      variant,
       duration,
     });
     
