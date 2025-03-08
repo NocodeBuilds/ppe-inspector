@@ -38,6 +38,7 @@ export const hasRole = (requiredRole: 'admin' | 'user', userRole?: string | null
 
 /**
  * Utility component to protect routes based on user roles
+ * Returns an object with isAdmin and isUser flags
  */
 export const useRoleAccess = () => {
   const { profile } = useAuth();

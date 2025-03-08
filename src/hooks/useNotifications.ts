@@ -1,5 +1,6 @@
 
 import { toast } from '@/hooks/use-toast';
+import { ToastActionElement } from '@/components/ui/toast';
 
 type NotificationVariant = 'default' | 'error' | 'warning' | 'info' | 'success';
 
@@ -7,7 +8,7 @@ interface NotificationOptions {
   title?: string;
   description?: string;
   duration?: number;
-  action?: React.ReactNode;
+  action?: ToastActionElement; // This needs to be of type ToastActionElement
 }
 
 const mapVariantToToastVariant = (variant: NotificationVariant): 'default' | 'destructive' => {

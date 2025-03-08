@@ -20,7 +20,7 @@ const Home = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const { profile } = useAuth();
-  const { isAdmin, isInspector } = useRoleAccess();
+  const { isAdmin, isUser } = useRoleAccess();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -121,7 +121,7 @@ const Home = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4">
-          {(isAdmin || isInspector) && (
+          {(isAdmin || isUser) && (
             <EnhancedCard
               title="Add PPE"
               description="Add new equipment"
@@ -178,7 +178,7 @@ const Home = () => {
             className="slide-up col-span-1"
           />
           
-          {isAdmin && (
+          {(isAdmin || isUser) && (
             <EnhancedCard
               to="/reports"
               title="Reports"
