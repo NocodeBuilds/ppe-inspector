@@ -1,4 +1,3 @@
-
 import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import { ThemeToggler } from '@/components/ThemeToggler';
