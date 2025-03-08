@@ -66,6 +66,11 @@ class ErrorBoundaryWithFallback extends Component<Props, State> {
         this.state.error?.message?.includes('Cannot read properties of null') ||
         this.state.error?.message?.includes('Cannot read properties of undefined');
       
+      // Check for React missing error
+      const isReactMissingError = 
+        this.state.error?.message?.includes('React') ||
+        this.state.error?.message?.includes('useState');
+      
       // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;
@@ -75,14 +80,18 @@ class ErrorBoundaryWithFallback extends Component<Props, State> {
         <div className="flex flex-col items-center justify-center p-6 text-center h-full min-h-[200px] bg-muted/20 rounded-lg border border-muted">
           <AlertCircle className="h-10 w-10 text-destructive mb-2" />
           <h2 className="text-xl font-bold mb-2">
-            {isModuleLoadingError ? "Failed to load page" : "Something went wrong"}
+            {isModuleLoadingError ? "Failed to load page" : 
+             isReactMissingError ? "React component error" :
+             "Something went wrong"}
           </h2>
           <p className="text-muted-foreground mb-4 max-w-md">
             {isModuleLoadingError 
               ? "There was a problem loading this page. This could be due to a network issue or an application error."
               : isNullPropsError
                 ? "The application tried to access a property of an object that doesn't exist. This is likely due to data not being loaded yet."
-                : this.state.error?.message || 'An unexpected error occurred'}
+                : isReactMissingError
+                  ? "There was an error with React hooks or components. Please check the import statements."
+                  : this.state.error?.message || 'An unexpected error occurred'}
           </p>
           
           {isModuleLoadingError && (

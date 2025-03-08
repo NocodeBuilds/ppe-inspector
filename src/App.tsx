@@ -113,13 +113,14 @@ const App = () => {
                       <Route path="inspect/:ppeId" element={<InspectionForm />} />
                       <Route path="inspection/:id" element={<InspectionDetails />} />
                       
-                      {/* Admin-only routes */}
-                      <Route path="reports" element={
-                        <ErrorBoundaryWithFallback>
-                          <RoleProtectedRoute requiredRole="admin" fallbackPath="access-denied">
-                            <ReportsPage />
-                          </RoleProtectedRoute>
-                        </ErrorBoundaryWithFallback>
+                      {/* All users can see reports now */}
+                      <Route path="reports" element={<ReportsPage />} />
+                      
+                      {/* Admin-only deletion routes */}
+                      <Route path="admin/delete/:type/:id" element={
+                        <RoleProtectedRoute requiredRole="admin" fallbackPath="access-denied">
+                          <ReportsPage />
+                        </RoleProtectedRoute>
                       } />
                       
                       {/* Allow all other paths - let layout handle unauthorized access */}

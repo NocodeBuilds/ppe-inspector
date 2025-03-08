@@ -1,132 +1,87 @@
 
-import { useToast } from '@/hooks/use-toast';
-import { toast as sonnerToast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
-type NotificationType = 'success' | 'error' | 'warning' | 'info';
-type ToastPosition = 'top-right' | 'top-center' | 'top-left' | 'bottom-right' | 'bottom-center' | 'bottom-left';
+type NotificationVariant = 'default' | 'error' | 'warning' | 'info' | 'success';
 
 interface NotificationOptions {
+  title?: string;
   description?: string;
   duration?: number;
-  position?: ToastPosition;
   action?: React.ReactNode;
-  // Track which notifications have been shown to prevent duplicates
-  dedupeKey?: string;
 }
 
+const mapVariantToToastVariant = (variant: NotificationVariant): 'default' | 'destructive' => {
+  switch (variant) {
+    case 'error':
+    case 'warning':
+      return 'destructive';
+    case 'success':
+    case 'info':
+    case 'default':
+    default:
+      return 'default';
+  }
+};
+
 /**
- * Custom hook for managing notifications with deduplication
+ * Custom hook for consistent toast notifications across the application
  */
 export const useNotifications = () => {
-  const { toast } = useToast();
-  
-  // Use a Set to track shown notifications
-  const shownNotifications = new Set<string>();
-  
   /**
-   * Convert notification type to toast variant
-   */
-  const getToastVariant = (type: NotificationType): 'default' | 'destructive' => {
-    switch (type) {
-      case 'error':
-      case 'warning':
-        return 'destructive';
-      case 'success':
-      case 'info':
-      default:
-        return 'default';
-    }
-  };
-  
-  /**
-   * Show a notification with deduplication
+   * Show a notification toast
+   * @param message - The message to display (or title if description is provided)
+   * @param variant - The variant/severity of the notification
+   * @param options - Additional options for the toast
    */
   const showNotification = (
-    title: string,
-    type: NotificationType = 'info',
-    options: NotificationOptions = {}
-  ) => {
-    const { description, duration = 5000, dedupeKey } = options;
-    
-    // Create a dedupe key from title + description if not provided
-    const key = dedupeKey || `${title}:${description || ''}`;
-    
-    // Skip if this notification was recently shown
-    if (shownNotifications.has(key)) {
-      return;
-    }
-    
-    // Mark as shown
-    shownNotifications.add(key);
-    
-    // Use UI toast for more complex notifications
-    toast({
-      title,
-      description,
-      variant: getToastVariant(type),
-      duration,
-    });
-    
-    // Clear from tracking after duration
-    setTimeout(() => {
-      shownNotifications.delete(key);
-    }, duration);
-  };
-  
-  /**
-   * Show a simpler toast notification through Sonner
-   */
-  const showToast = (
     message: string,
-    type: NotificationType = 'info',
-    options: NotificationOptions = {}
+    variant: NotificationVariant = 'default',
+    options?: NotificationOptions
   ) => {
-    const { duration = 5000, dedupeKey } = options;
+    const toastVariant = mapVariantToToastVariant(variant);
     
-    // Create a dedupe key from message
-    const key = dedupeKey || message;
-    
-    // Skip if this notification was recently shown
-    if (shownNotifications.has(key)) {
-      return;
-    }
-    
-    // Mark as shown
-    shownNotifications.add(key);
-    
-    // Show through Sonner
-    switch (type) {
-      case 'success':
-        sonnerToast.success(message, { duration });
-        break;
-      case 'error':
-        sonnerToast.error(message, { duration });
-        break;
-      case 'warning':
-        sonnerToast.warning(message, { duration });
-        break;
-      case 'info':
-      default:
-        sonnerToast.info(message, { duration });
-        break;
-    }
-    
-    // Clear from tracking after duration
-    setTimeout(() => {
-      shownNotifications.delete(key);
-    }, duration);
+    toast({
+      title: options?.title || message,
+      description: options?.description,
+      variant: toastVariant,
+      duration: options?.duration || 5000,
+      action: options?.action,
+    });
   };
-  
+
+  /**
+   * Show a success notification
+   */
+  const showSuccess = (message: string, options?: NotificationOptions) => {
+    showNotification(message, 'success', options);
+  };
+
+  /**
+   * Show an error notification
+   */
+  const showError = (message: string, options?: NotificationOptions) => {
+    showNotification(message, 'error', options);
+  };
+
+  /**
+   * Show a warning notification
+   */
+  const showWarning = (message: string, options?: NotificationOptions) => {
+    showNotification(message, 'warning', options);
+  };
+
+  /**
+   * Show an info notification
+   */
+  const showInfo = (message: string, options?: NotificationOptions) => {
+    showNotification(message, 'info', options);
+  };
+
   return {
     showNotification,
-    showToast,
-    success: (title: string, options?: NotificationOptions) => 
-      showNotification(title, 'success', options),
-    error: (title: string, options?: NotificationOptions) => 
-      showNotification(title, 'error', options),
-    warning: (title: string, options?: NotificationOptions) => 
-      showNotification(title, 'warning', options),
-    info: (title: string, options?: NotificationOptions) => 
-      showNotification(title, 'info', options),
+    showSuccess,
+    showError,
+    showWarning,
+    showInfo,
   };
 };

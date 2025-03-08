@@ -38,7 +38,7 @@ const EnhancedCard = ({
           iconBgColor,
           "border-2",
           iconBorderColor,
-          "shadow-lg"
+          "shadow-md"
         )}>
           {icon}
         </div>
