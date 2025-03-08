@@ -24,6 +24,21 @@ export const useNotifications = () => {
   const shownNotifications = new Set<string>();
   
   /**
+   * Convert notification type to toast variant
+   */
+  const getToastVariant = (type: NotificationType): 'default' | 'destructive' => {
+    switch (type) {
+      case 'error':
+      case 'warning':
+        return 'destructive';
+      case 'success':
+      case 'info':
+      default:
+        return 'default';
+    }
+  };
+  
+  /**
    * Show a notification with deduplication
    */
   const showNotification = (
@@ -48,7 +63,7 @@ export const useNotifications = () => {
     toast({
       title,
       description,
-      variant: type === 'success' ? 'default' : type,
+      variant: getToastVariant(type),
       duration,
     });
     

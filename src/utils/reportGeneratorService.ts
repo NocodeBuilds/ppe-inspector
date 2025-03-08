@@ -6,37 +6,51 @@ import { generateAnalyticsReport } from './reportGenerator/analyticsPDFReport';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Generate a PDF report for a specific PPE item
- * @param ppeId The ID of the PPE item
+ * Generate a PDF report for a specific PPE item or all PPE items
+ * @param ppeId The ID of the PPE item or 'all' to generate report for all PPE items
  */
 export const generatePPEItemReport = async (ppeId: string): Promise<void> => {
   try {
-    const { data: ppeData, error: ppeError } = await supabase
-      .from('ppe_items')
-      .select('*')
-      .eq('id', ppeId)
-      .single();
+    let ppeData;
     
-    if (ppeError) throw ppeError;
+    if (ppeId === 'all') {
+      // Get all PPE items
+      const { data, error } = await supabase
+        .from('ppe_items')
+        .select('*');
+      
+      if (error) throw error;
+      ppeData = data;
+    } else {
+      // Get a specific PPE item
+      const { data, error } = await supabase
+        .from('ppe_items')
+        .select('*')
+        .eq('id', ppeId)
+        .single();
+      
+      if (error) throw error;
+      ppeData = [data];
+    }
     
-    // Map database item to PPEItem type from Supabase schema to our app schema
-    const ppeItem: PPEItem = {
-      id: ppeData.id,
-      serialNumber: ppeData.serial_number,
-      type: ppeData.type,
-      brand: ppeData.brand,
-      modelNumber: ppeData.model_number,
-      manufacturingDate: ppeData.manufacturing_date,
-      expiryDate: ppeData.expiry_date,
-      status: ppeData.status,
-      imageUrl: ppeData.image_url,
-      nextInspection: ppeData.next_inspection,
-      createdAt: ppeData.created_at,
-      updatedAt: ppeData.updated_at
-    };
+    // Map database items to PPEItem type from Supabase schema to our app schema
+    const ppeItems: PPEItem[] = ppeData.map((item: any) => ({
+      id: item.id,
+      serialNumber: item.serial_number,
+      type: item.type,
+      brand: item.brand,
+      modelNumber: item.model_number,
+      manufacturingDate: item.manufacturing_date,
+      expiryDate: item.expiry_date,
+      status: item.status,
+      imageUrl: item.image_url,
+      nextInspection: item.next_inspection,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at
+    }));
     
     // Generate the PDF report using the PPE item data
-    await generatePPEReport([ppeItem]);
+    await generatePPEReport(ppeItems);
     
   } catch (error) {
     console.error('Error generating PPE report:', error);

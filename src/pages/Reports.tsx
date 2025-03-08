@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRoleAccess } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { generatePPEReport, generateInspectionsReport, generateAnalyticsReport } from '@/utils/reportGeneratorService';
+import { 
+  generatePPEItemReport, 
+  generateInspectionsDateReport, 
+  generateAnalyticsDataReport 
+} from '@/utils/reportGeneratorService';
 import { InspectionData } from '@/types';
 import { useNotifications } from '@/hooks/useNotifications';
 
@@ -81,8 +84,8 @@ const ReportsPage = () => {
         
         if (ppeError) throw ppeError;
         
-        // Generate report
-        await generatePPEReport(ppeData);
+        // Generate report - use proper function name
+        await generatePPEItemReport('all'); // We'll implement 'all' option in the function
         
       } else if (type === 'inspections') {
         // Fetch inspection data
@@ -101,27 +104,17 @@ const ReportsPage = () => {
         
         if (inspError) throw inspError;
         
-        // Format the data for the report
-        const formattedData = inspData.map((insp: any) => ({
-          id: insp.id,
-          date: insp.date,
-          type: insp.type,
-          inspector_name: insp?.profiles?.full_name || 'Unknown',
-          result: insp.overall_result,
-          ppe_type: insp?.ppe_items?.type || 'Unknown',
-          serial_number: insp?.ppe_items?.serial_number || 'Unknown'
-        })) as InspectionData[];
+        // Calculate date range for all inspections (last 30 days)
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
         
-        // Generate report
-        await generateInspectionsReport(formattedData);
+        // Generate report - use proper function name
+        await generateInspectionsDateReport(startDate, endDate);
         
       } else if (type === 'analytics') {
-        // Generate analytics report with the counts
-        await generateAnalyticsReport({
-          totalPPE: ppeCount,
-          totalInspections: inspectionCount,
-          flaggedItems: flaggedCount
-        });
+        // Generate analytics report with the counts - use proper function name
+        await generateAnalyticsDataReport();
       }
       
       showNotification('Success', 'success', {

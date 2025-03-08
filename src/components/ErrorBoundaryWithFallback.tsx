@@ -86,7 +86,7 @@ class ErrorBoundaryWithFallback extends Component<Props, State> {
           </p>
           
           {isModuleLoadingError && (
-            <Alert variant="warning" className="mb-4 max-w-md text-left">
+            <Alert variant="default" className="mb-4 max-w-md text-left">
               <Info className="h-4 w-4" />
               <AlertTitle>Network Issue Detected</AlertTitle>
               <AlertDescription>
