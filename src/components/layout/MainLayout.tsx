@@ -1,3 +1,4 @@
+
 import React, { memo, Suspense, useEffect, useState } from 'react';
 import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
@@ -16,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { useNotifications } from '@/hooks/useNotifications';
+import { toast } from '@/hooks/use-toast';
 
 // Memoized header component to prevent unnecessary re-renders
 const Header = memo(({ 
@@ -23,22 +25,22 @@ const Header = memo(({
   navigate, 
   profile, 
   signOut,
-  isAdmin
+  isAdmin,
+  notifications,
+  unreadCount,
+  markAsRead,
+  markAllAsRead
 }: { 
   canGoBack: boolean, 
   navigate: (to: number | string) => void,
   profile: any,
   signOut: () => Promise<void>,
-  isAdmin: boolean
+  isAdmin: boolean,
+  notifications: any[],
+  unreadCount: number,
+  markAsRead: (id: string) => void,
+  markAllAsRead: () => void
 }) => {
-  const [notificationCount, setNotificationCount] = useState(0);
-  
-  // Simulate notifications - in a real app, you would fetch these from your backend
-  useEffect(() => {
-    // Demo notifications count - would come from API in real implementation
-    setNotificationCount(2);
-  }, []);
-  
   return (
     <header className="sticky top-0 z-50 flex justify-between items-center px-4 py-2 border-b bg-background/80 backdrop-blur-sm">
       <div className="flex items-center">
@@ -67,11 +69,11 @@ const Header = memo(({
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell size={20} />
-              {notificationCount > 0 && (
+              {unreadCount > 0 && (
                 <Badge 
                   className="absolute -top-1 -right-1 px-1.5 py-0.5 min-w-[1.2rem] h-[1.2rem] flex items-center justify-center bg-destructive text-[10px]"
                 >
-                  {notificationCount}
+                  {unreadCount}
                 </Badge>
               )}
             </Button>
@@ -79,22 +81,31 @@ const Header = memo(({
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Notifications</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer">
-              <div className="flex flex-col">
-                <span className="font-medium text-sm">PPE Expiring Soon</span>
-                <span className="text-xs text-muted-foreground">Full Body Harness will expire in 7 days</span>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">
-              <div className="flex flex-col">
-                <span className="font-medium text-sm">Inspection Due</span>
-                <span className="text-xs text-muted-foreground">Safety Helmet #123 needs inspection</span>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-center text-primary cursor-pointer">
-              View All
-            </DropdownMenuItem>
+            {notifications.length > 0 ? (
+              <>
+                {notifications.map((notification) => (
+                  <DropdownMenuItem 
+                    key={notification.id}
+                    className="cursor-pointer"
+                    onClick={() => markAsRead(notification.id)}
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium text-sm">{notification.title}</span>
+                      <span className="text-xs text-muted-foreground">{notification.message}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  className="text-center text-primary cursor-pointer"
+                  onClick={markAllAsRead}
+                >
+                  Mark All as Read
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem disabled>No notifications</DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -129,6 +140,7 @@ const MainLayout = () => {
   const navigate = useNavigate();
   const { user, profile, isLoading, signOut } = useAuth();
   const { isAdmin } = useRoleAccess();
+  const { notifications, unreadCount, showNotification, markAsRead, markAllAsRead } = useNotifications();
   
   const hideNavPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
   const shouldShowNav = !hideNavPaths.includes(location.pathname);
@@ -151,8 +163,10 @@ const MainLayout = () => {
     sessionStorage.setItem('redirectPath', location.pathname);
     
     // Show notification
-    showNotification('Authentication Required', 'warning', {
+    toast({
+      title: 'Authentication Required',
       description: 'Please sign in to access this page',
+      variant: 'destructive',
     });
     
     return <Navigate to="/login" />;
@@ -168,6 +182,10 @@ const MainLayout = () => {
             profile={profile} 
             signOut={signOut}
             isAdmin={isAdmin}
+            notifications={notifications}
+            unreadCount={unreadCount}
+            markAsRead={markAsRead}
+            markAllAsRead={markAllAsRead}
           />
         )}
         

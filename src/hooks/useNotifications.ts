@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { ToastActionElement } from '@/components/ui/toast';
 
 type NotificationType = 'warning' | 'info' | 'success' | 'error';
 
@@ -17,7 +18,7 @@ interface Notification {
 interface NotificationOptions {
   description?: string;
   duration?: number;
-  action?: React.ReactNode;
+  action?: ToastActionElement;
 }
 
 /**
