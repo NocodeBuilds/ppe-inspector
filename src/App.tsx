@@ -1,10 +1,10 @@
 
+import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState, lazy, Suspense } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeToggler";
 import { setupPWAMetaTags, registerServiceWorker } from "./utils/pwaUtils";
@@ -58,6 +58,13 @@ const queryClient = new QueryClient({
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [reactReady, setReactReady] = useState(false);
+
+  // Ensure React is fully loaded before rendering components
+  useEffect(() => {
+    // This ensures React is fully loaded
+    setReactReady(true);
+  }, []);
 
   // Set up PWA features
   useEffect(() => {
@@ -76,10 +83,12 @@ const App = () => {
       }
     };
     
-    setupPWA();
-  }, []);
+    if (reactReady) {
+      setupPWA();
+    }
+  }, [reactReady]);
 
-  if (isLoading) {
+  if (isLoading || !reactReady) {
     return <PageLoader />;
   }
 

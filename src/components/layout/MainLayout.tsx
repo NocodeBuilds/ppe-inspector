@@ -1,11 +1,11 @@
 
+import React, { memo, Suspense, useEffect } from 'react';
 import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import { ThemeToggler } from '@/components/ThemeToggler';
 import { useAuth, useRoleAccess } from '@/hooks/useAuth';
 import { ArrowLeft, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { memo, Suspense, useEffect } from 'react';
 import ErrorBoundaryWithFallback from '@/components/ErrorBoundaryWithFallback';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 

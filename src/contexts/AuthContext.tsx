@@ -1,5 +1,5 @@
 
-import React, { createContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useEffect, ReactNode, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { Profile } from '@/integrations/supabase/client';
 import { useAuthSession } from '@/hooks/useAuthSession';
@@ -36,6 +36,9 @@ type AuthContextType = {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Use React.useState to ensure React is available
+  const [initialized, setInitialized] = React.useState(false);
+  
   // Use our custom hooks to separate concerns
   const { session, user, isLoading: sessionLoading } = useAuthSession();
   const { profile, extendedProfile, refreshProfile, isLoading: profileLoading } = useProfile(user?.id);
@@ -50,6 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Combined loading state
   const isLoading = sessionLoading || profileLoading || authActionsLoading;
+  
+  // Set initialized after first render
+  useEffect(() => {
+    setInitialized(true);
+  }, []);
   
   // Log role for debugging
   useEffect(() => {
