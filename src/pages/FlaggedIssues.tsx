@@ -5,21 +5,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { PPEItem } from '@/types';
 import EquipmentCard from '@/components/equipment/EquipmentCard';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const FlaggedIssues = () => {
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<PPEItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
-    fetchFlaggedItems();
-  }, []);
+    if (user) {
+      fetchFlaggedItems();
+    }
+  }, [user]);
 
   useEffect(() => {
     filterItems();
@@ -29,22 +32,35 @@ const FlaggedIssues = () => {
     try {
       setIsLoading(true);
       
-      // Fetch flagged PPE items
+      // Fetch flagged PPE items with a more robust query
       const { data, error } = await supabase
         .from('ppe_items')
         .select(`
-          *,
+          id,
+          serial_number,
+          type,
+          brand,
+          model_number,
+          manufacturing_date,
+          expiry_date,
+          status,
+          image_url,
+          next_inspection,
+          created_at,
+          updated_at,
           inspections (
             id,
-            inspection_date,
-            pass_fail,
-            notes
+            date,
+            notes,
+            overall_result
           )
         `)
         .eq('status', 'flagged')
         .order('updated_at', { ascending: false });
       
       if (error) throw error;
+      
+      console.log("Flagged items data:", data);
       
       // Map data to PPEItem type with additional inspection data
       const mappedItems: PPEItem[] = data.map((item: any) => ({
@@ -63,7 +79,7 @@ const FlaggedIssues = () => {
         // Get the latest inspection that caused the flag
         latestInspection: item.inspections && item.inspections.length > 0 
           ? item.inspections.sort((a: any, b: any) => 
-              new Date(b.inspection_date).getTime() - new Date(a.inspection_date).getTime()
+              new Date(b.date).getTime() - new Date(a.date).getTime()
             )[0] 
           : null
       }));
@@ -74,7 +90,7 @@ const FlaggedIssues = () => {
       console.error('Error fetching flagged items:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load flagged items',
+        description: 'Failed to load flagged items. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -83,12 +99,12 @@ const FlaggedIssues = () => {
   };
 
   const filterItems = () => {
-    if (!searchQuery) {
+    if (!searchQuery.trim()) {
       setFilteredItems(ppeItems);
       return;
     }
     
-    const query = searchQuery.toLowerCase();
+    const query = searchQuery.toLowerCase().trim();
     const results = ppeItems.filter(
       item =>
         item.serialNumber.toLowerCase().includes(query) ||
@@ -100,8 +116,11 @@ const FlaggedIssues = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold mb-6">Flagged Issues</h1>
+    <div className="container mx-auto px-4 py-6 pb-20">
+      <h1 className="text-2xl font-bold mb-6 flex items-center">
+        <AlertTriangle className="mr-2 text-orange-500" size={24} />
+        Flagged Issues
+      </h1>
       
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -140,7 +159,7 @@ const FlaggedIssues = () => {
                     {item.latestInspection.notes || 'No notes provided'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Inspection date: {new Date(item.latestInspection.inspection_date).toLocaleDateString()}
+                    Inspection date: {new Date(item.latestInspection.date).toLocaleDateString()}
                   </p>
                 </div>
               )}

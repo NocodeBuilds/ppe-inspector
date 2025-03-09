@@ -139,22 +139,19 @@ const InspectionForm = () => {
       [checkpointId]: { ...prev[checkpointId], passed: value }
     }));
     
-    if (value === false) {
+    const allResults = Object.entries({
+      ...results,
+      [checkpointId]: { ...results[checkpointId], passed: value }
+    });
+    
+    const anyFailing = allResults.some(([_, result]) => result.passed === false);
+    const allResultsEntered = allResults.every(([_, result]) => result.passed !== null);
+    const allPassing = allResults.every(([_, result]) => result.passed === true);
+    
+    if (anyFailing) {
       setOverallResult('fail');
-    } else {
-      const allResults = Object.values({ 
-        ...results, 
-        [checkpointId]: { ...results[checkpointId], passed: value } 
-      });
-      
-      const allPassing = allResults.every(result => result.passed === true);
-      const anyFailing = allResults.some(result => result.passed === false);
-      
-      if (allPassing) {
-        setOverallResult('pass');
-      } else if (anyFailing) {
-        setOverallResult('fail');
-      }
+    } else if (allResultsEntered && allPassing) {
+      setOverallResult('pass');
     }
   };
   

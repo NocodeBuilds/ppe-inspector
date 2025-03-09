@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Check, X, Camera, Trash2, Ban } from 'lucide-react';
 import CardOverlay from '@/components/ui/card-overlay';
+import { toast } from '@/hooks/use-toast';
 
 interface CheckpointItemProps {
   id: string;
@@ -38,8 +39,19 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   const startCamera = async () => {
     try {
       setCameraError(null);
+      
+      // Check if browser supports getUserMedia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Your browser does not support camera access');
+      }
+      
+      // Request camera access with improved error handling
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       });
       
       setStream(mediaStream);
@@ -47,10 +59,41 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        
+        // Make sure video is properly loaded
+        videoRef.current.onloadedmetadata = () => {
+          if (videoRef.current) {
+            videoRef.current.play().catch(error => {
+              console.error("Error playing video:", error);
+              setCameraError('Failed to start video stream');
+            });
+          }
+        };
       }
     } catch (error: any) {
       console.error('Error accessing camera:', error);
-      setCameraError(error.message || 'Failed to access camera');
+      
+      let errorMessage = 'Failed to access camera';
+      
+      // More user-friendly error messages
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'Camera access denied. Please grant permission to use your camera.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'No camera found on your device.';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = 'Camera is already in use by another application.';
+      } else if (error.name === 'OverconstrainedError') {
+        errorMessage = 'The requested camera settings are not supported.';
+      } else if (error.name === 'SecurityError') {
+        errorMessage = 'Camera access is restricted due to security settings.';
+      }
+      
+      setCameraError(errorMessage);
+      toast({
+        title: 'Camera Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     }
   };
   
@@ -71,21 +114,35 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     
     if (!context) return;
     
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    // Draw video frame to canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Convert canvas to data URL
-    const photoUrl = canvas.toDataURL('image/jpeg');
-    
-    // Pass photo URL to parent
-    onPhotoCapture(photoUrl);
-    
-    // Stop camera
-    stopCamera();
+    try {
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw video frame to canvas
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert canvas to data URL
+      const photoUrl = canvas.toDataURL('image/jpeg', 0.8); // Add quality parameter
+      
+      // Pass photo URL to parent
+      onPhotoCapture(photoUrl);
+      
+      // Stop camera
+      stopCamera();
+      
+      toast({
+        title: 'Photo Captured',
+        description: 'The image has been attached to this checkpoint',
+      });
+    } catch (error) {
+      console.error('Error capturing photo:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to capture photo',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Determine border color based on passed state
@@ -137,52 +194,53 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         </div>
       </div>
       
-      {passed === false && (
-        <div className="space-y-3">
+      {/* Show photo options for both pass and fail cases */}
+      <div className="space-y-3">
+        {passed === false && (
           <Textarea
             placeholder="Add notes describing the issue..."
             value={notes}
             onChange={(e) => onNotesChange(e.target.value)}
             className="min-h-[80px]"
           />
+        )}
+        
+        <div className="flex justify-between items-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={startCamera}
+            className="text-xs"
+          >
+            <Camera size={14} className="mr-1" />
+            Add Photo
+          </Button>
           
-          <div className="flex justify-between items-center">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={startCamera}
-              className="text-xs"
-            >
-              <Camera size={14} className="mr-1" />
-              Add Photo
-            </Button>
-            
-            {photoUrl && (
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded overflow-hidden border">
-                  <img 
-                    src={photoUrl} 
-                    alt="Issue evidence" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={onPhotoDelete}
-                  className="h-7 w-7 text-destructive hover:text-destructive/90"
-                >
-                  <Trash2 size={14} />
-                </Button>
+          {photoUrl && (
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded overflow-hidden border">
+                <img 
+                  src={photoUrl} 
+                  alt="Checkpoint evidence" 
+                  className="w-full h-full object-cover"
+                />
               </div>
-            )}
-          </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onPhotoDelete}
+                className="h-7 w-7 text-destructive hover:text-destructive/90"
+              >
+                <Trash2 size={14} />
+              </Button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
       
-      {/* Camera overlay */}
+      {/* Camera overlay with improved UI */}
       <CardOverlay
         show={showCamera}
         onClose={stopCamera}
@@ -192,7 +250,10 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
           {cameraError ? (
             <div className="text-center p-4 border rounded">
               <p className="text-destructive mb-3">{cameraError}</p>
-              <Button onClick={() => setCameraError(null)}>Try Again</Button>
+              <div className="flex justify-center gap-3">
+                <Button onClick={() => setCameraError(null)}>Try Again</Button>
+                <Button variant="outline" onClick={stopCamera}>Cancel</Button>
+              </div>
             </div>
           ) : (
             <>

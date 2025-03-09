@@ -1,13 +1,11 @@
-
-import React, { memo, Suspense, useEffect } from 'react';
+import React, { memo, Suspense, useEffect, useState } from 'react';
 import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import { ThemeToggler } from '@/components/ThemeToggler';
 import { useAuth, useRoleAccess } from '@/hooks/useAuth';
-import { ArrowLeft, User } from 'lucide-react';
+import { ArrowLeft, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ErrorBoundaryWithFallback from '@/components/ErrorBoundaryWithFallback';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // Memoized header component to prevent unnecessary re-renders
@@ -31,72 +30,77 @@ const Header = memo(({
   profile: any,
   signOut: () => Promise<void>,
   isAdmin: boolean
-}) => (
-  <header className="sticky top-0 z-50 flex justify-between items-center px-4 py-2 border-b bg-background/80 backdrop-blur-sm">
-    <div className="flex items-center">
-      {canGoBack && (
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => navigate(-1)}
-          className="mr-2"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-      )}
-      <h1 className="text-xl font-bold">
-        <span>
-          <span className="text-primary">PPE</span> Inspector
-          {isAdmin && <span className="ml-2 text-xs font-normal bg-primary/10 text-primary px-2 py-0.5 rounded-full">Admin</span>}
-        </span>
-      </h1>
-    </div>
-    
-    <div className="flex items-center gap-2">
-      <ThemeToggler />
+}) => {
+  const [notificationCount, setNotificationCount] = useState(0);
+  
+  // Simulate notifications - in a real app, you would fetch these from your backend
+  useEffect(() => {
+    // Demo notifications count - would come from API in real implementation
+    setNotificationCount(2);
+  }, []);
+  
+  return (
+    <header className="sticky top-0 z-50 flex justify-between items-center px-4 py-2 border-b bg-background/80 backdrop-blur-sm">
+      <div className="flex items-center">
+        {canGoBack && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate(-1)}
+            className="mr-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
+        <h1 className="text-xl font-bold">
+          <span>
+            <span className="text-primary">PPE</span> Inspector
+            {isAdmin && <span className="ml-2 text-xs font-normal bg-primary/10 text-primary px-2 py-0.5 rounded-full">Admin</span>}
+          </span>
+        </h1>
+      </div>
       
-      {profile && (
+      <div className="flex items-center gap-2">
+        <ThemeToggler />
+        
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Avatar className="h-8 w-8">
-                {profile.avatar_url ? (
-                  <AvatarImage src={profile.avatar_url} alt={profile.full_name || 'User'} />
-                ) : (
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    <User className="h-4 w-4" />
-                  </AvatarFallback>
-                )}
-              </Avatar>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell size={20} />
+              {notificationCount > 0 && (
+                <Badge 
+                  className="absolute -top-1 -right-1 px-1.5 py-0.5 min-w-[1.2rem] h-[1.2rem] flex items-center justify-center bg-destructive text-[10px]"
+                >
+                  {notificationCount}
+                </Badge>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>
-              {profile.full_name || 'User'}
-              <div className="text-xs text-muted-foreground font-normal">
-                {profile.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1) : 'User'}
+            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="cursor-pointer">
+              <div className="flex flex-col">
+                <span className="font-medium text-sm">PPE Expiring Soon</span>
+                <span className="text-xs text-muted-foreground">Full Body Harness will expire in 7 days</span>
               </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/profile')}>
-              Profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/settings')}>
-              Settings
+            <DropdownMenuItem className="cursor-pointer">
+              <div className="flex flex-col">
+                <span className="font-medium text-sm">Inspection Due</span>
+                <span className="text-xs text-muted-foreground">Safety Helmet #123 needs inspection</span>
+              </div>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={signOut}
-              className="text-destructive focus:text-destructive"
-            >
-              Sign out
+            <DropdownMenuItem className="text-center text-primary cursor-pointer">
+              View All
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      )}
-    </div>
-  </header>
-));
+      </div>
+    </header>
+  );
+});
 
 Header.displayName = 'Header';
 
@@ -125,7 +129,6 @@ const MainLayout = () => {
   const navigate = useNavigate();
   const { user, profile, isLoading, signOut } = useAuth();
   const { isAdmin } = useRoleAccess();
-  const { showNotification } = useNotifications();
   
   const hideNavPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
   const shouldShowNav = !hideNavPaths.includes(location.pathname);

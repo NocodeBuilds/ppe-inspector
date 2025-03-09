@@ -31,10 +31,10 @@ const EnhancedCard = ({
   ...props
 }: EnhancedCardProps) => {
   const cardContent = (
-    <CardContent className="p-4 flex items-start gap-4">
+    <CardContent className="p-4 flex items-start gap-4 h-full">
       {icon && (
         <div className={cn(
-          "flex-shrink-0 p-3 rounded-full", 
+          "flex-shrink-0 p-3 rounded-full flex items-center justify-center w-12 h-12", 
           iconBgColor,
           "border-2",
           iconBorderColor,
@@ -53,7 +53,7 @@ const EnhancedCard = ({
 
   const baseCardClasses = cn(
     "transition-all duration-200 ease-in-out",
-    "hover:shadow-md",
+    "hover:shadow-md h-full",
     "border-2",
     cardBorderColor,
     className
@@ -61,7 +61,7 @@ const EnhancedCard = ({
 
   if (to) {
     return (
-      <Link to={to}>
+      <Link to={to} className="block h-full">
         <Card className={cn(baseCardClasses, "cursor-pointer hover:-translate-y-1")} {...props}>
           {cardContent}
         </Card>
