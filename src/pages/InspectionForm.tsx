@@ -146,7 +146,7 @@ const InspectionForm = () => {
     
     const anyFailing = allResults.some(([_, result]) => result.passed === false);
     const allResultsEntered = allResults.every(([_, result]) => result.passed !== null);
-    const allPassing = allResults.every(([_, result]) => result.passed === true || result.passed === null);
+    const allPassing = allResults.every(([_, result]) => result.passed === true);
     
     if (anyFailing) {
       setOverallResult('fail');
