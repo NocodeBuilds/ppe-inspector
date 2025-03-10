@@ -75,7 +75,7 @@ const RegisterPage = () => {
         <div className="flex items-center justify-between h-full px-4">
           <h1 className="text-xl font-bold">
             <span>
-              <span className="text-primary">PPE</span> Inspector
+              <span className="text-primary">RENEW</span> Inspector
             </span>
           </h1>
           <ThemeToggler />
@@ -86,7 +86,7 @@ const RegisterPage = () => {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-primary mb-2">REGISTER</h1>
-            <p className="text-muted-foreground">Create your PPE Inspector account</p>
+            <p className="text-muted-foreground">Create your RENEW Inspector account</p>
           </div>
           
           <div className="glass-card rounded-lg p-6 shadow-lg border border-border/20">
@@ -156,11 +156,11 @@ const RegisterPage = () => {
               
               <Button 
                 type="submit" 
-                className="w-full bg-success hover:bg-success/90 mt-4"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-5 mt-6"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <div className="flex items-center">
+                  <div className="flex items-center justify-center">
                     <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
                     Creating Account...
                   </div>

@@ -208,7 +208,7 @@ const ManualInspection = () => {
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="serialNumber">Serial Number / ID</Label>
+              <Label htmlFor="serialNumber">PPE Serial Number / ID</Label>
               <Input
                 id="serialNumber"
                 placeholder="Enter PPE serial number or ID"

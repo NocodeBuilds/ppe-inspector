@@ -14,6 +14,29 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+  
+  /* Add text shadow utility */
+  .text-shadow {
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+  
+  /* Glass card effect */
+  .glass-card {
+    @apply bg-background/80 backdrop-blur-sm border border-border/30;
+  }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(0%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.animate-scan {
+  animation: scan 1.5s ease-in-out infinite alternate;
 }
 
 @layer base {
@@ -37,6 +60,7 @@
     --border: 220 13% 91%;
     --input: 220 13% 91%;
     --ring: 142.1 76.2% 36.3%;
+    --warning: 38 92% 50%;
     --radius: 0.5rem;
   }
 
@@ -60,6 +84,7 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 142.4 71.8% 29.2%;
+    --warning: 38 92% 50%;
   }
 }
 
@@ -80,5 +105,45 @@
   main {
     min-height: calc(100vh - 4rem); /* Subtract header/footer height */
     padding-bottom: 70px; /* Space for bottom navigation */
+  }
+  
+  /* Smooth scroll for horizontal scrolling components */
+  .horizontal-scroll {
+    @apply flex overflow-x-auto snap-x snap-mandatory gap-2 py-2 px-1 no-scrollbar;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .horizontal-scroll > * {
+    @apply snap-center flex-shrink-0;
+  }
+  
+  /* Fade edges for horizontal scroll indicators */
+  .scroll-container {
+    @apply relative overflow-hidden;
+  }
+  
+  .scroll-container::before,
+  .scroll-container::after {
+    content: '';
+    @apply absolute top-0 bottom-0 w-8 z-10 pointer-events-none;
+  }
+  
+  .scroll-container::before {
+    @apply left-0 bg-gradient-to-r from-background to-transparent;
+  }
+  
+  .scroll-container::after {
+    @apply right-0 bg-gradient-to-l from-background to-transparent;
+  }
+  
+  /* Fade in animation for content */
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 }

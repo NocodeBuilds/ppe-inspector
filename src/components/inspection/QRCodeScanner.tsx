@@ -26,8 +26,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
       qrRef.current = new Html5Qrcode(scannerContainerId);
     }
     
-    // Start scanning automatically
-    startScanner();
+    // Start scanning automatically with a slight delay to ensure DOM is ready
+    setTimeout(() => {
+      startScanner();
+    }, 500);
     
     // Clean up on unmount
     return () => {
@@ -55,6 +57,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
     };
     
     try {
+      console.log('Starting scanner with environment facing camera...');
       await qrRef.current.start(
         { facingMode: 'environment' },
         config,
@@ -63,6 +66,22 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
       );
     } catch (err: any) {
       console.error('Error starting QR scanner:', err);
+      
+      // Try user facing camera as fallback
+      if (err.name === 'NotReadableError' || err.name === 'OverconstrainedError') {
+        try {
+          console.log('Trying user facing camera as fallback...');
+          await qrRef.current.start(
+            { facingMode: 'user' },
+            config,
+            onQRCodeSuccess,
+            onQRCodeError
+          );
+          return;
+        } catch (fallbackErr: any) {
+          console.error('Fallback camera also failed:', fallbackErr);
+        }
+      }
       
       if (err.name === 'NotAllowedError') {
         setPermissionDenied(true);
@@ -74,7 +93,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
         });
         onError('Camera permission denied');
       } else {
-        setError(`Failed to start scanner: ${err.message}`);
+        setError(`Failed to start scanner: ${err.message || 'Unknown error'}`);
         toast({
           title: 'Scanner Error',
           description: err.message || 'Failed to start QR scanner',

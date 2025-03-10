@@ -153,6 +153,11 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     return 'border-l-gray-300';
   };
   
+  // Handle button click for N/A
+  const handleNAClick = () => {
+    onPassedChange(null);
+  };
+  
   return (
     <Card className={`p-4 border-l-4 ${getBorderColor()}`}>
       <div className="mb-3">
@@ -186,7 +191,7 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
             variant={passed === null ? 'default' : 'outline'}
             size="sm"
             className={passed === null ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
-            onClick={() => onPassedChange(null)}
+            onClick={handleNAClick}
           >
             <Ban size={16} className="mr-2" />
             N/A

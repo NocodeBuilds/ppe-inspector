@@ -60,14 +60,15 @@ const Login = () => {
   }
   
   return (
-    <div className="flex flex-col min-h-screen bg-background overflow-y-auto">      
+    <div className="flex flex-col min-h-screen bg-background overflow-y-auto">
+      <div className="absolute top-4 right-4">
+        <ThemeToggler />
+      </div>
+      
       <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20 w-full">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="flex justify-end mb-4">
-              <ThemeToggler />
-            </div>
-            <h1 className="text-5xl font-bold text-primary mb-2">PPE</h1>
+            <h1 className="text-5xl font-bold text-primary mb-2">RENEW</h1>
             <p className="text-2xl font-medium mb-1">Inspector Pro</p>
             <p className="text-muted-foreground">Inspection Portal</p>
           </div>

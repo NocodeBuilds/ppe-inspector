@@ -1,3 +1,4 @@
+
 import { Download, Edit, FileText } from 'lucide-react';
 import { PPEItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
     type === 'expiring' ? 'border-destructive/50' : 
     type === 'upcoming' ? 'border-warning/50' : 
     type === 'flagged' ? 'border-destructive/70' :
-    'border-border';
+    'border-primary/30';
   
   const statusIcon = 
     type === 'expiring' ? (
@@ -110,17 +111,17 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
 
   return (
     <div className={cn(
-      'glass-card rounded-lg p-4 my-3 transition-all duration-300 hover:shadow-lg',
+      'h-[120px] glass-card rounded-lg p-4 my-3 transition-all duration-300 hover:shadow-lg border-2',
       borderColor
     )}>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 h-full">
         {statusIcon}
-        <div className="flex-1">
-          <h3 className="font-semibold">{item.type}</h3>
-          <p className="text-sm text-muted-foreground">SN: {item.serialNumber}</p>
-          <p className="text-sm">{getStatusText()}</p>
+        <div className="flex-1 overflow-hidden">
+          <h3 className="font-semibold truncate">{item.type}</h3>
+          <p className="text-sm text-muted-foreground truncate">SN: {item.serialNumber}</p>
+          <p className="text-sm truncate">{getStatusText()}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex-shrink-0 flex gap-2">
           {(type === 'upcoming' || type === 'equipment') && (
             <Button variant="default" size="icon" onClick={handleInspect} className="bg-primary text-primary-foreground h-10 w-10">
               <FileText size={20} />
