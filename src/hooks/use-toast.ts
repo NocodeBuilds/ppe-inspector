@@ -8,7 +8,7 @@ import {
 import {
   useToast as useToastOriginal,
   toast as toastOriginal,
-} from "@/components/ui/use-toast"
+} from "@/components/ui/use-toast-primitive"
 
 export const useToast = useToastOriginal
 export const toast = toastOriginal
