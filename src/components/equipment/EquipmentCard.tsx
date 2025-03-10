@@ -1,4 +1,3 @@
-
 import { Download, Edit, FileText } from 'lucide-react';
 import { PPEItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,7 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
     type === 'upcoming' ? 'border-warning/50' : 
     type === 'flagged' ? 'border-destructive/70' :
     'border-primary/30';
-  
+
   const statusIcon = 
     type === 'expiring' ? (
       <div className="w-10 h-10 bg-destructive/20 text-destructive rounded-lg flex items-center justify-center">
@@ -111,12 +110,12 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
 
   return (
     <div className={cn(
-      'h-[120px] glass-card rounded-lg p-4 my-3 transition-all duration-300 hover:shadow-lg border-2',
+      'h-[120px] glass-card rounded-lg p-4 my-3 transition-all duration-300 hover:shadow-lg border-2 flex',
       borderColor
     )}>
-      <div className="flex items-center gap-4 h-full">
+      <div className="flex items-center gap-4 w-full h-full overflow-hidden">
         {statusIcon}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <h3 className="font-semibold truncate">{item.type}</h3>
           <p className="text-sm text-muted-foreground truncate">SN: {item.serialNumber}</p>
           <p className="text-sm truncate">{getStatusText()}</p>

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
@@ -19,30 +18,25 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   const scannerContainerId = 'qr-reader';
   const { toast } = useToast();
   
-  // Initialize scanner when component mounts
   useEffect(() => {
-    // Only initialize if not already initialized
     if (!qrRef.current) {
       qrRef.current = new Html5Qrcode(scannerContainerId);
     }
     
-    // Start scanning automatically with a slight delay to ensure DOM is ready
     setTimeout(() => {
       startScanner();
-    }, 500);
+    }, 1000);
     
-    // Clean up on unmount
     return () => {
       stopScanner().then(() => {
         if (qrRef.current) {
-          // Clear the scanner instance
           qrRef.current = null;
         }
       }).catch(error => {
         console.error('Error during scanner cleanup:', error);
       });
     };
-  }, []); // Empty dependency array ensures this runs only once
+  }, []);
   
   const startScanner = async () => {
     if (!qrRef.current || hasScanned || isScanning) return;
@@ -58,6 +52,15 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
     
     try {
       console.log('Starting scanner with environment facing camera...');
+      
+      try {
+        await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+      } catch (err) {
+        console.log('Pre-check camera permission failed, but continuing with scanner:', err);
+      }
+      
       await qrRef.current.start(
         { facingMode: 'environment' },
         config,
@@ -67,19 +70,28 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
     } catch (err: any) {
       console.error('Error starting QR scanner:', err);
       
-      // Try user facing camera as fallback
-      if (err.name === 'NotReadableError' || err.name === 'OverconstrainedError') {
+      try {
+        console.log('Trying user facing camera as fallback...');
+        await qrRef.current.start(
+          { facingMode: 'user' },
+          config,
+          onQRCodeSuccess,
+          onQRCodeError
+        );
+        return;
+      } catch (fallbackErr: any) {
+        console.error('Fallback camera also failed:', fallbackErr);
+        
         try {
-          console.log('Trying user facing camera as fallback...');
           await qrRef.current.start(
-            { facingMode: 'user' },
+            true,
             config,
             onQRCodeSuccess,
             onQRCodeError
           );
           return;
-        } catch (fallbackErr: any) {
-          console.error('Fallback camera also failed:', fallbackErr);
+        } catch (lastErr: any) {
+          console.error('All camera options failed:', lastErr);
         }
       }
       
@@ -123,10 +135,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   const onQRCodeSuccess = async (decodedText: string) => {
     console.log("QR code scanned:", decodedText);
     
-    // Set hasScanned immediately to prevent multiple scans
     setHasScanned(true);
     
-    // Stop scanning
     try {
       if (qrRef.current && isScanning) {
         await qrRef.current.stop();
@@ -137,19 +147,16 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
           description: 'Successfully scanned QR code',
         });
         
-        // Only call onResult after stopping the scanner
         onResult(decodedText);
       }
     } catch (err) {
       console.error('Error stopping QR scanner after successful scan:', err);
-      // Still try to proceed with the result
       setIsScanning(false);
       onResult(decodedText);
     }
   };
   
   const onQRCodeError = (errorMessage: string) => {
-    // We don't need to show transient scanning errors
     console.debug('QR scan error:', errorMessage);
   };
   
@@ -158,7 +165,6 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
     setError(null);
     setHasScanned(false);
     
-    // Ensure scanner is stopped before restarting
     await stopScanner();
     startScanner();
   };
