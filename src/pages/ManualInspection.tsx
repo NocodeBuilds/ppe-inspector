@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Camera, Calendar, Loader2 } from 'lucide-react';
+import { Camera, Calendar, Loader2, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import QRCodeScanner from '@/components/inspection/QRCodeScanner';
 import { PPEType } from '@/types';
@@ -176,11 +176,14 @@ const ManualInspection = () => {
     console.error('QR scan error:', error);
     setIsScanning(false);
     
-    toast({
-      title: 'Scan Cancelled',
-      description: 'QR code scanning was cancelled or encountered an error',
-      variant: 'destructive',
-    });
+    // Only show toast for actual errors, not for user cancellations
+    if (error !== 'Scanning cancelled') {
+      toast({
+        title: 'Scan Error',
+        description: 'QR code scanning encountered an error',
+        variant: 'destructive',
+      });
+    }
   };
   
   return (
@@ -309,6 +312,18 @@ const ManualInspection = () => {
       {isScanning && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-card rounded-lg shadow-lg max-w-md w-full p-6 border border-border/40">
+            <div className="flex justify-end mb-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setIsScanning(false);
+                }}
+                className="h-8 w-8"
+              >
+                <X size={18} />
+              </Button>
+            </div>
             <QRCodeScanner 
               onResult={handleQRCodeResult} 
               onError={handleScanError} 

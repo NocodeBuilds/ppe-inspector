@@ -1,3 +1,4 @@
+
 import { Download, Edit, FileText } from 'lucide-react';
 import { PPEItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,7 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
 
   const statusIcon = 
     type === 'expiring' ? (
-      <div className="w-10 h-10 bg-destructive/20 text-destructive rounded-lg flex items-center justify-center">
+      <div className="w-10 h-10 bg-destructive/20 text-destructive rounded-lg flex items-center justify-center flex-shrink-0">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
           <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
           <path d="M12 9v4"></path>
@@ -33,7 +34,7 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
         </svg>
       </div>
     ) : type === 'upcoming' ? (
-      <div className="w-10 h-10 bg-warning/20 text-warning rounded-lg flex items-center justify-center">
+      <div className="w-10 h-10 bg-warning/20 text-warning rounded-lg flex items-center justify-center flex-shrink-0">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
           <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
           <line x1="16" x2="16" y1="2" y2="6"></line>
@@ -48,7 +49,7 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
         </svg>
       </div>
     ) : type === 'flagged' ? (
-      <div className="w-10 h-10 bg-destructive/20 text-destructive rounded-lg flex items-center justify-center">
+      <div className="w-10 h-10 bg-destructive/20 text-destructive rounded-lg flex items-center justify-center flex-shrink-0">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0-3.42 0z"></path>
           <line x1="12" y1="9" x2="12" y2="13"></line>
@@ -122,15 +123,15 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
         </div>
         <div className="flex-shrink-0 flex gap-2">
           {(type === 'upcoming' || type === 'equipment') && (
-            <Button variant="default" size="icon" onClick={handleInspect} className="bg-primary text-primary-foreground h-10 w-10">
+            <Button variant="default" size="icon" onClick={handleInspect} className="bg-primary text-primary-foreground h-10 w-10 flex-shrink-0">
               <FileText size={20} />
             </Button>
           )}
-          <Button variant="outline" size="icon" onClick={handleDownloadReport} className="bg-background h-10 w-10">
+          <Button variant="outline" size="icon" onClick={handleDownloadReport} className="bg-background h-10 w-10 flex-shrink-0">
             <Download size={20} />
           </Button>
           {onEdit && (
-            <Button variant="default" size="icon" onClick={onEdit} className="bg-primary text-primary-foreground h-10 w-10">
+            <Button variant="default" size="icon" onClick={onEdit} className="bg-primary text-primary-foreground h-10 w-10 flex-shrink-0">
               <Edit size={20} />
             </Button>
           )}

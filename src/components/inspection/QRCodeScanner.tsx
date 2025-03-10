@@ -84,7 +84,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
         
         try {
           await qrRef.current.start(
-            true,
+            { facingMode: "environment", deviceId: { ideal: "any" } },
             config,
             onQRCodeSuccess,
             onQRCodeError

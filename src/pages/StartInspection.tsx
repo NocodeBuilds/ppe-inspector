@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -108,12 +109,15 @@ const StartInspection = () => {
               <QRCodeScanner 
                 onResult={handleScanResult} 
                 onError={(error) => {
-                  toast({
-                    title: 'Scanning Error',
-                    description: error,
-                    variant: 'destructive',
-                  });
                   setIsScanning(false);
+                  // Only show toast for actual errors, not for user cancellations
+                  if (error !== 'Scanning cancelled') {
+                    toast({
+                      title: 'Scanning Error',
+                      description: error,
+                      variant: 'destructive',
+                    });
+                  }
                 }}
               />
             </div>
