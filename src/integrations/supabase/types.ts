@@ -254,6 +254,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       upsert_extended_profile: {
         Args: {
           p_employee_id: string
@@ -265,7 +273,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "inspector" | "user"
+      app_role: "admin" | "user"
       inspection_type: "pre-use" | "monthly" | "quarterly"
       ppe_status: "active" | "expired" | "maintenance" | "flagged"
     }

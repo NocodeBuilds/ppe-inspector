@@ -13,10 +13,6 @@ interface RoleProtectedRouteProps {
   fallbackPath?: string;
 }
 
-/**
- * Component to protect routes based on user roles
- * Redirects to fallbackPath if user doesn't have the required role
- */
 const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({ 
   children, 
   requiredRole,
