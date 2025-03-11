@@ -21,25 +21,24 @@ const ReportsPage = () => {
   const [inspectionCount, setInspectionCount] = useState(0);
   const [ppeCount, setPpeCount] = useState(0);
   const [flaggedCount, setFlaggedCount] = useState(0);
-  const { isAdmin } = useRoleAccess();
+  const { isAdmin, isUser } = useRoleAccess();
   const navigate = useNavigate();
   const { showNotification } = useNotifications();
   
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isAdmin && !isUser) {
       showNotification('Access Restricted', 'error', {
-        description: 'Only administrators can access the reports page',
+        description: 'You need to be logged in to access the reports page',
       });
       navigate('/');
       return;
     }
     
     fetchStatistics();
-  }, [isAdmin, navigate]);
+  }, [isAdmin, isUser, navigate]);
   
   const fetchStatistics = async () => {
     try {
-      // Get inspection count
       const { count: inspCount, error: inspError } = await supabase
         .from('inspections')
         .select('*', { count: 'exact', head: true });
@@ -47,7 +46,6 @@ const ReportsPage = () => {
       if (inspError) throw inspError;
       setInspectionCount(inspCount || 0);
       
-      // Get PPE count
       const { count: ppeCountResult, error: ppeError } = await supabase
         .from('ppe_items')
         .select('*', { count: 'exact', head: true });
@@ -55,7 +53,6 @@ const ReportsPage = () => {
       if (ppeError) throw ppeError;
       setPpeCount(ppeCountResult || 0);
       
-      // Get flagged count
       const { count: flaggedCountResult, error: flaggedError } = await supabase
         .from('ppe_items')
         .select('*', { count: 'exact', head: true })
@@ -77,18 +74,15 @@ const ReportsPage = () => {
       setIsGenerating(true);
       
       if (type === 'ppe') {
-        // Fetch PPE data
         const { data: ppeData, error: ppeError } = await supabase
           .from('ppe_items')
           .select('*');
         
         if (ppeError) throw ppeError;
         
-        // Generate report - use proper function name
-        await generatePPEItemReport('all'); // We'll implement 'all' option in the function
+        await generatePPEItemReport('all');
         
       } else if (type === 'inspections') {
-        // Fetch inspection data
         const { data: inspData, error: inspError } = await supabase
           .from('inspections')
           .select(`
@@ -104,16 +98,13 @@ const ReportsPage = () => {
         
         if (inspError) throw inspError;
         
-        // Calculate date range for all inspections (last 30 days)
         const endDate = new Date();
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - 30);
         
-        // Generate report - use proper function name
         await generateInspectionsDateReport(startDate, endDate);
         
       } else if (type === 'analytics') {
-        // Generate analytics report with the counts - use proper function name
         await generateAnalyticsDataReport();
       }
       
@@ -131,8 +122,8 @@ const ReportsPage = () => {
     }
   };
 
-  if (!isAdmin) {
-    return null; // Prevent rendering if not admin
+  if (!isAdmin && !isUser) {
+    return null;
   }
 
   return (

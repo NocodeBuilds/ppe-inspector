@@ -22,6 +22,19 @@ interface NotificationOptions {
   action?: ToastActionElement;
 }
 
+// Define a workaround type for the notifications table
+// This allows us to use the table name without TypeScript errors
+type GenericTable = {
+  id: string;
+  user_id?: string;
+  title?: string;
+  message?: string;
+  type?: string;
+  read?: boolean;
+  created_at?: string;
+  [key: string]: any;
+};
+
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -69,21 +82,25 @@ export const useNotifications = () => {
     if (!user) return;
 
     try {
+      // Use 'from' with a type assertion to work around TypeScript limitations
       const { data, error } = await supabase
-        .from('notifications')
+        .from('notifications' as any)
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setNotifications(data.map(n => ({
+      // Type assertion for the returned data
+      const notificationData = data as unknown as GenericTable[];
+      
+      setNotifications(notificationData.map(n => ({
         id: n.id,
-        title: n.title,
+        title: n.title || '',
         message: n.message || '',
-        type: n.type,
-        read: n.read,
-        createdAt: new Date(n.created_at)
+        type: (n.type as NotificationType) || 'info',
+        read: n.read || false,
+        createdAt: new Date(n.created_at || Date.now())
       })));
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -107,15 +124,16 @@ export const useNotifications = () => {
     // Store notification in database if user is logged in
     if (user) {
       try {
+        // Use type assertion for the table name
         const { error } = await supabase
-          .from('notifications')
+          .from('notifications' as any)
           .insert({
             user_id: user.id,
             title,
             message: options?.description || '',
             type,
             read: false
-          });
+          } as any);
 
         if (error) throw error;
       } catch (error) {
@@ -126,9 +144,10 @@ export const useNotifications = () => {
 
   const markAsRead = async (id: string) => {
     try {
+      // Use type assertion for the table name
       const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
+        .from('notifications' as any)
+        .update({ read: true } as any)
         .eq('id', id);
 
       if (error) throw error;
@@ -140,11 +159,14 @@ export const useNotifications = () => {
   };
 
   const markAllAsRead = async () => {
+    if (!user) return;
+    
     try {
+      // Use type assertion for the table name
       const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', user?.id);
+        .from('notifications' as any)
+        .update({ read: true } as any)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -156,8 +178,9 @@ export const useNotifications = () => {
 
   const deleteNotification = async (id: string) => {
     try {
+      // Use type assertion for the table name
       const { error } = await supabase
-        .from('notifications')
+        .from('notifications' as any)
         .delete()
         .eq('id', id);
 
