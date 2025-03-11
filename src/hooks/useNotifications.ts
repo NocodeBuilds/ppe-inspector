@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { ToastActionElement } from '@/components/ui/toast';
+import { supabase } from '@/integrations/supabase/client';
 
 type NotificationType = 'warning' | 'info' | 'success' | 'error';
 
@@ -21,9 +22,6 @@ interface NotificationOptions {
   action?: ToastActionElement;
 }
 
-/**
- * Hook for managing and displaying notifications
- */
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -35,38 +33,65 @@ export const useNotifications = () => {
     setUnreadCount(count);
   }, [notifications]);
 
-  // For demo purposes, add some sample notifications
+  // Subscribe to notifications channel when user is authenticated
   useEffect(() => {
-    if (user) {
-      // These would normally come from a backend API
-      setNotifications([
+    if (!user) return;
+
+    // Set up realtime subscription for notifications
+    const channel = supabase
+      .channel('public:notifications')
+      .on(
+        'postgres_changes',
         {
-          id: '1',
-          title: 'PPE Expiring Soon',
-          message: 'Full Body Harness #FB123 will expire in 7 days',
-          type: 'warning',
-          read: false,
-          createdAt: new Date(Date.now() - 86400000) // 1 day ago
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
         },
-        {
-          id: '2',
-          title: 'Inspection Due',
-          message: 'Safety Helmet #123 needs inspection',
-          type: 'info',
-          read: false,
-          createdAt: new Date(Date.now() - 172800000) // 2 days ago
+        (payload) => {
+          console.log('Notification change received:', payload);
+          
+          // Refresh notifications after any change
+          fetchNotifications();
         }
-      ]);
-    } else {
-      setNotifications([]);
-    }
+      )
+      .subscribe();
+
+    // Initial fetch
+    fetchNotifications();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
-  /**
-   * Show a notification
-   */
-  const showNotification = (
-    title: string, 
+  const fetchNotifications = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setNotifications(data.map(n => ({
+        id: n.id,
+        title: n.title,
+        message: n.message || '',
+        type: n.type,
+        read: n.read,
+        createdAt: new Date(n.created_at)
+      })));
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const showNotification = async (
+    title: string,
     type: NotificationType = 'info',
     options?: NotificationOptions
   ) => {
@@ -78,58 +103,70 @@ export const useNotifications = () => {
       duration: options?.duration || 5000,
       action: options?.action,
     });
-    
-    // Also add to notifications list if user is logged in
+
+    // Store notification in database if user is logged in
     if (user) {
-      const newNotification: Notification = {
-        id: Date.now().toString(),
-        title,
-        message: options?.description || '',
-        type,
-        read: false,
-        createdAt: new Date()
-      };
-      
-      setNotifications(prev => [newNotification, ...prev]);
+      try {
+        const { error } = await supabase
+          .from('notifications')
+          .insert({
+            user_id: user.id,
+            title,
+            message: options?.description || '',
+            type,
+            read: false
+          });
+
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error storing notification:', error);
+      }
     }
   };
 
-  /**
-   * Mark a notification as read
-   */
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === id 
-          ? { ...notification, read: true } 
-          : notification
-      )
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await fetchNotifications();
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
-  /**
-   * Mark all notifications as read
-   */
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notification => ({ ...notification, read: true }))
-    );
+  const markAllAsRead = async () => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      await fetchNotifications();
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
   };
 
-  /**
-   * Delete a notification
-   */
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => 
-      prev.filter(notification => notification.id !== id)
-    );
-  };
+  const deleteNotification = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', id);
 
-  /**
-   * Clear all notifications
-   */
-  const clearAll = () => {
-    setNotifications([]);
+      if (error) throw error;
+
+      await fetchNotifications();
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
   };
 
   return {
@@ -138,7 +175,6 @@ export const useNotifications = () => {
     showNotification,
     markAsRead,
     markAllAsRead,
-    deleteNotification,
-    clearAll
+    deleteNotification
   };
 };

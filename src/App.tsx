@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -122,8 +121,12 @@ const App = () => {
                       <Route path="inspect/:ppeId" element={<InspectionForm />} />
                       <Route path="inspection/:id" element={<InspectionDetails />} />
                       
-                      {/* All users can see reports now */}
-                      <Route path="reports" element={<ReportsPage />} />
+                      {/* Update reports route to be accessible by all authenticated users */}
+                      <Route path="reports" element={
+                        <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
+                          <ReportsPage />
+                        </RoleProtectedRoute>
+                      } />
                       
                       {/* Admin-only deletion routes */}
                       <Route path="admin/delete/:type/:id" element={
