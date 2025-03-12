@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Camera, Check, ChevronLeft, ChevronRight, Delete, Info, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Camera, Check, ChevronLeft, ChevronRight, Delete, Info, Loader2, X, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -13,6 +14,7 @@ import CheckpointItem from '@/components/inspection/CheckpointItem';
 import SignatureCanvas from '@/components/inspection/SignatureCanvas';
 import { getStandardCheckpoints } from '@/services/checkpointService';
 import { useAuth } from '@/hooks/useAuth';
+import { v4 as uuidv4 } from 'uuid';
 
 const toPPEType = (typeString: string) => {
   const validTypes = [
@@ -109,8 +111,9 @@ const InspectionForm = () => {
         return;
       }
       
-      const formattedCheckpoints = standardCheckpoints.map((checkpoint, index) => ({
-        id: `${ppeType.replace(/\s+/g, '-').toLowerCase()}-${index}`,
+      // Use uuidv4() to generate proper UUIDs for checkpoints
+      const formattedCheckpoints = standardCheckpoints.map(checkpoint => ({
+        id: uuidv4(),
         description: checkpoint.description,
         ppeType: checkpoint.ppeType as any,
         required: checkpoint.required
@@ -118,6 +121,7 @@ const InspectionForm = () => {
       
       setCheckpoints(formattedCheckpoints);
       
+      // Initialize results with all items set to null (unselected)
       const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
       formattedCheckpoints.forEach(checkpoint => {
         initialResults[checkpoint.id] = { passed: null, notes: '' };
@@ -254,6 +258,22 @@ const InspectionForm = () => {
       if (inspectionError) {
         console.error("Inspection insert error:", inspectionError);
         throw inspectionError;
+      }
+      
+      // Create checkpoint records in the database for our generated checkpoints
+      for (const checkpoint of checkpoints) {
+        const { error: checkpointError } = await supabase
+          .from('inspection_checkpoints')
+          .upsert({
+            id: checkpoint.id,
+            description: checkpoint.description,
+            ppe_type: checkpoint.ppeType,
+          });
+          
+        if (checkpointError) {
+          console.error("Error inserting checkpoint:", checkpointError);
+          throw checkpointError;
+        }
       }
       
       const resultsToInsert = Object.entries(results).map(([checkpointId, result]) => ({

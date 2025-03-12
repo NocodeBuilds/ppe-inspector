@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,17 +33,33 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const videoRef = React.useRef<HTMLVideoElement>(null);
-  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Clean up camera resources when component unmounts
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
   
   const startCamera = async () => {
     try {
+      // Clean up any existing streams first
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      
       setCameraError(null);
       
       // Check if browser supports getUserMedia
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Your browser does not support camera access');
       }
+      
+      console.log('Requesting camera access...');
       
       // Request camera access with improved error handling
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
@@ -54,14 +70,19 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         }
       });
       
+      console.log('Camera access granted, setting up video stream');
+      
       setStream(mediaStream);
-      setShowCamera(true);
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         
+        // Set visibility first
+        setShowCamera(true);
+        
         // Make sure video is properly loaded
         videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded, playing video');
           if (videoRef.current) {
             videoRef.current.play().catch(error => {
               console.error("Error playing video:", error);
@@ -69,6 +90,9 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
             });
           }
         };
+      } else {
+        console.error('Video reference is null');
+        setCameraError('Failed to initialize camera view');
       }
     } catch (error: any) {
       console.error('Error accessing camera:', error);
@@ -98,26 +122,39 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   };
   
   const stopCamera = () => {
+    console.log('Stopping camera...');
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach(track => {
+        console.log(`Stopping track: ${track.kind}`);
+        track.stop();
+      });
       setStream(null);
     }
     setShowCamera(false);
   };
   
   const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current) {
+      console.error('Video or canvas reference is null');
+      return;
+    }
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
     
-    if (!context) return;
+    if (!context) {
+      console.error('Could not get canvas context');
+      return;
+    }
     
     try {
+      console.log('Capturing photo...');
+      console.log(`Video dimensions: ${video.videoWidth}x${video.videoHeight}`);
+      
       // Set canvas dimensions to match video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
       
       // Draw video frame to canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -153,11 +190,6 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     return 'border-l-gray-300';
   };
   
-  // Handle button click for N/A
-  const handleNAClick = () => {
-    onPassedChange(null);
-  };
-  
   return (
     <Card className={`p-4 border-l-4 ${getBorderColor()}`}>
       <div className="mb-3">
@@ -191,7 +223,7 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
             variant={passed === null ? 'default' : 'outline'}
             size="sm"
             className={passed === null ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
-            onClick={handleNAClick}
+            onClick={() => onPassedChange(null)}
           >
             <Ban size={16} className="mr-2" />
             N/A
@@ -262,13 +294,19 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
             </div>
           ) : (
             <>
-              <div className="aspect-video bg-black rounded-md overflow-hidden">
+              <div className="aspect-video bg-black rounded-md overflow-hidden relative">
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
+                  muted
                   className="w-full h-full object-contain"
                 />
+                {!stream && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+                  </div>
+                )}
               </div>
               
               <canvas ref={canvasRef} className="hidden" />
@@ -277,7 +315,10 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
                 <Button variant="outline" onClick={stopCamera}>
                   Cancel
                 </Button>
-                <Button onClick={capturePhoto}>
+                <Button 
+                  onClick={capturePhoto}
+                  disabled={!stream}
+                >
                   <Camera size={16} className="mr-2" />
                   Capture
                 </Button>

@@ -43,6 +43,14 @@ const UpcomingInspections = () => {
       
       if (error) throw error;
       
+      // Handle empty data case gracefully
+      if (!data || data.length === 0) {
+        setPpeItems([]);
+        setFilteredItems([]);
+        setIsLoading(false);
+        return;
+      }
+      
       // Map data to PPEItem type
       const mappedItems: PPEItem[] = data.map((item: any) => ({
         id: item.id,
@@ -68,6 +76,10 @@ const UpcomingInspections = () => {
         description: 'Failed to load upcoming inspections',
         variant: 'destructive',
       });
+      
+      // Ensure we set empty arrays even in case of error
+      setPpeItems([]);
+      setFilteredItems([]);
     } finally {
       setIsLoading(false);
     }
