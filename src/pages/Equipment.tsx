@@ -13,12 +13,12 @@ import CardOverlay from '@/components/ui/card-overlay';
 import AddPPEForm from '@/components/forms/AddPPEForm';
 
 const Equipment = () => {
-  const [ppeItems, setPpeItems] = React.useState<PPEItem[]>([]);
-  const [filteredItems, setFilteredItems] = React.useState<PPEItem[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [showAddPPE, setShowAddPPE] = React.useState(false);
-  const [activeType, setActiveType] = React.useState<string>('all');
+  const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<PPEItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddPPE, setShowAddPPE] = useState(false);
+  const [activeType, setActiveType] = useState<string>('all');
   const { toast } = useToast();
   const navigate = useNavigate();
 

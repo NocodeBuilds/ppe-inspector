@@ -22,18 +22,16 @@ interface NotificationOptions {
   action?: ToastActionElement;
 }
 
-// Define a workaround type for the notifications table
-// This allows us to use the table name without TypeScript errors
-type GenericTable = {
+// Define a notifications table interface to ensure proper typing
+interface NotificationRecord {
   id: string;
-  user_id?: string;
-  title?: string;
-  message?: string;
-  type?: string;
-  read?: boolean;
-  created_at?: string;
-  [key: string]: any;
-};
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  created_at: string;
+}
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -82,7 +80,7 @@ export const useNotifications = () => {
     if (!user) return;
 
     try {
-      // Use 'from' with a type assertion to work around TypeScript limitations
+      // Use explicit casting for the table name
       const { data, error } = await supabase
         .from('notifications' as any)
         .select('*')
@@ -92,9 +90,9 @@ export const useNotifications = () => {
       if (error) throw error;
 
       // Type assertion for the returned data
-      const notificationData = data as unknown as GenericTable[];
+      const typedData = data as unknown as NotificationRecord[];
       
-      setNotifications(notificationData.map(n => ({
+      setNotifications(typedData.map(n => ({
         id: n.id,
         title: n.title || '',
         message: n.message || '',
@@ -124,7 +122,6 @@ export const useNotifications = () => {
     // Store notification in database if user is logged in
     if (user) {
       try {
-        // Use type assertion for the table name
         const { error } = await supabase
           .from('notifications' as any)
           .insert({
@@ -144,7 +141,6 @@ export const useNotifications = () => {
 
   const markAsRead = async (id: string) => {
     try {
-      // Use type assertion for the table name
       const { error } = await supabase
         .from('notifications' as any)
         .update({ read: true } as any)
@@ -162,7 +158,6 @@ export const useNotifications = () => {
     if (!user) return;
     
     try {
-      // Use type assertion for the table name
       const { error } = await supabase
         .from('notifications' as any)
         .update({ read: true } as any)
@@ -178,7 +173,6 @@ export const useNotifications = () => {
 
   const deleteNotification = async (id: string) => {
     try {
-      // Use type assertion for the table name
       const { error } = await supabase
         .from('notifications' as any)
         .delete()

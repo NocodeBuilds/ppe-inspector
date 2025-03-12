@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -57,13 +58,6 @@ const queryClient = new QueryClient({
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [reactReady, setReactReady] = useState(false);
-
-  // Ensure React is fully loaded before rendering components
-  useEffect(() => {
-    // This ensures React is fully loaded
-    setReactReady(true);
-  }, []);
 
   // Set up PWA features
   useEffect(() => {
@@ -82,12 +76,10 @@ const App = () => {
       }
     };
     
-    if (reactReady) {
-      setupPWA();
-    }
-  }, [reactReady]);
+    setupPWA();
+  }, []);
 
-  if (isLoading || !reactReady) {
+  if (isLoading) {
     return <PageLoader />;
   }
 

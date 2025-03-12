@@ -5,7 +5,52 @@ import type { Database } from './types';
 const supabaseUrl = 'https://oapfjmyyfuopajayrxzw.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hcGZqbXl5ZnVvcGFqYXlyeHp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA3NjEzOTcsImV4cCI6MjA1NjMzNzM5N30.ln7r0soXRMrjmOSY69za1GQkq4H-aW9tGvBI0O81T1U';
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseKey);
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
+
+// Extend the Database type to include notifications table
+declare module './types' {
+  interface Database {
+    public: {
+      Tables: {
+        notifications: {
+          Row: {
+            id: string;
+            user_id: string;
+            title: string;
+            message: string;
+            type: string;
+            read: boolean;
+            created_at: string;
+          };
+          Insert: {
+            id?: string;
+            user_id: string;
+            title: string;
+            message?: string;
+            type?: string;
+            read?: boolean;
+            created_at?: string;
+          };
+          Update: {
+            id?: string;
+            user_id?: string;
+            title?: string;
+            message?: string;
+            type?: string;
+            read?: boolean;
+            created_at?: string;
+          };
+        };
+      };
+    };
+  }
+}
 
 export type Role = 'admin' | 'inspector' | 'user';
 export type PPEStatus = 'active' | 'expired' | 'maintenance' | 'flagged';
