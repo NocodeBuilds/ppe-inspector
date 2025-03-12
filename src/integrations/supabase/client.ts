@@ -13,45 +13,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   },
 });
 
-// Extend the Database type to include notifications table
-declare module './types' {
-  interface Database {
-    public: {
-      Tables: {
-        notifications: {
-          Row: {
-            id: string;
-            user_id: string;
-            title: string;
-            message: string;
-            type: string;
-            read: boolean;
-            created_at: string;
-          };
-          Insert: {
-            id?: string;
-            user_id: string;
-            title: string;
-            message?: string;
-            type?: string;
-            read?: boolean;
-            created_at?: string;
-          };
-          Update: {
-            id?: string;
-            user_id?: string;
-            title?: string;
-            message?: string;
-            type?: string;
-            read?: boolean;
-            created_at?: string;
-          };
-        };
-      };
-    };
-  }
-}
-
+// Export types for convenience
 export type Role = 'admin' | 'inspector' | 'user';
 export type PPEStatus = 'active' | 'expired' | 'maintenance' | 'flagged';
 export type InspectionType = 'pre-use' | 'monthly' | 'quarterly';
