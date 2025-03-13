@@ -44,8 +44,18 @@ const deduplicatedToast = (props: ToastOptions) => {
     }
   }
   
+  // Convert title and description to string if they are numbers
+  // This resolves the type compatibility issue
+  const processedProps: any = { ...props };
+  if (typeof processedProps.title === 'number') {
+    processedProps.title = String(processedProps.title);
+  }
+  if (typeof processedProps.description === 'number') {
+    processedProps.description = String(processedProps.description);
+  }
+  
   // Show the toast
-  return toastOriginal(props);
+  return toastOriginal(processedProps as Toast);
 };
 
 export const useToast = useToastOriginal;
