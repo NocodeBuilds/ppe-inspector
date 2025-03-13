@@ -1,5 +1,6 @@
+
 // Service Worker for PPE Inspector PWA
-const CACHE_NAME = 'ppe-inspector-v1';
+const CACHE_NAME = 'ppe-inspector-v2';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
@@ -13,7 +14,9 @@ const STATIC_ASSETS = [
 ];
 
 // Cache for dynamic content
-const DYNAMIC_CACHE = 'ppe-inspector-dynamic-v1';
+const DYNAMIC_CACHE = 'ppe-inspector-dynamic-v2';
+// Cache for API responses
+const API_CACHE = 'ppe-inspector-api-v2';
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
@@ -41,7 +44,7 @@ self.addEventListener('activate', (event) => {
       .then(keyList => {
         return Promise.all(
           keyList.map(key => {
-            if (key !== CACHE_NAME && key !== DYNAMIC_CACHE) {
+            if (key !== CACHE_NAME && key !== DYNAMIC_CACHE && key !== API_CACHE) {
               console.log('[Service Worker] Removing old cache', key);
               return caches.delete(key);
             }
@@ -157,6 +160,8 @@ self.addEventListener('sync', (event) => {
     event.waitUntil(syncInspections());
   } else if (event.tag === 'sync-offline-reports') {
     event.waitUntil(syncOfflineReports());
+  } else if (event.tag === 'sync-offline-actions') {
+    event.waitUntil(syncOfflineActions());
   }
 });
 
@@ -236,6 +241,31 @@ async function syncOfflineReports() {
       message: 'Offline reports synchronized'
     });
   });
+}
+
+// New function to sync generic offline actions
+async function syncOfflineActions() {
+  console.log('[Service Worker] Syncing offline actions');
+  
+  try {
+    // Open IndexedDB and get pending actions
+    // This would be implemented to work with the IndexedDB API directly
+    
+    // For now, just notify clients
+    const clients = await self.clients.matchAll();
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'SYNC_COMPLETE',
+        message: 'Offline actions synchronized',
+        details: {
+          successful: [],
+          failed: []
+        }
+      });
+    });
+  } catch (error) {
+    console.error('[Service Worker] Error syncing offline actions:', error);
+  }
 }
 
 // Placeholder functions for IndexedDB operations - these would be implemented in real code

@@ -23,6 +23,10 @@ interface InspectionDetail {
   }[];
 }
 
+/**
+ * Generate and save an Excel report for a single inspection
+ * Includes an offline fallback using Blob and saveAs
+ */
 export const generateInspectionExcelReport = async (inspection: InspectionDetail): Promise<void> => {
   try {
     // Create a new workbook
@@ -74,6 +78,65 @@ export const generateInspectionExcelReport = async (inspection: InspectionDetail
     
     // Generate filename
     const filename = `inspection_${inspection.ppe_serial}_${new Date(inspection.date).toISOString().split('T')[0]}.xlsx`;
+    
+    // Get network status to determine download method
+    const isOnline = navigator.onLine;
+    console.log(`Generating Excel report with network status: ${isOnline ? 'online' : 'offline'}`);
+    
+    try {
+      // First try using the standard XLSX.writeFile (works in online mode)
+      XLSX.writeFile(wb, filename);
+      console.log('Excel report generated successfully using standard method');
+    } catch (writeError) {
+      console.log('Falling back to Blob download for offline mode:', writeError);
+      
+      // Fallback for offline mode - convert to blob and use saveAs
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/octet-stream' });
+      saveAs(blob, filename);
+      console.log('Excel report generated successfully using Blob fallback');
+    }
+    
+  } catch (error) {
+    console.error('Error generating Excel report:', error);
+    throw error;
+  }
+};
+
+/**
+ * Generate an Excel report for multiple inspections
+ * (e.g., for reporting purposes)
+ */
+export const generateInspectionsListExcelReport = async (inspections: any[]): Promise<void> => {
+  try {
+    // Create a new workbook
+    const wb = XLSX.utils.book_new();
+    
+    // Create headers
+    const headers = ['Date', 'Type', 'PPE Serial #', 'PPE Type', 'Result', 'Inspector'];
+    
+    // Create data rows
+    const dataRows = inspections.map(inspection => [
+      new Date(inspection.date).toLocaleDateString(),
+      inspection.type,
+      inspection.ppe_serial,
+      inspection.ppe_type,
+      inspection.overall_result,
+      inspection.inspector_name
+    ]);
+    
+    // Combine headers and data
+    const allData = [headers, ...dataRows];
+    
+    // Create worksheet from data
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Inspections Report');
+    
+    // Generate filename with current date
+    const today = new Date().toISOString().split('T')[0];
+    const filename = `inspections_report_${today}.xlsx`;
     
     try {
       // Try using the standard XLSX.writeFile (works in online mode)

@@ -47,19 +47,24 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
         toast({
           title: "Offline Mode",
           description: "This action requires an internet connection. It will be queued for when you're back online.",
-          variant: "warning",
+          variant: "default", // Changed from "warning" to "default" to match allowed types
         });
         
         // Request sync when back online
         if ('serviceWorker' in navigator && 'SyncManager' in window) {
           const registration = await navigator.serviceWorker.ready;
-          await registration.sync.register('sync-offline-reports');
           
-          toast({
-            title: "Queued for Sync",
-            description: "This action will be performed when you're back online",
-            variant: "default",
-          });
+          // Check if sync is supported in this browser
+          if ('sync' in registration) {
+            // @ts-ignore - TypeScript doesn't recognize sync property
+            await registration.sync.register('sync-offline-reports');
+            
+            toast({
+              title: "Queued for Sync",
+              description: "This action will be performed when you're back online",
+              variant: "default",
+            });
+          }
         }
       } else {
         // Execute the action

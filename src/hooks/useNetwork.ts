@@ -38,9 +38,14 @@ export const useNetwork = (): NetworkStatus => {
         if ('serviceWorker' in navigator && 'SyncManager' in window) {
           navigator.serviceWorker.ready
             .then(registration => {
-              // Trigger both inspection and report syncs
-              registration.sync.register('sync-inspections');
-              registration.sync.register('sync-offline-reports');
+              // Check if sync is supported in this browser
+              if ('sync' in registration) {
+                // Trigger both inspection and report syncs
+                // @ts-ignore - TypeScript doesn't recognize sync property
+                registration.sync.register('sync-inspections');
+                // @ts-ignore - TypeScript doesn't recognize sync property
+                registration.sync.register('sync-offline-reports');
+              }
             })
             .catch(err => {
               console.error('Failed to register sync:', err);
@@ -63,7 +68,7 @@ export const useNetwork = (): NetworkStatus => {
       toast({
         title: "You're Offline",
         description: "Don't worry, you can continue working. Changes will sync when you're back online.",
-        variant: "warning",
+        variant: "default", // Changed from "warning" to "default" to match allowed types
       });
     };
 
