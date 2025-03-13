@@ -6,6 +6,7 @@ import { useProfileForm } from '@/hooks/useProfileForm';
 import AvatarUpload from '@/components/profile/AvatarUpload';
 import ProfileForm from '@/components/profile/ProfileForm';
 import ProfileFormActions from '@/components/profile/ProfileFormActions';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const EditProfile = () => {
   const {
@@ -43,28 +44,30 @@ const EditProfile = () => {
         <h1 className="text-2xl font-bold">Edit Profile</h1>
       </div>
       
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <AvatarUpload 
-          avatarUrl={profile?.avatar_url || null}
-          avatarPreview={avatarPreview}
-          onChange={handleAvatarChange}
-        />
-        
-        <ProfileForm
-          fullName={formData.fullName}
-          employeeId={formData.employeeId}
-          location={formData.location}
-          department={formData.department}
-          bio={formData.bio}
-          onChange={handleInputChange}
-          onSelectChange={handleSelectChange}
-        />
-        
-        <ProfileFormActions
-          isSaving={isSaving}
-          onCancel={() => navigate('/profile')}
-        />
-      </form>
+      <ScrollArea className="h-[calc(100vh-180px)] pr-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <AvatarUpload 
+            avatarUrl={profile?.avatar_url || null}
+            avatarPreview={avatarPreview}
+            onChange={handleAvatarChange}
+          />
+          
+          <ProfileForm
+            fullName={formData.fullName}
+            employeeId={formData.employeeId}
+            location={formData.location}
+            department={formData.department}
+            bio={formData.bio}
+            onChange={handleInputChange}
+            onSelectChange={handleSelectChange}
+          />
+          
+          <ProfileFormActions
+            isSaving={isSaving}
+            onCancel={() => navigate('/profile')}
+          />
+        </form>
+      </ScrollArea>
     </div>
   );
 };

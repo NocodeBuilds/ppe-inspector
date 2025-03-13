@@ -1,4 +1,5 @@
-import { PPEItem, InspectionData } from '@/types';
+
+import { PPEItem } from '@/types';
 import { generatePPEReport } from './reportGenerator/ppePDFReport';
 import { generateInspectionsReport } from './reportGenerator/inspectionsPDFReport';
 import { generateAnalyticsReport } from './reportGenerator/analyticsPDFReport';
@@ -177,7 +178,7 @@ export const generatePPEInspectionReport = async (ppeId: string, inspectionId?: 
       updatedAt: ppeData.updated_at
     };
     
-    let inspectionData: InspectionData | undefined;
+    let inspectionData: any = undefined;
     
     // Get inspection data if inspectionId is provided
     if (inspectionId) {
@@ -219,7 +220,7 @@ export const generatePPEInspectionReport = async (ppeId: string, inspectionId?: 
         id: inspectionDetails.id,
         date: inspectionDetails.date,
         type: inspectionDetails.type,
-        inspectorName: inspectionDetails.profiles?.full_name || 'Unknown',
+        inspector_name: inspectionDetails.profiles?.full_name || 'Unknown',
         result: inspectionDetails.overall_result,
         notes: inspectionDetails.notes,
         signatureUrl: inspectionDetails.signature_url,
@@ -264,7 +265,7 @@ export const generatePPEInspectionReport = async (ppeId: string, inspectionId?: 
             id: latestInspection.id,
             date: latestInspection.date,
             type: latestInspection.type,
-            inspectorName: latestInspection.profiles?.full_name || 'Unknown',
+            inspector_name: latestInspection.profiles?.full_name || 'Unknown',
             result: latestInspection.overall_result,
             notes: latestInspection.notes,
             signatureUrl: latestInspection.signature_url,

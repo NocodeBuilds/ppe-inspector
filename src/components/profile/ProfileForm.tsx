@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ProfileFormProps {
   fullName: string;
@@ -87,11 +88,13 @@ const ProfileForm = ({
             <SelectValue placeholder="Select your location" />
           </SelectTrigger>
           <SelectContent>
-            {locations.map((loc) => (
-              <SelectItem key={loc} value={loc}>
-                {loc}
-              </SelectItem>
-            ))}
+            <ScrollArea className="h-[200px]">
+              {locations.map((loc) => (
+                <SelectItem key={loc} value={loc}>
+                  {loc}
+                </SelectItem>
+              ))}
+            </ScrollArea>
           </SelectContent>
         </Select>
       </div>
@@ -106,11 +109,13 @@ const ProfileForm = ({
             <SelectValue placeholder="Select your department" />
           </SelectTrigger>
           <SelectContent>
-            {departments.map((dept) => (
-              <SelectItem key={dept} value={dept}>
-                {dept}
-              </SelectItem>
-            ))}
+            <ScrollArea className="h-[200px]">
+              {departments.map((dept) => (
+                <SelectItem key={dept} value={dept}>
+                  {dept}
+                </SelectItem>
+              ))}
+            </ScrollArea>
           </SelectContent>
         </Select>
       </div>
