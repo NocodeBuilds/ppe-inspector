@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Camera, Check, ChevronLeft, ChevronRight, Delete, Info, Loader2, X, Ban } from 'lucide-react';
+import { ArrowLeft, Camera, Check, ChevronLeft, ChevronRight, Delete, Info, Loader2, X, Ban, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -58,6 +58,8 @@ const InspectionForm = () => {
   
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [hasNetworkError, setHasNetworkError] = useState(false);
   
   const [isLoading, setIsLoading] = useState(true);
   const [ppeError, setPpeError] = useState<string | null>(null);
@@ -75,6 +77,9 @@ const InspectionForm = () => {
   
   const fetchPPEItem = async (id: string) => {
     try {
+      setIsLoading(true);
+      setPpeError(null);
+      
       const { data, error } = await supabase
         .from('ppe_items')
         .select('*')
@@ -93,6 +98,8 @@ const InspectionForm = () => {
         });
         
         loadCheckpoints(data.type);
+      } else {
+        throw new Error('PPE item not found');
       }
     } catch (error: any) {
       console.error('Error fetching PPE item:', error);
@@ -143,6 +150,7 @@ const InspectionForm = () => {
       [checkpointId]: { ...prev[checkpointId], passed: value }
     }));
     
+    // Recalculate overall result
     const allResults = Object.entries({
       ...results,
       [checkpointId]: { ...results[checkpointId], passed: value }
@@ -150,7 +158,7 @@ const InspectionForm = () => {
     
     const anyFailing = allResults.some(([_, result]) => result.passed === false);
     const allResultsEntered = allResults.every(([_, result]) => result.passed !== null);
-    const allPassing = allResults.every(([_, result]) => result.passed === true);
+    const allPassing = allResults.every(([_, result]) => result.passed === true || result.passed === null);
     
     if (anyFailing) {
       setOverallResult('fail');
@@ -182,6 +190,13 @@ const InspectionForm = () => {
   };
   
   const handleNextStep = () => {
+    if (step === 2) {
+      // Validate all required checkpoints have a value before proceeding
+      if (!validateForm()) {
+        return;
+      }
+    }
+    
     if (step < 3) {
       setStep(prev => prev + 1);
     }
@@ -200,6 +215,11 @@ const InspectionForm = () => {
       
     if (unselectedRequired.length > 0) {
       setResultsError('Please select Pass or Fail for all required checkpoints');
+      toast({
+        title: 'Incomplete Form',
+        description: 'Please select Pass or Fail for all required checkpoints',
+        variant: 'destructive',
+      });
       return false;
     }
 
@@ -209,6 +229,11 @@ const InspectionForm = () => {
     
     if (invalidResults.length > 0) {
       setResultsError('Please add notes for all failed checkpoints');
+      toast({
+        title: 'Notes Required',
+        description: 'Please add notes for all failed checkpoints',
+        variant: 'destructive',
+      });
       return false;
     }
     
@@ -225,6 +250,74 @@ const InspectionForm = () => {
     return true;
   };
   
+  // Save form data to local storage
+  const saveFormToLocalStorage = () => {
+    try {
+      const formData = {
+        ppeItem,
+        inspectionType,
+        results,
+        notes,
+        signature,
+        overallResult,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Use UUID for form data key to prevent collisions
+      const formKey = `inspection_form_${ppeId || 'new'}_${Date.now()}`;
+      localStorage.setItem(formKey, JSON.stringify(formData));
+      
+      return formKey;
+    } catch (error) {
+      console.error('Error saving form to local storage:', error);
+      return null;
+    }
+  };
+  
+  const handleRetry = async () => {
+    setIsRetrying(true);
+    const formKey = saveFormToLocalStorage();
+    
+    try {
+      // First, check network connectivity
+      const online = navigator.onLine;
+      if (!online) {
+        throw new Error('You are currently offline. Please check your connection and try again.');
+      }
+      
+      // Try a simple fetch to test connectivity
+      const pingResponse = await fetch(`${supabase.supabaseUrl}/rest/v1/`, {
+        method: 'HEAD',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabase.supabaseKey
+        }
+      });
+      
+      if (!pingResponse.ok) {
+        throw new Error('Server connection error. Please try again later.');
+      }
+      
+      // Clear network error state and retry submission
+      setHasNetworkError(false);
+      await handleSubmit();
+      
+      // If successful, remove from local storage
+      if (formKey) {
+        localStorage.removeItem(formKey);
+      }
+    } catch (error: any) {
+      console.error('Retry failed:', error);
+      toast({
+        title: 'Retry Failed',
+        description: error.message || 'Connection still unavailable',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+  
   const handleSubmit = async () => {
     if (!validateForm()) return;
     if (!user) {
@@ -237,9 +330,13 @@ const InspectionForm = () => {
     }
     
     setIsSubmitting(true);
+    setHasNetworkError(false);
     
     try {
       const inspectionTypeEnum = inspectionType as "pre-use" | "monthly" | "quarterly";
+      
+      // Save form data to local storage in case of network error
+      saveFormToLocalStorage();
       
       const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
@@ -261,20 +358,17 @@ const InspectionForm = () => {
       }
       
       // Create checkpoint records in the database for our generated checkpoints
-      for (const checkpoint of checkpoints) {
-        const { error: checkpointError } = await supabase
+      const checkpointPromises = checkpoints.map(checkpoint => 
+        supabase
           .from('inspection_checkpoints')
           .upsert({
             id: checkpoint.id,
             description: checkpoint.description,
             ppe_type: checkpoint.ppeType,
-          });
-          
-        if (checkpointError) {
-          console.error("Error inserting checkpoint:", checkpointError);
-          throw checkpointError;
-        }
-      }
+          })
+      );
+      
+      await Promise.all(checkpointPromises);
       
       const resultsToInsert = Object.entries(results).map(([checkpointId, result]) => ({
         inspection_id: inspection.id,
@@ -333,11 +427,27 @@ const InspectionForm = () => {
       navigate(`/equipment/${ppeItem?.id}`);
     } catch (error: any) {
       console.error('Error submitting inspection:', error);
-      toast({
-        title: 'Submission Failed',
-        description: error.message || 'Failed to submit inspection',
-        variant: 'destructive',
-      });
+      
+      // Check if it's a network-related error
+      if (
+        error.message?.includes('fetch') || 
+        error.message?.includes('network') ||
+        error.message?.includes('connection') ||
+        !navigator.onLine
+      ) {
+        setHasNetworkError(true);
+        toast({
+          title: 'Network Error',
+          description: 'Could not connect to server. Your form has been saved. You can retry when connection is available.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Submission Failed',
+          description: error.message || 'Failed to submit inspection',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -484,7 +594,7 @@ const InspectionForm = () => {
                   key={checkpoint.id}
                   id={checkpoint.id}
                   description={checkpoint.description}
-                  passed={results[checkpoint.id]?.passed || false}
+                  passed={results[checkpoint.id]?.passed || null}
                   notes={results[checkpoint.id]?.notes || ''}
                   photoUrl={results[checkpoint.id]?.photoUrl}
                   onPassedChange={(value) => handleResultChange(checkpoint.id, value)}
@@ -579,6 +689,35 @@ const InspectionForm = () => {
                 </div>
               </div>
             </div>
+            
+            {hasNetworkError && (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md my-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle size={20} className="text-yellow-500 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-sm">Network Connection Issue</h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      There was a problem connecting to the server. Your form data has been saved locally.
+                    </p>
+                    <Button 
+                      onClick={handleRetry} 
+                      className="mt-2" 
+                      variant="outline"
+                      disabled={isRetrying}
+                    >
+                      {isRetrying ? (
+                        <>
+                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                          Retrying...
+                        </>
+                      ) : (
+                        <>Retry Submission</>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -603,7 +742,7 @@ const InspectionForm = () => {
         ) : (
           <Button 
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isRetrying}
           >
             {isSubmitting ? (
               <>

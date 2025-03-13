@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, X, Camera, Trash2, Ban } from 'lucide-react';
+import { Check, X, Camera, Trash2, Ban, Smartphone } from 'lucide-react';
 import CardOverlay from '@/components/ui/card-overlay';
 import { toast } from '@/hooks/use-toast';
 
@@ -33,56 +33,76 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  // Clean up camera resources when component unmounts
+  // Clean up camera resources when component unmounts or camera is closed
   useEffect(() => {
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      stopCamera();
     };
-  }, [stream]);
+  }, []);
+  
+  const fetchAvailableDevices = async () => {
+    try {
+      // Request permission first to ensure we get accurate device list
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      setAvailableDevices(videoDevices);
+      
+      // Set default device to the environment-facing camera if available
+      const envCamera = videoDevices.find(device => 
+        device.label.toLowerCase().includes('back') || 
+        device.label.toLowerCase().includes('environment')
+      );
+      
+      if (envCamera) {
+        setSelectedDeviceId(envCamera.deviceId);
+      } else if (videoDevices.length > 0) {
+        setSelectedDeviceId(videoDevices[0].deviceId);
+      }
+    } catch (error) {
+      console.error('Error fetching camera devices:', error);
+    }
+  };
   
   const startCamera = async () => {
     try {
       // Clean up any existing streams first
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      
+      stopCamera();
       setCameraError(null);
+      setShowCamera(true);
+      setIsCapturing(true);
       
-      // Check if browser supports getUserMedia
+      // Fetch available devices before starting the camera
+      await fetchAvailableDevices();
+      
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Your browser does not support camera access');
       }
       
-      console.log('Requesting camera access...');
+      // Configure constraints based on selected device or default to environment-facing
+      const constraints: MediaStreamConstraints = {
+        video: selectedDeviceId 
+          ? { deviceId: { exact: selectedDeviceId } }
+          : { facingMode: 'environment' }
+      };
       
-      // Request camera access with improved error handling
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
+      console.log('Requesting camera access with constraints:', constraints);
       
-      console.log('Camera access granted, setting up video stream');
-      
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(mediaStream);
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        
-        // Set visibility first
-        setShowCamera(true);
-        
-        // Make sure video is properly loaded
+        // Make sure video auto-plays
         videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded, playing video');
           if (videoRef.current) {
             videoRef.current.play().catch(error => {
               console.error("Error playing video:", error);
@@ -94,8 +114,11 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         console.error('Video reference is null');
         setCameraError('Failed to initialize camera view');
       }
+      
+      setIsCapturing(false);
     } catch (error: any) {
       console.error('Error accessing camera:', error);
+      setIsCapturing(false);
       
       let errorMessage = 'Failed to access camera';
       
@@ -110,6 +133,10 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         errorMessage = 'The requested camera settings are not supported.';
       } else if (error.name === 'SecurityError') {
         errorMessage = 'Camera access is restricted due to security settings.';
+      } else if (error.name === 'AbortError') {
+        errorMessage = 'Camera initialization was aborted.';
+      } else if (error.name === 'TypeError') {
+        errorMessage = 'Invalid camera constraints specified.';
       }
       
       setCameraError(errorMessage);
@@ -122,15 +149,43 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   };
   
   const stopCamera = () => {
-    console.log('Stopping camera...');
     if (stream) {
       stream.getTracks().forEach(track => {
-        console.log(`Stopping track: ${track.kind}`);
         track.stop();
       });
       setStream(null);
     }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
     setShowCamera(false);
+    setIsCapturing(false);
+  };
+  
+  const switchCamera = async () => {
+    if (availableDevices.length <= 1) {
+      toast({
+        title: 'Camera Switch',
+        description: 'No additional cameras available on this device',
+        variant: 'default',
+      });
+      return;
+    }
+    
+    // Find the next camera in the list
+    const currentIndex = availableDevices.findIndex(device => device.deviceId === selectedDeviceId);
+    const nextIndex = (currentIndex + 1) % availableDevices.length;
+    const nextDeviceId = availableDevices[nextIndex].deviceId;
+    
+    setSelectedDeviceId(nextDeviceId);
+    
+    // Restart camera with new device
+    stopCamera();
+    setTimeout(() => {
+      startCamera();
+    }, 300); // Small delay to ensure previous camera is fully stopped
   };
   
   const capturePhoto = () => {
@@ -150,7 +205,6 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     
     try {
       console.log('Capturing photo...');
-      console.log(`Video dimensions: ${video.videoWidth}x${video.videoHeight}`);
       
       // Set canvas dimensions to match video
       canvas.width = video.videoWidth || 640;
@@ -159,8 +213,8 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
       // Draw video frame to canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Convert canvas to data URL
-      const photoUrl = canvas.toDataURL('image/jpeg', 0.8); // Add quality parameter
+      // Convert canvas to data URL with quality parameter for better compression
+      const photoUrl = canvas.toDataURL('image/jpeg', 0.85);
       
       // Pass photo URL to parent
       onPhotoCapture(photoUrl);
@@ -231,7 +285,7 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         </div>
       </div>
       
-      {/* Show photo options for both pass and fail cases */}
+      {/* Show notes for both pass and fail cases */}
       <div className="space-y-3">
         {passed === false && (
           <Textarea
@@ -249,14 +303,35 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
             size="sm"
             onClick={startCamera}
             className="text-xs"
+            disabled={isCapturing}
           >
-            <Camera size={14} className="mr-1" />
-            Add Photo
+            {isCapturing ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                Loading...
+              </>
+            ) : (
+              <>
+                <Camera size={14} className="mr-1" />
+                Add Photo
+              </>
+            )}
           </Button>
           
           {photoUrl && (
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded overflow-hidden border">
+              <div 
+                className="w-10 h-10 rounded overflow-hidden border cursor-pointer"
+                onClick={() => {
+                  // Show photo in full screen or modal
+                  const img = new Image();
+                  img.src = photoUrl;
+                  const w = window.open("");
+                  if (w) {
+                    w.document.write(img.outerHTML);
+                  }
+                }}
+              >
                 <img 
                   src={photoUrl} 
                   alt="Checkpoint evidence" 
@@ -288,7 +363,10 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
             <div className="text-center p-4 border rounded">
               <p className="text-destructive mb-3">{cameraError}</p>
               <div className="flex justify-center gap-3">
-                <Button onClick={() => setCameraError(null)}>Try Again</Button>
+                <Button onClick={() => {
+                  setCameraError(null);
+                  startCamera();
+                }}>Try Again</Button>
                 <Button variant="outline" onClick={stopCamera}>Cancel</Button>
               </div>
             </div>
@@ -302,22 +380,34 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
                   muted
                   className="w-full h-full object-contain"
                 />
-                {!stream && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+                {isCapturing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
                   </div>
                 )}
               </div>
               
               <canvas ref={canvasRef} className="hidden" />
               
-              <div className="flex justify-center gap-3">
+              <div className="flex justify-between gap-3">
                 <Button variant="outline" onClick={stopCamera}>
                   Cancel
                 </Button>
+                
+                {availableDevices.length > 1 && (
+                  <Button 
+                    variant="outline" 
+                    onClick={switchCamera}
+                    disabled={isCapturing}
+                  >
+                    <Smartphone size={16} className="mr-2" />
+                    Switch Camera
+                  </Button>
+                )}
+                
                 <Button 
                   onClick={capturePhoto}
-                  disabled={!stream}
+                  disabled={!stream || isCapturing}
                 >
                   <Camera size={16} className="mr-2" />
                   Capture
