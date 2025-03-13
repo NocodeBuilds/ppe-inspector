@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,7 +40,6 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  // Clean up camera resources when component unmounts or camera is closed
   useEffect(() => {
     return () => {
       stopCamera();
@@ -50,14 +48,12 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   
   const fetchAvailableDevices = async () => {
     try {
-      // Request permission first to ensure we get accurate device list
       await navigator.mediaDevices.getUserMedia({ video: true });
       
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
       setAvailableDevices(videoDevices);
       
-      // Set default device to the environment-facing camera if available
       const envCamera = videoDevices.find(device => 
         device.label.toLowerCase().includes('back') || 
         device.label.toLowerCase().includes('environment')
@@ -75,20 +71,17 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   
   const startCamera = async () => {
     try {
-      // Clean up any existing streams first
       stopCamera();
       setCameraError(null);
       setShowCamera(true);
       setIsCapturing(true);
       
-      // Fetch available devices before starting the camera
       await fetchAvailableDevices();
       
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Your browser does not support camera access');
       }
       
-      // Configure constraints based on selected device or default to environment-facing
       const constraints: MediaStreamConstraints = {
         video: selectedDeviceId 
           ? { deviceId: { exact: selectedDeviceId } }
@@ -102,7 +95,6 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        // Make sure video auto-plays
         videoRef.current.onloadedmetadata = () => {
           if (videoRef.current) {
             videoRef.current.play().catch(error => {
@@ -123,7 +115,6 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
       
       let errorMessage = 'Failed to access camera';
       
-      // More user-friendly error messages
       if (error.name === 'NotAllowedError') {
         errorMessage = 'Camera access denied. Please grant permission to use your camera.';
       } else if (error.name === 'NotFoundError') {
@@ -175,18 +166,16 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
       return;
     }
     
-    // Find the next camera in the list
     const currentIndex = availableDevices.findIndex(device => device.deviceId === selectedDeviceId);
     const nextIndex = (currentIndex + 1) % availableDevices.length;
     const nextDeviceId = availableDevices[nextIndex].deviceId;
     
     setSelectedDeviceId(nextDeviceId);
     
-    // Restart camera with new device
     stopCamera();
     setTimeout(() => {
       startCamera();
-    }, 300); // Small delay to ensure previous camera is fully stopped
+    }, 300);
   };
   
   const capturePhoto = () => {
@@ -207,20 +196,15 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     try {
       console.log('Capturing photo...');
       
-      // Set canvas dimensions to match video
       canvas.width = video.videoWidth || 640;
       canvas.height = video.videoHeight || 480;
       
-      // Draw video frame to canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Convert canvas to data URL with quality parameter for better compression
       const photoUrl = canvas.toDataURL('image/jpeg', 0.85);
       
-      // Pass photo URL to parent
       onPhotoCapture(photoUrl);
       
-      // Stop camera
       stopCamera();
       
       toast({
@@ -237,7 +221,6 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     }
   };
 
-  // Determine border color based on passed state
   const getBorderColor = () => {
     if (passed === true) return 'border-l-green-500';
     if (passed === false) return 'border-l-destructive';
@@ -258,7 +241,6 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         </div>
       </div>
       
-      {/* Show notes for both pass and fail cases */}
       <div className="space-y-3">
         {passed === false && (
           <Textarea
@@ -296,7 +278,6 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
               <div 
                 className="w-10 h-10 rounded overflow-hidden border cursor-pointer"
                 onClick={() => {
-                  // Show photo in full screen or modal
                   const img = new Image();
                   img.src = photoUrl;
                   const w = window.open("");
@@ -325,7 +306,6 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         </div>
       </div>
       
-      {/* Camera overlay with improved UI */}
       <CardOverlay
         show={showCamera}
         onClose={stopCamera}

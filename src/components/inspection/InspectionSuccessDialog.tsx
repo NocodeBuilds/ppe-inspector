@@ -27,6 +27,8 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
   onEmailShare
 }) => {
   const navigate = useNavigate();
+  
+  console.log('InspectionSuccessDialog rendered with isOpen:', isOpen);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>

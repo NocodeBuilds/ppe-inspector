@@ -1,4 +1,6 @@
 
+import * as XLSX from 'xlsx';
+
 interface InspectionDetail {
   id: string;
   date: string;
@@ -22,58 +24,58 @@ interface InspectionDetail {
 
 export const generateInspectionExcelReport = async (inspection: InspectionDetail): Promise<void> => {
   try {
-    // We'll use the SheetJS library when it's installed
-    // For now, let's create a CSV as a fallback
-    const rows: string[] = [];
+    // Create a new workbook
+    const wb = XLSX.utils.book_new();
     
-    // Add header row
-    rows.push('Inspection Report');
-    rows.push(`Date: ${new Date(inspection.date).toLocaleDateString()}`);
-    rows.push(`Type: ${inspection.type}`);
-    rows.push(`Result: ${inspection.overall_result.toUpperCase()}`);
-    rows.push(`Inspector: ${inspection.inspector_name}`);
-    rows.push('');
+    // Create headers for main inspection info
+    const mainInfoData = [
+      ['Inspection Report'],
+      [`Date:`, new Date(inspection.date).toLocaleDateString()],
+      [`Type:`, inspection.type],
+      [`Result:`, inspection.overall_result.toUpperCase()],
+      [`Inspector:`, inspection.inspector_name],
+      ['']
+    ];
     
-    // Add equipment details
-    rows.push('Equipment Details');
-    rows.push('Type,Serial Number,Brand,Model');
-    rows.push(`${inspection.ppe_type},${inspection.ppe_serial},${inspection.ppe_brand},${inspection.ppe_model}`);
-    rows.push('');
+    // Create equipment details
+    const equipmentData = [
+      ['Equipment Details'],
+      ['Type', 'Serial Number', 'Brand', 'Model'],
+      [inspection.ppe_type, inspection.ppe_serial, inspection.ppe_brand, inspection.ppe_model],
+      ['']
+    ];
     
-    // Add checkpoints
-    rows.push('Inspection Checkpoints');
-    rows.push('Checkpoint,Result,Notes');
-    
-    inspection.checkpoints.forEach(checkpoint => {
+    // Create checkpoint data
+    const checkpointHeaders = ['Checkpoint', 'Result', 'Notes'];
+    const checkpointRows = inspection.checkpoints.map(checkpoint => {
       const result = checkpoint.passed === null ? 'N/A' : checkpoint.passed ? 'PASS' : 'FAIL';
       const notes = checkpoint.notes || '';
-      // Escape commas and quotes in notes
-      const escapedNotes = notes.replace(/"/g, '""');
-      rows.push(`"${checkpoint.description}",${result},"${escapedNotes}"`);
+      return [checkpoint.description, result, notes];
     });
     
-    rows.push('');
+    const checkpointData = [
+      ['Inspection Checkpoints'],
+      checkpointHeaders,
+      ...checkpointRows,
+      [''],
+      ['Additional Notes'],
+      [inspection.notes || 'No additional notes provided.']
+    ];
     
-    // Add additional notes
-    rows.push('Additional Notes');
-    rows.push(`"${inspection.notes || 'No additional notes provided.'}"`);
+    // Combine all data
+    const allData = [...mainInfoData, ...equipmentData, ...checkpointData];
     
-    // Convert to CSV content
-    const csvContent = rows.join('\n');
+    // Create worksheet from data
+    const ws = XLSX.utils.aoa_to_sheet(allData);
     
-    // Create a Blob with the CSV content
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Inspection Report');
     
-    // Create a download link
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `inspection_${inspection.ppe_serial}_${new Date(inspection.date).toISOString().split('T')[0]}.csv`);
+    // Generate filename
+    const filename = `inspection_${inspection.ppe_serial}_${new Date(inspection.date).toISOString().split('T')[0]}.xlsx`;
     
-    // Append to body, click, and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Write and download the file
+    XLSX.writeFile(wb, filename);
     
   } catch (error) {
     console.error('Error generating Excel report:', error);

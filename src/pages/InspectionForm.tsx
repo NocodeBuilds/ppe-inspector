@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Camera, Check, ChevronLeft, ChevronRight, Delete, Info, Loader2, X, Ban, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Delete, Info, Loader2, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -13,7 +13,6 @@ import CheckpointItem from '@/components/inspection/CheckpointItem';
 import SignatureCanvas from '@/components/inspection/SignatureCanvas';
 import { getStandardCheckpoints } from '@/services/checkpointService';
 import { useAuth } from '@/hooks/useAuth';
-import { v4 as uuidv4 } from 'uuid';
 import InspectionSuccessDialog from '@/components/inspection/InspectionSuccessDialog';
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
@@ -103,7 +102,7 @@ const InspectionForm = () => {
           modelNumber: data.model_number,
         });
         
-        loadCheckpoints(data.type);
+        await fetchCheckpoints(data.type);
       } else {
         throw new Error('PPE item not found');
       }
@@ -114,36 +113,89 @@ const InspectionForm = () => {
     }
   };
   
-  const loadCheckpoints = (ppeType: string) => {
+  const fetchCheckpoints = async (ppeType: string) => {
     try {
-      const standardCheckpoints = getStandardCheckpoints(ppeType);
-      
-      if (standardCheckpoints.length === 0) {
-        setCheckpointsError('No checkpoints defined for this PPE type');
-        setIsLoading(false);
-        return;
+      const { data: existingCheckpoints, error } = await supabase
+        .from('inspection_checkpoints')
+        .select('*')
+        .eq('ppe_type', ppeType);
+        
+      if (error) {
+        console.error('Error fetching checkpoints:', error);
+        throw error;
       }
       
-      const formattedCheckpoints = standardCheckpoints.map(checkpoint => ({
-        id: uuidv4(),
-        description: checkpoint.description,
-        ppeType: checkpoint.ppeType as any,
-        required: checkpoint.required
-      }));
+      if (existingCheckpoints && existingCheckpoints.length > 0) {
+        console.log('Using checkpoints from database:', existingCheckpoints);
+        setCheckpoints(existingCheckpoints);
+        
+        const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
+        existingCheckpoints.forEach(checkpoint => {
+          initialResults[checkpoint.id] = { passed: null, notes: '' };
+        });
+        setResults(initialResults);
+      } else {
+        const standardCheckpoints = getStandardCheckpoints(ppeType);
+        
+        if (standardCheckpoints.length === 0) {
+          setCheckpointsError('No checkpoints defined for this PPE type');
+          setIsLoading(false);
+          return;
+        }
+        
+        const checkpointsToInsert = standardCheckpoints.map(cp => ({
+          description: cp.description,
+          ppe_type: ppeType
+        }));
+        
+        const { data: insertedCheckpoints, error: insertError } = await supabase
+          .from('inspection_checkpoints')
+          .insert(checkpointsToInsert)
+          .select();
+          
+        if (insertError) {
+          console.error('Error inserting checkpoints:', insertError);
+          throw insertError;
+        }
+        
+        if (insertedCheckpoints) {
+          console.log('Inserted new checkpoints:', insertedCheckpoints);
+          setCheckpoints(insertedCheckpoints);
+          
+          const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
+          insertedCheckpoints.forEach(checkpoint => {
+            initialResults[checkpoint.id] = { passed: null, notes: '' };
+          });
+          setResults(initialResults);
+        }
+      }
       
-      setCheckpoints(formattedCheckpoints);
-      
-      const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
-      formattedCheckpoints.forEach(checkpoint => {
-        initialResults[checkpoint.id] = { passed: null, notes: '' };
-      });
-      
-      setResults(initialResults);
       setIsLoading(false);
-      
     } catch (error: any) {
-      console.error('Error loading checkpoints:', error);
-      setCheckpointsError(error.message || 'Failed to load inspection checkpoints');
+      console.error('Error with checkpoints:', error);
+      
+      const standardCheckpoints = getStandardCheckpoints(ppeType);
+      if (standardCheckpoints.length > 0) {
+        const tempCheckpoints = standardCheckpoints.map(cp => ({
+          id: crypto.randomUUID(),
+          description: cp.description,
+          ppe_type: ppeType as any,
+          created_at: new Date().toISOString()
+        }));
+        
+        setCheckpoints(tempCheckpoints);
+        
+        const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
+        tempCheckpoints.forEach(checkpoint => {
+          initialResults[checkpoint.id] = { passed: null, notes: '' };
+        });
+        setResults(initialResults);
+        
+        setCheckpointsError('Using local checkpoints - database connection error');
+      } else {
+        setCheckpointsError('No checkpoints defined for this PPE type');
+      }
+      
       setIsLoading(false);
     }
   };
@@ -212,7 +264,7 @@ const InspectionForm = () => {
   
   const validateForm = (): boolean => {
     const unselectedRequired = checkpoints
-      .filter(cp => cp.required)
+      .filter(cp => cp.required ?? true)
       .filter(cp => results[cp.id]?.passed === null);
       
     if (unselectedRequired.length > 0) {
@@ -333,13 +385,20 @@ const InspectionForm = () => {
       
       saveFormToLocalStorage();
       
+      console.log('Submitting inspection with data:', {
+        ppe_id: ppeItem?.id,
+        type: inspectionTypeEnum,
+        overall_result: overallResult,
+        checkpoint_ids: Object.keys(results),
+      });
+      
       const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
         .insert({
           ppe_id: ppeItem?.id,
           type: inspectionTypeEnum,
           date: new Date().toISOString(),
-          overall_result: overallResult,
+          overall_result: overallResult || 'pass',
           notes: notes,
           signature_url: signature,
           inspector_id: user.id,
@@ -352,6 +411,8 @@ const InspectionForm = () => {
         throw inspectionError;
       }
       
+      console.log('Inspection created with ID:', inspection.id);
+      
       const resultsToInsert = Object.entries(results).map(([checkpointId, result]) => ({
         inspection_id: inspection.id,
         checkpoint_id: checkpointId,
@@ -360,11 +421,16 @@ const InspectionForm = () => {
         photo_url: result.photoUrl,
       }));
       
+      console.log('Inserting inspection results:', resultsToInsert);
+      
       const { error: resultsError } = await supabase
         .from('inspection_results')
         .insert(resultsToInsert);
       
-      if (resultsError) throw resultsError;
+      if (resultsError) {
+        console.error("Results insert error:", resultsError);
+        throw resultsError;
+      }
       
       const now = new Date();
       let nextInspectionDate: Date;
@@ -398,6 +464,14 @@ const InspectionForm = () => {
       
       if (ppeUpdateError) throw ppeUpdateError;
       
+      const checkpointDetails = checkpoints.map(cp => ({
+        id: cp.id,
+        description: cp.description,
+        passed: results[cp.id]?.passed,
+        notes: results[cp.id]?.notes,
+        photo_url: results[cp.id]?.photoUrl,
+      }));
+      
       const submittedData = {
         id: inspection.id,
         date: now.toISOString(),
@@ -410,15 +484,10 @@ const InspectionForm = () => {
         ppe_serial: ppeItem?.serialNumber || 'Unknown',
         ppe_brand: ppeItem?.brand || 'Unknown',
         ppe_model: ppeItem?.modelNumber || 'Unknown',
-        checkpoints: checkpoints.map(cp => ({
-          id: cp.id,
-          description: cp.description,
-          passed: results[cp.id]?.passed,
-          notes: results[cp.id]?.notes,
-          photo_url: results[cp.id]?.photoUrl,
-        }))
+        checkpoints: checkpointDetails
       };
       
+      console.log('Setting submitted inspection data:', submittedData);
       setSubmittedInspectionData(submittedData);
       setSubmittedInspectionId(inspection.id);
       
@@ -888,6 +957,5 @@ const InspectionForm = () => {
 };
 
 export default InspectionForm;
-
 
 
