@@ -36,6 +36,15 @@ const toPPEType = (typeString: string) => {
   return 'Safety Helmet';
 };
 
+const mapDbCheckpointToAppCheckpoint = (dbCheckpoint: any): InspectionCheckpoint => {
+  return {
+    id: dbCheckpoint.id,
+    description: dbCheckpoint.description,
+    ppeType: dbCheckpoint.ppe_type,
+    required: true,
+  };
+};
+
 const InspectionForm = () => {
   const { ppeId } = useParams<{ ppeId: string }>();
   const navigate = useNavigate();
@@ -127,7 +136,8 @@ const InspectionForm = () => {
       
       if (existingCheckpoints && existingCheckpoints.length > 0) {
         console.log('Using checkpoints from database:', existingCheckpoints);
-        setCheckpoints(existingCheckpoints);
+        const appCheckpoints = existingCheckpoints.map(mapDbCheckpointToAppCheckpoint);
+        setCheckpoints(appCheckpoints);
         
         const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
         existingCheckpoints.forEach(checkpoint => {
@@ -160,7 +170,8 @@ const InspectionForm = () => {
         
         if (insertedCheckpoints) {
           console.log('Inserted new checkpoints:', insertedCheckpoints);
-          setCheckpoints(insertedCheckpoints);
+          const appCheckpoints = insertedCheckpoints.map(mapDbCheckpointToAppCheckpoint);
+          setCheckpoints(appCheckpoints);
           
           const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
           insertedCheckpoints.forEach(checkpoint => {
@@ -179,8 +190,8 @@ const InspectionForm = () => {
         const tempCheckpoints = standardCheckpoints.map(cp => ({
           id: crypto.randomUUID(),
           description: cp.description,
-          ppe_type: ppeType as any,
-          created_at: new Date().toISOString()
+          ppeType: ppeType,
+          required: true
         }));
         
         setCheckpoints(tempCheckpoints);
@@ -264,7 +275,7 @@ const InspectionForm = () => {
   
   const validateForm = (): boolean => {
     const unselectedRequired = checkpoints
-      .filter(cp => cp.required ?? true)
+      .filter(cp => cp.required)
       .filter(cp => results[cp.id]?.passed === null);
       
     if (unselectedRequired.length > 0) {
@@ -957,5 +968,3 @@ const InspectionForm = () => {
 };
 
 export default InspectionForm;
-
-
