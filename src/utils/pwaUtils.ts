@@ -4,6 +4,17 @@
  * Handles PWA setup, registration, updates and features
  */
 
+// Extend ServiceWorkerRegistration type to include sync property
+interface SyncManager {
+  register(tag: string): Promise<void>;
+  getTags(): Promise<string[]>;
+}
+
+interface ExtendedServiceWorkerRegistration extends ServiceWorkerRegistration {
+  sync?: SyncManager;
+  periodicSync?: any; // We'll also extend this for the periodicSync manager
+}
+
 // Check if the app is in standalone/installed mode
 export const isRunningAsStandalone = (): boolean => {
   return window.matchMedia('(display-mode: standalone)').matches || 
@@ -223,11 +234,17 @@ export const registerBackgroundSync = async (syncTag: string = 'sync-inspections
   }
   
   try {
-    const registration = await navigator.serviceWorker.ready;
-    await registration.sync.register(syncTag);
+    const registration = await navigator.serviceWorker.ready as ExtendedServiceWorkerRegistration;
     
-    console.log(`Registered for background sync: ${syncTag}`);
-    return true;
+    // Check if sync is supported
+    if (registration.sync) {
+      await registration.sync.register(syncTag);
+      console.log(`Registered for background sync: ${syncTag}`);
+      return true;
+    } else {
+      console.warn('Background sync API exists but is not available on registration');
+      return false;
+    }
   } catch (error) {
     console.error('Background sync registration failed:', error);
     return false;
@@ -241,29 +258,24 @@ export const setupPeriodicSync = async (
   tag: string = 'daily-sync',
   minInterval: number = 24 * 60 * 60 * 1000 // 24 hours
 ): Promise<boolean> => {
-  // @ts-ignore - PeriodicSyncManager is not in standard TS types yet
-  if (!('serviceWorker' in navigator) || !('periodicSync' in registration)) {
-    console.warn('Periodic background sync not supported');
-    return false;
-  }
-  
   try {
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await navigator.serviceWorker.ready as ExtendedServiceWorkerRegistration;
     
-    // @ts-ignore - PeriodicSyncManager is not in standard TS types yet
-    const periodicSyncManager = registration.periodicSync;
+    // Check if periodicSync exists
+    if (!registration.periodicSync) {
+      console.warn('Periodic background sync not supported');
+      return false;
+    }
     
     // Check permission
-    // @ts-ignore
-    const permission = await periodicSyncManager.permissionState();
+    const permission = await registration.periodicSync.permissionState();
     if (permission !== 'granted') {
       console.warn('Periodic sync permission not granted');
       return false;
     }
     
     // Register periodic sync
-    // @ts-ignore
-    await periodicSyncManager.register({
+    await registration.periodicSync.register({
       tag,
       minInterval
     });
