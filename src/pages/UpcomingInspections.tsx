@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,16 +39,13 @@ const UpcomingInspections = () => {
       setIsRefreshing(true);
       setHasNetworkError(false);
       
-      // Get current date
       const currentDate = new Date().toISOString();
       
-      // First check network connectivity
       if (!navigator.onLine) {
         setHasNetworkError(true);
         setIsLoading(false);
         setIsRefreshing(false);
         
-        // Try to load from cache if available
         const cachedData = localStorage.getItem('upcoming_inspections_cache');
         if (cachedData) {
           const { items, timestamp } = JSON.parse(cachedData);
@@ -57,7 +53,7 @@ const UpcomingInspections = () => {
           const now = new Date();
           const diffHours = (now.getTime() - cacheTime.getTime()) / (1000 * 60 * 60);
           
-          if (diffHours < 24) { // Use cache if less than 24 hours old
+          if (diffHours < 24) {
             setPpeItems(items);
             setFilteredItems(items);
             toast({
@@ -77,7 +73,6 @@ const UpcomingInspections = () => {
         return;
       }
       
-      // Fetch PPE items with upcoming inspections
       const { data, error } = await supabase
         .from('ppe_items')
         .select('*')
@@ -86,7 +81,6 @@ const UpcomingInspections = () => {
       
       if (error) throw error;
       
-      // Handle empty data case gracefully
       if (!data || data.length === 0) {
         setPpeItems([]);
         setFilteredItems([]);
@@ -95,7 +89,6 @@ const UpcomingInspections = () => {
         return;
       }
       
-      // Map data to PPEItem type
       const mappedItems: PPEItem[] = data.map((item: any) => ({
         id: item.id,
         serialNumber: item.serial_number,
@@ -111,7 +104,6 @@ const UpcomingInspections = () => {
         updatedAt: item.updated_at,
       }));
       
-      // Save to local storage for offline access
       localStorage.setItem('upcoming_inspections_cache', JSON.stringify({
         items: mappedItems,
         timestamp: new Date().toISOString()
@@ -129,7 +121,6 @@ const UpcomingInspections = () => {
         variant: 'destructive',
       });
       
-      // Try to load from cache if available
       const cachedData = localStorage.getItem('upcoming_inspections_cache');
       if (cachedData) {
         try {
@@ -145,7 +136,6 @@ const UpcomingInspections = () => {
           console.error('Error parsing cache:', cacheError);
         }
       } else {
-        // Ensure we set empty arrays even in case of error
         setPpeItems([]);
         setFilteredItems([]);
       }
@@ -158,18 +148,15 @@ const UpcomingInspections = () => {
   const filterItems = () => {
     let results = [...ppeItems];
     
-    // Apply type filter
     if (filter !== 'all') {
       const now = new Date();
       
       if (filter === 'overdue') {
-        // Items where next_inspection date is in the past
         results = results.filter(item => {
           const inspDate = new Date(item.nextInspection || item.createdAt);
           return inspDate < now;
         });
       } else if (filter === 'due') {
-        // Items where next_inspection date is today or in the next 7 days
         results = results.filter(item => {
           const inspDate = new Date(item.nextInspection || item.createdAt);
           const diffTime = inspDate.getTime() - now.getTime();
@@ -179,7 +166,6 @@ const UpcomingInspections = () => {
       }
     }
     
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       results = results.filter(
@@ -190,7 +176,6 @@ const UpcomingInspections = () => {
       );
     }
     
-    // Apply sort
     results = results.sort((a, b) => {
       const dateA = new Date(a.nextInspection || a.createdAt).getTime();
       const dateB = new Date(b.nextInspection || b.createdAt).getTime();
@@ -209,7 +194,6 @@ const UpcomingInspections = () => {
     try {
       setIsGeneratingReport(true);
       
-      // Get IDs of all upcoming inspection items
       const ids = filteredItems.map(item => item.id);
       
       if (ids.length === 0) {
@@ -244,7 +228,7 @@ const UpcomingInspections = () => {
       <h1 className="text-2xl font-bold mb-6">Upcoming Inspections</h1>
       
       {hasNetworkError && (
-        <Alert variant="warning" className="mb-6">
+        <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Connection Error</AlertTitle>
           <AlertDescription>

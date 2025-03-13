@@ -285,12 +285,12 @@ const InspectionForm = () => {
         throw new Error('You are currently offline. Please check your connection and try again.');
       }
       
-      // Try a simple fetch to test connectivity
-      const pingResponse = await fetch(`${supabase.supabaseUrl}/rest/v1/`, {
+      // Try a simple fetch to test Supabase connectivity without directly accessing protected properties
+      const pingResponse = await fetch(`https://oapfjmyyfuopajayrxzw.supabase.co/rest/v1/`, {
         method: 'HEAD',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabase.supabaseKey
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hcGZqbXl5ZnVvcGFqYXlyeHp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA3NjEzOTcsImV4cCI6MjA1NjMzNzM5N30.ln7r0soXRMrjmOSY69za1GQkq4H-aW9tGvBI0O81T1U'
         }
       });
       
