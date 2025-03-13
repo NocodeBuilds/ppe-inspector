@@ -1,5 +1,6 @@
 
 import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 interface InspectionDetail {
   id: string;
@@ -74,8 +75,17 @@ export const generateInspectionExcelReport = async (inspection: InspectionDetail
     // Generate filename
     const filename = `inspection_${inspection.ppe_serial}_${new Date(inspection.date).toISOString().split('T')[0]}.xlsx`;
     
-    // Write and download the file
-    XLSX.writeFile(wb, filename);
+    try {
+      // Try using the standard XLSX.writeFile (works in online mode)
+      XLSX.writeFile(wb, filename);
+    } catch (writeError) {
+      console.log('Falling back to Blob download for offline mode');
+      
+      // Fallback for offline mode - convert to blob and use saveAs
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/octet-stream' });
+      saveAs(blob, filename);
+    }
     
   } catch (error) {
     console.error('Error generating Excel report:', error);

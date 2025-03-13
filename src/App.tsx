@@ -7,9 +7,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeToggler";
-import { setupPWAMetaTags, registerServiceWorker } from "./utils/pwaUtils";
+import { setupPWAMetaTags, registerServiceWorker, initializePWA } from "./utils/pwaUtils";
 import ErrorBoundaryWithFallback from "./components/ErrorBoundaryWithFallback";
 import RoleProtectedRoute from "./components/auth/RoleProtectedRoute";
+import { NetworkStatusListener } from "./hooks/useNetwork";
 
 // Pages with no lazy loading to prevent flashing
 import MainLayout from "./components/layout/MainLayout";
@@ -63,11 +64,8 @@ const App = () => {
   useEffect(() => {
     const setupPWA = async () => {
       try {
-        // Set up meta tags
-        setupPWAMetaTags();
-        
-        // Register service worker for offline capabilities
-        await registerServiceWorker();
+        // Use enhanced PWA initialization
+        await initializePWA();
       } catch (error) {
         console.error('Error setting up PWA:', error);
       } finally {
@@ -90,6 +88,8 @@ const App = () => {
           <ThemeProvider>
             <TooltipProvider>
               <AuthProvider>
+                {/* Add NetworkStatusListener to monitor online/offline status */}
+                <NetworkStatusListener />
                 <Toaster />
                 <Sonner />
                 <Suspense fallback={<PageLoader />}>
