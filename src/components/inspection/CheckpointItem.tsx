@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Check, X, Camera, Trash2, Ban, Smartphone } from 'lucide-react';
 import CardOverlay from '@/components/ui/card-overlay';
 import { toast } from '@/hooks/use-toast';
+import CheckpointOptions from './CheckpointOptions';
 
 interface CheckpointItemProps {
   id: string;
@@ -250,38 +251,10 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         <h4 className="font-medium mb-2">{description}</h4>
         
         <div className="flex gap-2 mb-3">
-          <Button
-            type="button"
-            variant={passed === true ? 'default' : 'outline'}
-            size="sm"
-            className={passed === true ? 'bg-green-600 hover:bg-green-700' : ''}
-            onClick={() => onPassedChange(true)}
-          >
-            <Check size={16} className="mr-2" />
-            Pass
-          </Button>
-          
-          <Button
-            type="button"
-            variant={passed === false ? 'default' : 'outline'}
-            size="sm"
-            className={passed === false ? 'bg-destructive hover:bg-destructive/90' : ''}
-            onClick={() => onPassedChange(false)}
-          >
-            <X size={16} className="mr-2" />
-            Fail
-          </Button>
-
-          <Button
-            type="button"
-            variant={passed === null ? 'default' : 'outline'}
-            size="sm"
-            className={passed === null ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
-            onClick={() => onPassedChange(null)}
-          >
-            <Ban size={16} className="mr-2" />
-            N/A
-          </Button>
+          <CheckpointOptions 
+            passed={passed}
+            onStatusChange={onPassedChange}
+          />
         </div>
       </div>
       

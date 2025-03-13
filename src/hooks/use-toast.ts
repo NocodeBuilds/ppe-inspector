@@ -45,7 +45,7 @@ const deduplicatedToast = (props: ToastOptions) => {
   }
   
   // Show the toast
-  return toastOriginal(props as any);
+  return toastOriginal(props);
 };
 
 export const useToast = useToastOriginal;
