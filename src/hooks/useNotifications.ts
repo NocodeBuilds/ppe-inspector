@@ -22,7 +22,6 @@ interface NotificationOptions {
   action?: ToastActionElement;
 }
 
-// Define a notifications table interface to ensure proper typing
 interface NotificationRecord {
   id: string;
   user_id: string;
@@ -36,6 +35,7 @@ interface NotificationRecord {
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
   // Update unread count whenever notifications change
@@ -46,7 +46,10 @@ export const useNotifications = () => {
 
   // Subscribe to notifications channel when user is authenticated
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
     // Set up realtime subscription for notifications
     const channel = supabase
@@ -66,42 +69,59 @@ export const useNotifications = () => {
           fetchNotifications();
         }
       )
-      .subscribe();
-
-    // Initial fetch
-    fetchNotifications();
+      .subscribe((status) => {
+        console.log('Notification subscription status:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          // Initial fetch after successful subscription
+          fetchNotifications();
+        }
+      });
 
     return () => {
+      console.log('Cleaning up notification subscription');
       supabase.removeChannel(channel);
     };
   }, [user]);
 
   const fetchNotifications = async () => {
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
+    setIsLoading(true);
     try {
-      // Use explicit casting for the table name
+      console.log('Fetching notifications for user:', user.id);
       const { data, error } = await supabase
-        .from('notifications' as any)
+        .from('notifications')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        throw error;
+      }
 
-      // Type assertion for the returned data
-      const typedData = data as unknown as NotificationRecord[];
+      console.log('Notifications fetched:', data?.length || 0);
       
-      setNotifications(typedData.map(n => ({
-        id: n.id,
-        title: n.title || '',
-        message: n.message || '',
-        type: (n.type as NotificationType) || 'info',
-        read: n.read || false,
-        createdAt: new Date(n.created_at || Date.now())
-      })));
+      if (data) {
+        const typedData = data as unknown as NotificationRecord[];
+        
+        setNotifications(typedData.map(n => ({
+          id: n.id,
+          title: n.title || '',
+          message: n.message || '',
+          type: (n.type as NotificationType) || 'info',
+          read: n.read || false,
+          createdAt: new Date(n.created_at || Date.now())
+        })));
+      }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('Error in fetchNotifications:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -122,35 +142,48 @@ export const useNotifications = () => {
     // Store notification in database if user is logged in
     if (user) {
       try {
+        console.log('Storing notification:', { title, type });
         const { error } = await supabase
-          .from('notifications' as any)
+          .from('notifications')
           .insert({
             user_id: user.id,
             title,
             message: options?.description || '',
             type,
             read: false
-          } as any);
+          });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error storing notification:', error);
+          throw error;
+        }
       } catch (error) {
-        console.error('Error storing notification:', error);
+        console.error('Error in showNotification:', error);
       }
     }
   };
 
   const markAsRead = async (id: string) => {
+    if (!user) return;
+    
     try {
+      console.log('Marking notification as read:', id);
       const { error } = await supabase
-        .from('notifications' as any)
-        .update({ read: true } as any)
+        .from('notifications')
+        .update({ read: true })
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        throw error;
+      }
 
-      await fetchNotifications();
+      // Update local state to reflect the change
+      setNotifications(prev => 
+        prev.map(n => n.id === id ? { ...n, read: true } : n)
+      );
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('Error in markAsRead:', error);
     }
   };
 
@@ -158,40 +191,57 @@ export const useNotifications = () => {
     if (!user) return;
     
     try {
+      console.log('Marking all notifications as read');
       const { error } = await supabase
-        .from('notifications' as any)
-        .update({ read: true } as any)
-        .eq('user_id', user.id);
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', user.id)
+        .eq('read', false);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking all notifications as read:', error);
+        throw error;
+      }
 
-      await fetchNotifications();
+      // Update local state to reflect the change
+      setNotifications(prev => 
+        prev.map(n => ({ ...n, read: true }))
+      );
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      console.error('Error in markAllAsRead:', error);
     }
   };
 
   const deleteNotification = async (id: string) => {
+    if (!user) return;
+    
     try {
+      console.log('Deleting notification:', id);
       const { error } = await supabase
-        .from('notifications' as any)
+        .from('notifications')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting notification:', error);
+        throw error;
+      }
 
-      await fetchNotifications();
+      // Update local state to reflect the change
+      setNotifications(prev => prev.filter(n => n.id !== id));
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      console.error('Error in deleteNotification:', error);
     }
   };
 
   return {
     notifications,
     unreadCount,
+    isLoading,
     showNotification,
     markAsRead,
     markAllAsRead,
-    deleteNotification
+    deleteNotification,
+    refreshNotifications: fetchNotifications
   };
 };

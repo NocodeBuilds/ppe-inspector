@@ -4,6 +4,7 @@ import { Html5Qrcode, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'h
 import { Button } from '@/components/ui/button';
 import { ScanLine, Camera, X, Smartphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface QRCodeScannerProps {
   onResult: (data: string) => void;
@@ -22,8 +23,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   const scanAttempts = useRef<number>(0);
   const scannerContainerId = 'qr-reader';
   const { toast } = useToast();
+  const { showNotification } = useNotifications();
   
   useEffect(() => {
+    // Initialize QR scanner on component mount
     if (!qrRef.current) {
       qrRef.current = new Html5Qrcode(scannerContainerId);
     }
@@ -47,6 +50,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   
   const fetchAvailableDevices = async () => {
     try {
+      console.log('Fetching available camera devices...');
+      
       // Request camera permission first
       await navigator.mediaDevices.getUserMedia({ video: true });
       
@@ -82,6 +87,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   const startScanner = async () => {
     if (!qrRef.current || hasScanned || isScanning) return;
     
+    console.log('Starting QR scanner...');
     setIsScanning(true);
     setError(null);
     
@@ -104,7 +110,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
         throw new Error('Your browser does not support camera access');
       }
       
-      console.log('Starting scanner...');
+      console.log('Starting scanner with configuration:', config);
       
       const cameraConstraints = deviceId 
         ? { deviceId: { exact: deviceId } } 
@@ -116,6 +122,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
         onQRCodeSuccess,
         onQRCodeError
       );
+      
+      showNotification('Camera activated', 'info', {
+        description: 'Point camera at a QR code to scan'
+      });
       
       console.log('QR scanner started successfully');
     } catch (err: any) {
@@ -157,18 +167,14 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
       if (err.name === 'NotAllowedError') {
         setPermissionDenied(true);
         setError('Camera access denied. Please allow camera access and try again.');
-        toast({
-          title: 'Camera Access Required',
-          description: 'Please allow camera access to scan QR codes.',
-          variant: 'destructive',
+        showNotification('Camera Access Required', 'error', {
+          description: 'Please allow camera access to scan QR codes.'
         });
         onError('Camera permission denied');
       } else {
         setError(`Failed to start scanner: ${err.message || 'Unknown error'}`);
-        toast({
-          title: 'Scanner Error',
-          description: err.message || 'Failed to start QR scanner',
-          variant: 'destructive',
+        showNotification('Scanner Error', 'error', {
+          description: err.message || 'Failed to start QR scanner'
         });
         onError(err.message || 'Failed to start scanner');
       }
@@ -180,6 +186,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   const stopScanner = async () => {
     if (qrRef.current && isScanning) {
       try {
+        console.log('Stopping QR scanner...');
         await qrRef.current.stop();
         console.log('QR scanner stopped');
         setIsScanning(false);
@@ -204,9 +211,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
         await qrRef.current.stop();
         setIsScanning(false);
         
-        toast({
-          title: 'QR Code Scanned',
-          description: 'Successfully scanned QR code',
+        showNotification('QR Code Scanned', 'success', {
+          description: 'Successfully scanned QR code'
         });
         
         // Process the result
@@ -221,7 +227,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   };
   
   const onQRCodeError = (errorMessage: string) => {
-    // Only log on debug, no need to show to user
+    // Don't log every frame error as it's too noisy
     // console.debug('QR scan error:', errorMessage);
   };
   
