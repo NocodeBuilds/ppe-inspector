@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Shield, Calendar, AlertTriangle, Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { useAuth, useRoleAccess } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import EnhancedCard from '@/components/ui/enhanced-card';
+import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 
 const Home = () => {
   const [showAddPPE, setShowAddPPE] = useState(false);
@@ -116,9 +116,7 @@ const Home = () => {
       )}
       
       {isLoading ? (
-        <div className="flex justify-center items-center h-60">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
+        <DashboardSkeleton />
       ) : (
         <div className="grid grid-cols-2 gap-4">
           {(isAdmin || isUser) && (

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +8,7 @@ import { Search, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import FlaggedIssuesSkeleton from '@/components/flagged/FlaggedIssuesSkeleton';
 
 const FlaggedIssues = () => {
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
@@ -32,7 +32,6 @@ const FlaggedIssues = () => {
     try {
       setIsLoading(true);
       
-      // Fetch flagged PPE items with a more robust query
       const { data, error } = await supabase
         .from('ppe_items')
         .select(`
@@ -62,7 +61,6 @@ const FlaggedIssues = () => {
       
       console.log("Flagged items data:", data);
       
-      // Map data to PPEItem type with additional inspection data
       const mappedItems: PPEItem[] = data.map((item: any) => ({
         id: item.id,
         serialNumber: item.serial_number,
@@ -76,7 +74,6 @@ const FlaggedIssues = () => {
         nextInspection: item.next_inspection,
         createdAt: item.created_at,
         updatedAt: item.updated_at,
-        // Get the latest inspection that caused the flag
         latestInspection: item.inspections && item.inspections.length > 0 
           ? item.inspections.sort((a: any, b: any) => 
               new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -140,9 +137,7 @@ const FlaggedIssues = () => {
       </div>
       
       {isLoading ? (
-        <div className="flex justify-center items-center h-60">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
+        <FlaggedIssuesSkeleton />
       ) : filteredItems.length > 0 ? (
         <div className="space-y-6">
           {filteredItems.map((item) => (
