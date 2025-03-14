@@ -2,9 +2,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Html5Qrcode, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
-import { ScanLine, Camera, X, Smartphone } from 'lucide-react';
+import { X, Smartphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/hooks/useNotifications';
+import ScannerPermissionRequest from './ScannerPermissionRequest';
+import ScannerError from './ScannerError';
+import ScannerViewfinder from './ScannerViewfinder';
 
 interface QRCodeScannerProps {
   onResult: (data: string) => void;
@@ -131,56 +134,61 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
     } catch (err: any) {
       console.error('Error starting QR scanner:', err);
       
-      // If we failed with the selected device, try with a different camera option
-      if (scanAttempts.current < 2) {
-        scanAttempts.current++;
-        console.log(`Scanner start failed. Trying alternative camera (attempt ${scanAttempts.current})...`);
-        
-        try {
-          if (scanAttempts.current === 1) {
-            // Try with user facing camera on first retry
-            await qrRef.current.start(
-              { facingMode: 'user' },
-              { fps: 10, qrbox: { width: 250, height: 250 } },
-              onQRCodeSuccess,
-              onQRCodeError
-            );
-            console.log('Started with user-facing camera');
-            return;
-          } else {
-            // Try with any available camera on second retry
-            await qrRef.current.start(
-              { facingMode: { ideal: "environment" } },
-              { fps: 10, qrbox: { width: 250, height: 250 } },
-              onQRCodeSuccess,
-              onQRCodeError
-            );
-            console.log('Started with any available camera');
-            return;
-          }
-        } catch (retryErr) {
-          console.error(`Camera retry attempt ${scanAttempts.current} failed:`, retryErr);
-        }
-      }
-      
-      // All attempts failed, show error
-      if (err.name === 'NotAllowedError') {
-        setPermissionDenied(true);
-        setError('Camera access denied. Please allow camera access and try again.');
-        showNotification('Camera Access Required', 'error', {
-          description: 'Please allow camera access to scan QR codes.'
-        });
-        onError('Camera permission denied');
-      } else {
-        setError(`Failed to start scanner: ${err.message || 'Unknown error'}`);
-        showNotification('Scanner Error', 'error', {
-          description: err.message || 'Failed to start QR scanner'
-        });
-        onError(err.message || 'Failed to start scanner');
-      }
-      
-      setIsScanning(false);
+      // Handle error with retry logic and fallbacks
+      handleScannerStartError(err);
     }
+  };
+  
+  const handleScannerStartError = async (err: any) => {
+    // If we failed with the selected device, try with a different camera option
+    if (scanAttempts.current < 2) {
+      scanAttempts.current++;
+      console.log(`Scanner start failed. Trying alternative camera (attempt ${scanAttempts.current})...`);
+      
+      try {
+        if (scanAttempts.current === 1) {
+          // Try with user facing camera on first retry
+          await qrRef.current?.start(
+            { facingMode: 'user' },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            onQRCodeSuccess,
+            onQRCodeError
+          );
+          console.log('Started with user-facing camera');
+          return;
+        } else {
+          // Try with any available camera on second retry
+          await qrRef.current?.start(
+            { facingMode: { ideal: "environment" } },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            onQRCodeSuccess,
+            onQRCodeError
+          );
+          console.log('Started with any available camera');
+          return;
+        }
+      } catch (retryErr) {
+        console.error(`Camera retry attempt ${scanAttempts.current} failed:`, retryErr);
+      }
+    }
+    
+    // All attempts failed, show error
+    if (err.name === 'NotAllowedError') {
+      setPermissionDenied(true);
+      setError('Camera access denied. Please allow camera access and try again.');
+      showNotification('Camera Access Required', 'error', {
+        description: 'Please allow camera access to scan QR codes.'
+      });
+      onError('Camera permission denied');
+    } else {
+      setError(`Failed to start scanner: ${err.message || 'Unknown error'}`);
+      showNotification('Scanner Error', 'error', {
+        description: err.message || 'Failed to start QR scanner'
+      });
+      onError(err.message || 'Failed to start scanner');
+    }
+    
+    setIsScanning(false);
   };
   
   const stopScanner = async () => {
@@ -265,6 +273,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
       startScanner();
     }, 300);
   };
+
+  const handleCancel = () => {
+    onError('Scanning cancelled');
+  };
   
   return (
     <div className="w-full max-w-md mx-auto">
@@ -273,7 +285,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={() => onError('Scanning cancelled')}
+          onClick={handleCancel}
           className="h-8 w-8"
         >
           <X size={18} />
@@ -281,24 +293,9 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
       </div>
       
       {permissionDenied ? (
-        <div className="text-center p-6 border rounded-lg">
-          <div className="mb-4 mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-            <Camera size={24} className="text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium mb-2">Camera Access Required</h3>
-          <p className="text-muted-foreground mb-4">
-            Please allow camera access to scan QR codes.
-          </p>
-          <Button onClick={handleRetry}>Try Again</Button>
-        </div>
+        <ScannerPermissionRequest onRetry={handleRetry} />
       ) : error ? (
-        <div className="text-center p-6 border rounded-lg">
-          <p className="text-destructive mb-3">{error}</p>
-          <div className="flex justify-center gap-3">
-            <Button onClick={handleRetry}>Try Again</Button>
-            <Button variant="outline" onClick={() => onError('Scanning cancelled')}>Cancel</Button>
-          </div>
-        </div>
+        <ScannerError error={error} onRetry={handleRetry} onCancel={handleCancel} />
       ) : (
         <div className="relative border-2 border-primary rounded-lg overflow-hidden bg-black aspect-square">
           <div 
@@ -306,25 +303,14 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
             className="w-full h-full"
           />
           
-          {isScanning && !hasScanned && (
-            <div className="absolute top-0 left-0 w-full h-full pointer-events-none flex flex-col items-center justify-center">
-              <div className="w-60 h-60 border-2 border-primary rounded-lg relative">
-                <div className="absolute top-0 left-0 w-full animate-scan">
-                  <ScanLine className="text-primary" />
-                </div>
-              </div>
-              <p className="mt-4 text-white drop-shadow-lg text-shadow">
-                Position QR code inside the box
-              </p>
-            </div>
-          )}
+          {isScanning && !hasScanned && <ScannerViewfinder />}
         </div>
       )}
       
       <div className="mt-4 flex justify-between gap-3">
         <Button 
           variant="outline" 
-          onClick={() => onError('Scanning cancelled')}
+          onClick={handleCancel}
           className="flex-1"
         >
           Cancel

@@ -11,6 +11,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { usePPEData } from '@/hooks/usePPEData';
 import PPESelectionDialog from '@/components/inspection/PPESelectionDialog';
 import { PPEItem } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const StartInspection = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -107,51 +108,60 @@ const StartInspection = () => {
         </p>
       </div>
       
-      <Card className="hover:border-primary transition-colors cursor-pointer">
-        <CardContent className="p-0">
-          <Button 
-            variant="ghost" 
-            className="w-full justify-between p-6"
-            onClick={() => setShowScanner(true)}
-          >
-            <div className="flex items-center">
-              <div className="bg-primary/10 p-3 rounded-lg mr-4">
-                <QrCode className="h-6 w-6 text-primary" />
-              </div>
-              <div className="text-left">
-                <div className="font-medium">Scan QR Code</div>
-                <div className="text-sm text-muted-foreground">
-                  Scan PPE QR code to start inspection
+      {isLoading ? (
+        <>
+          <Skeleton className="h-[120px] w-full rounded-lg" />
+          <Skeleton className="h-[120px] w-full rounded-lg" />
+        </>
+      ) : (
+        <>
+          <Card className="hover:border-primary transition-colors cursor-pointer">
+            <CardContent className="p-0">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-between p-6"
+                onClick={() => setShowScanner(true)}
+              >
+                <div className="flex items-center">
+                  <div className="bg-primary/10 p-3 rounded-lg mr-4">
+                    <QrCode className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-medium">Scan QR Code</div>
+                    <div className="text-sm text-muted-foreground">
+                      Scan PPE QR code to start inspection
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-          </Button>
-        </CardContent>
-      </Card>
-      
-      <Card className="hover:border-primary transition-colors cursor-pointer">
-        <CardContent className="p-0">
-          <Button 
-            variant="ghost" 
-            className="w-full justify-between p-6"
-            onClick={handleManualInspection}
-          >
-            <div className="flex items-center">
-              <div className="bg-primary/10 p-3 rounded-lg mr-4">
-                <Scan className="h-6 w-6 text-primary" />
-              </div>
-              <div className="text-left">
-                <div className="font-medium">Manual Selection</div>
-                <div className="text-sm text-muted-foreground">
-                  Manually select PPE to inspect
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card className="hover:border-primary transition-colors cursor-pointer">
+            <CardContent className="p-0">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-between p-6"
+                onClick={handleManualInspection}
+              >
+                <div className="flex items-center">
+                  <div className="bg-primary/10 p-3 rounded-lg mr-4">
+                    <Scan className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-medium">Manual Selection</div>
+                    <div className="text-sm text-muted-foreground">
+                      Manually select PPE to inspect
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-          </Button>
-        </CardContent>
-      </Card>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </Button>
+            </CardContent>
+          </Card>
+        </>
+      )}
       
       {/* QR Code Scanner Dialog */}
       <Dialog open={showScanner} onOpenChange={setShowScanner}>

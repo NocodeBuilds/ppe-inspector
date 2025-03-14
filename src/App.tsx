@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -11,6 +10,7 @@ import { initializePWA } from "./utils/pwaUtils";
 import ErrorBoundaryWithFallback from "./components/ErrorBoundaryWithFallback";
 import RoleProtectedRoute from "./components/auth/RoleProtectedRoute";
 import { NetworkStatusListener } from "./hooks/useNetwork";
+import NetworkStatus from "./components/layout/NetworkStatus";
 
 // Pages with no lazy loading to prevent flashing
 import MainLayout from "./components/layout/MainLayout";
@@ -101,6 +101,7 @@ const App = () => {
               <AuthProvider>
                 {/* Add NetworkStatusListener to monitor online/offline status */}
                 <NetworkStatusListener />
+                <NetworkStatus />
                 <Toaster />
                 <Sonner />
                 <Suspense fallback={<PageLoader />}>
