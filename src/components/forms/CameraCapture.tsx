@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Camera, ImageIcon, RefreshCw, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -15,12 +15,23 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
 }) => {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(existingImage || null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Clean up camera resources when component unmounts
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   const activateCamera = async () => {
     try {
+      setCameraError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment',
@@ -36,6 +47,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
+      setCameraError('Could not access camera. Please ensure you have granted camera permissions.');
     }
   };
 
@@ -91,6 +103,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
             playsInline 
             className="w-full rounded-md border overflow-hidden"
             style={{ height: '240px', objectFit: 'cover' }}
+            onCanPlay={() => videoRef.current?.play()}
           />
           
           <div className="mt-4 flex justify-center gap-2">
@@ -138,12 +151,15 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       ) : (
         <div className="flex flex-col items-center">
           <div 
-            className="w-full h-[240px] rounded-md border border-dashed flex items-center justify-center bg-muted/30"
+            className="w-full h-[240px] rounded-md border border-dashed flex items-center justify-center bg-muted/30 cursor-pointer"
             onClick={activateCamera}
           >
-            <div className="flex flex-col items-center text-muted-foreground cursor-pointer p-4">
+            <div className="flex flex-col items-center text-muted-foreground p-4">
               <ImageIcon className="h-12 w-12 mb-2" />
               <p>Click to take a photo of the PPE</p>
+              {cameraError && (
+                <p className="text-red-500 text-xs mt-2 text-center">{cameraError}</p>
+              )}
             </div>
           </div>
           

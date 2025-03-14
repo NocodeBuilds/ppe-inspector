@@ -35,6 +35,7 @@ export function DatePicker({
 }: DatePickerProps) {
   const today = new Date();
   const isMobile = useIsMobile();
+  const [open, setOpen] = React.useState(false);
   
   // Disable dates based on props
   const isDateDisabled = (date: Date) => {
@@ -47,10 +48,18 @@ export function DatePicker({
     return false;
   };
 
+  // Handle date selection and close the popover
+  const handleSelect = (selectedDate: Date | undefined) => {
+    setDate(selectedDate);
+    if (selectedDate) {
+      setOpen(false);
+    }
+  };
+
   return (
     <div className={className}>
       {label && <div className="mb-2 text-sm font-medium">{label}</div>}
-      <Popover>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant={"outline"}
@@ -74,7 +83,7 @@ export function DatePicker({
           <Calendar
             mode="single"
             selected={date}
-            onSelect={setDate}
+            onSelect={handleSelect}
             disabled={isDateDisabled}
             initialFocus
             className="p-3 pointer-events-auto border rounded-md shadow"
