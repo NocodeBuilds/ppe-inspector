@@ -1,7 +1,6 @@
-
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Calendar, Upload, Image as ImageIcon } from 'lucide-react';
+import { Calendar, Upload } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,6 @@ import { toast } from '@/hooks/use-toast';
 import { supabase, PPEType } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import ErrorBoundaryWithFallback from '@/components/ErrorBoundaryWithFallback';
-import { Progress } from '@/components/ui/progress';
 
 interface AddPPEFormProps {
   onSuccess?: () => void;
@@ -49,9 +47,6 @@ const ppeTypes: PPEType[] = [
 const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormValues>();
@@ -67,7 +62,6 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
     }
     
     setIsSubmitting(true);
-    setUploadProgress(0);
     
     try {
       console.log("Adding PPE with user ID:", user.id);
@@ -75,45 +69,18 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
       // Upload image if selected
       let imageUrl = null;
       if (imageFile) {
-        try {
-          setUploadProgress(10);
+        const filename = `${Date.now()}-${imageFile.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('ppe-images')
+          .upload(filename, imageFile);
           
-          // Resize image before upload to reduce size
-          const resizedImage = await resizeImage(imageFile, 800);
-          setUploadProgress(30);
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('ppe-images')
+          .getPublicUrl(filename);
           
-          const filename = `${Date.now()}-${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-          
-          setUploadProgress(40);
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('ppe-images')
-            .upload(filename, resizedImage, {
-              cacheControl: '3600',
-              contentType: resizedImage.type,
-              upsert: false
-            });
-            
-          if (uploadError) {
-            console.error('Image upload error:', uploadError);
-            throw new Error(`Image upload failed: ${uploadError.message}`);
-          }
-          
-          setUploadProgress(80);
-          const { data: { publicUrl } } = supabase.storage
-            .from('ppe-images')
-            .getPublicUrl(filename);
-            
-          imageUrl = publicUrl;
-          setUploadProgress(90);
-        } catch (imageError: any) {
-          console.error('Image processing error:', imageError);
-          toast({
-            title: 'Image Upload Issue',
-            description: imageError.message || 'Failed to upload image, but continuing with PPE creation',
-            variant: 'default',
-          });
-          // Continue without image
-        }
+        imageUrl = publicUrl;
       }
       
       // Calculate next inspection date (3 months from manufacturing date)
@@ -142,16 +109,10 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
         throw insertError;
       }
       
-      setUploadProgress(100);
-      
       toast({
         title: 'Success!',
         description: 'PPE item added successfully',
       });
-      
-      // Reset form
-      setImageFile(null);
-      setImagePreview(null);
       
       if (onSuccess) {
         onSuccess();
@@ -165,114 +126,12 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
       });
     } finally {
       setIsSubmitting(false);
-      setUploadProgress(0);
     }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    
-    if (file) {
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: 'File too large',
-          description: 'Image must be less than 5MB',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: 'Invalid file type',
-          description: 'Please select a JPEG, PNG, or WebP image',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      setImageFile(file);
-      
-      // Create image preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setImageFile(null);
-      setImagePreview(null);
-    }
-  };
-  
-  // Function to resize images before upload
-  const resizeImage = (file: File, maxWidth: number): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (readerEvent) => {
-        const image = new Image();
-        image.onload = () => {
-          // Don't resize if the image is already smaller
-          if (image.width <= maxWidth) {
-            resolve(file);
-            return;
-          }
-          
-          const canvas = document.createElement('canvas');
-          const ratio = maxWidth / image.width;
-          canvas.width = maxWidth;
-          canvas.height = image.height * ratio;
-          
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('Could not get canvas context'));
-            return;
-          }
-          
-          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-          
-          // Convert to blob
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                resolve(blob);
-              } else {
-                reject(new Error('Failed to create blob from canvas'));
-              }
-            },
-            file.type,
-            0.85 // Quality parameter
-          );
-        };
-        
-        image.onerror = () => {
-          reject(new Error('Failed to load image for resizing'));
-        };
-        
-        if (typeof readerEvent.target?.result === 'string') {
-          image.src = readerEvent.target.result;
-        } else {
-          reject(new Error('Failed to read file'));
-        }
-      };
-      
-      reader.onerror = () => {
-        reject(new Error('Failed to read file'));
-      };
-      
-      reader.readAsDataURL(file);
-    });
-  };
-  
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    setImageFile(file);
   };
 
   return (
@@ -370,76 +229,39 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
           </div>
 
           <div>
-            <Label htmlFor="image">Image</Label>
-            
-            {imagePreview ? (
-              <div className="mt-2 relative">
-                <div className="relative aspect-square w-full max-w-[200px] rounded-md overflow-hidden border border-border">
-                  <img 
-                    src={imagePreview} 
-                    alt="Preview" 
-                    className="w-full h-full object-cover" 
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 h-8 w-8"
-                    onClick={removeImage}
-                  >
-                    <span>×</span>
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-1">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="w-full flex items-center justify-center gap-2 h-auto py-3"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload size={20} />
-                  <span>Upload Photo</span>
-                </Button>
-              </div>
-            )}
-            
-            <Input
-              ref={fileInputRef}
-              id="image-upload"
-              type="file"
-              accept="image/jpeg,image/png,image/jpg,image/webp"
-              className="hidden"
-              onChange={handleImageChange}
-            />
-            
-            {imageFile && (
-              <p className="text-xs text-muted-foreground mt-2">
-                File selected: {imageFile.name} ({(imageFile.size / 1024 / 1024).toFixed(2)} MB)
-              </p>
-            )}
+            <Label htmlFor="image">Upload Image</Label>
+            <div className="mt-1">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full flex items-center justify-center gap-2 h-auto py-3"
+                onClick={() => document.getElementById('image-upload')?.click()}
+              >
+                <Upload size={20} />
+                <span>Upload Photo</span>
+              </Button>
+              <Input
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+              />
+              {imageFile && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  File selected: {imageFile.name}
+                </p>
+              )}
+            </div>
           </div>
         </div>
-
-        {uploadProgress > 0 && uploadProgress < 100 && (
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Uploading...</p>
-            <Progress value={uploadProgress} />
-          </div>
-        )}
 
         <Button 
           type="submit" 
           className="w-full" 
           disabled={isSubmitting}
         >
-          {isSubmitting ? (
-            <div className="flex items-center">
-              <span className="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
-              Saving...
-            </div>
-          ) : 'Save PPE Item'}
+          {isSubmitting ? 'Saving...' : 'Save PPE Item'}
         </Button>
       </form>
     </ErrorBoundaryWithFallback>

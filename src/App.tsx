@@ -7,7 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeToggler";
-import { setupPWAMetaTags, registerServiceWorker } from "./utils/pwaUtils";
+import { setupPWAMetaTags, registerServiceWorker, initializePWA } from "./utils/pwaUtils";
 import ErrorBoundaryWithFallback from "./components/ErrorBoundaryWithFallback";
 import RoleProtectedRoute from "./components/auth/RoleProtectedRoute";
 import { NetworkStatusListener } from "./hooks/useNetwork";
@@ -35,41 +35,15 @@ const ManualInspection = lazy(() => import(/* webpackChunkName: "manual-inspecti
 const FlaggedIssues = lazy(() => import(/* webpackChunkName: "flagged-issues-page" */ "./pages/FlaggedIssues"));
 const InspectionDetails = lazy(() => import(/* webpackChunkName: "inspection-details-page" */ "./pages/InspectionDetails"));
 
-// Improved loading component with timeout to prevent infinite loading
-const PageLoader = ({ timeout = 10000 }: { timeout?: number }) => {
-  const [showError, setShowError] = useState(false);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowError(true);
-    }, timeout);
-    
-    return () => clearTimeout(timer);
-  }, [timeout]);
-  
-  if (showError) {
-    return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-background p-4">
-        <p className="text-destructive mb-2">Loading is taking longer than expected.</p>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="px-4 py-2 bg-primary text-white rounded-md"
-        >
-          Reload Page
-        </button>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="fixed inset-0 flex items-center justify-center bg-background z-50">
-      <div className="flex flex-col items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-2"></div>
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      </div>
+// Loading component for Suspense with better UI
+const PageLoader = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-background">
+    <div className="flex flex-col items-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-2"></div>
+      <p className="text-sm text-muted-foreground">Loading...</p>
     </div>
-  );
-};
+  </div>
+);
 
 // Configure React Query with improved settings and error handling
 const queryClient = new QueryClient({
@@ -85,37 +59,22 @@ const queryClient = new QueryClient({
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [pwaError, setPwaError] = useState<string | null>(null);
-  
-  // Set up PWA features with better error handling and timeouts
+
+  // Set up PWA features
   useEffect(() => {
     const setupPWA = async () => {
       try {
-        // Register service worker and setup basic PWA features
-        await setupPWAMetaTags();
-        await registerServiceWorker();
-        
-        // Set loading to false even if PWA setup fails
-        setIsLoading(false);
+        // Use enhanced PWA initialization
+        await initializePWA();
       } catch (error) {
         console.error('Error setting up PWA:', error);
-        setPwaError('Failed to set up app correctly. Some features may not work offline.');
+      } finally {
+        // Finish loading after setup or if there's an error
         setIsLoading(false);
       }
     };
     
-    // Add timeout to prevent infinite loading
-    const loadingTimeout = setTimeout(() => {
-      if (isLoading) {
-        console.warn('Loading timeout reached, forcing app to render');
-        setIsLoading(false);
-        setPwaError('App took too long to load. Some features may not work correctly.');
-      }
-    }, 5000);
-    
     setupPWA();
-    
-    return () => clearTimeout(loadingTimeout);
   }, []);
 
   if (isLoading) {
@@ -131,13 +90,6 @@ const App = () => {
               <AuthProvider>
                 {/* Add NetworkStatusListener to monitor online/offline status */}
                 <NetworkStatusListener />
-                
-                {pwaError && (
-                  <div className="fixed top-0 left-0 right-0 bg-destructive/90 text-white p-2 text-center text-sm z-50">
-                    {pwaError}
-                  </div>
-                )}
-                
                 <Toaster />
                 <Sonner />
                 <Suspense fallback={<PageLoader />}>

@@ -7,10 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import QRCodeScanner from '@/components/inspection/QRCodeScanner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, Search, QrCode, ClipboardList, Check } from 'lucide-react';
+import { AlertCircle, Search, QrCode, ClipboardList } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PPEItem } from '@/integrations/supabase/client';
 
 const StartInspection = () => {
@@ -18,8 +17,6 @@ const StartInspection = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [multipleItems, setMultipleItems] = useState<PPEItem[]>([]);
-  const [showItemsDialog, setShowItemsDialog] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -36,11 +33,15 @@ const StartInspection = () => {
       const { data, error: searchError } = await supabase
         .from('ppe_items')
         .select('*')
-        .eq('serial_number', serialNumber.trim());
+        .eq('serial_number', serialNumber.trim())
+        .maybeSingle();
 
       if (searchError) throw searchError;
 
-      if (!data || data.length === 0) {
+      if (data) {
+        // PPE found, navigate to inspection form
+        navigate(`/inspect/${data.id}`);
+      } else {
         // PPE not found, navigate to manual inspection
         toast({
           title: 'PPE not found',
@@ -48,16 +49,6 @@ const StartInspection = () => {
           variant: 'default',
         });
         navigate('/inspect/new', { state: { serialNumber: serialNumber.trim() } });
-        return;
-      }
-      
-      if (data.length === 1) {
-        // Single PPE found, navigate to inspection form
-        navigate(`/inspect/${data[0].id}`);
-      } else {
-        // Multiple PPEs found with the same serial number, show selection dialog
-        setMultipleItems(data);
-        setShowItemsDialog(true);
       }
     } catch (error: any) {
       console.error('Error searching for PPE:', error);
@@ -69,6 +60,7 @@ const StartInspection = () => {
 
   const handleScanResult = (result: string) => {
     setIsScanning(false);
+    setSerialNumber(result);
     
     // Automatically search after scan
     toast({
@@ -82,16 +74,11 @@ const StartInspection = () => {
     // Wait a moment to update state before searching
     setTimeout(() => {
       handleSearch();
-    }, 300);
+    }, 500);
   };
 
   const handleManualInspection = () => {
     navigate('/inspect/new');
-  };
-  
-  const handleSelectPPE = (ppeItem: PPEItem) => {
-    setShowItemsDialog(false);
-    navigate(`/inspect/${ppeItem.id}`);
   };
 
   return (
@@ -164,11 +151,6 @@ const StartInspection = () => {
                 value={serialNumber}
                 onChange={(e) => setSerialNumber(e.target.value)}
                 className="w-full"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSearch();
-                  }
-                }}
               />
             </div>
             <Button 
@@ -209,47 +191,6 @@ const StartInspection = () => {
           </Button>
         </CardContent>
       </Card>
-      
-      {/* Multiple PPE Items Dialog */}
-      <Dialog open={showItemsDialog} onOpenChange={setShowItemsDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Select PPE Item</DialogTitle>
-            <DialogDescription>
-              Multiple items found with serial number "{serialNumber}". Please select one:
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-3 max-h-96 overflow-y-auto py-2">
-            {multipleItems.map((item) => (
-              <Card key={item.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <CardContent className="p-4" onClick={() => handleSelectPPE(item)}>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="font-medium">{item.type}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Brand: {item.brand}, Model: {item.model_number}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Status: <span className={`
-                          ${item.status === 'active' ? 'text-green-500' : 
-                            item.status === 'expired' ? 'text-destructive' : 
-                            item.status === 'flagged' ? 'text-orange-500' : 'text-muted-foreground'}
-                        `}>
-                          {item.status?.toUpperCase()}
-                        </span>
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="icon">
-                      <Check className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
