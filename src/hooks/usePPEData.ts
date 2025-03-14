@@ -139,15 +139,26 @@ export function usePPEData() {
     async (ppeData) => {
       const { imageFile, ...ppeItem } = ppeData;
       
-      // First, create the PPE item
+      // Make sure all required fields are provided
+      if (!ppeItem.brand || !ppeItem.type || !ppeItem.serial_number || 
+          !ppeItem.model_number || !ppeItem.manufacturing_date || !ppeItem.expiry_date) {
+        throw new Error('Missing required PPE fields');
+      }
+      
+      // First, create the PPE item with all required fields
       const { data, error } = await supabase
         .from('ppe_items')
         .insert({
-          ...ppeItem,
+          brand: ppeItem.brand,
+          type: ppeItem.type,
+          serial_number: ppeItem.serial_number,
+          model_number: ppeItem.model_number,
+          manufacturing_date: ppeItem.manufacturing_date,
+          expiry_date: ppeItem.expiry_date,
           created_by: user?.id,
+          status: ppeItem.status || 'active',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          status: ppeItem.status || 'active'
+          updated_at: new Date().toISOString()
         })
         .select()
         .single();

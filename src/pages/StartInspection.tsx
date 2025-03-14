@@ -155,7 +155,7 @@ const StartInspection = () => {
       
       {/* QR Code Scanner Dialog */}
       <Dialog open={showScanner} onOpenChange={setShowScanner}>
-        <DialogContent className="max-w-md p-0" hideCloseButton>
+        <DialogContent className="max-w-md p-0">
           {showScanner && (
             <QRCodeScanner
               onResult={handleScanResult}
