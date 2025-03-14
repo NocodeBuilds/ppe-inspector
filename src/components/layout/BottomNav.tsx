@@ -1,10 +1,7 @@
 
-// src/components/layout/BottomNav.tsx - This file would need to be modified to include the analytics route
-// but it wasn't provided in the current code files. This is a placeholder showing how it might be updated.
-
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Clipboard, Calendar, Settings, BarChart3 } from 'lucide-react';
+import { Home, Clipboard, Calendar, Settings, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BottomNavProps {
@@ -56,7 +53,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ className }) => {
         </NavLink>
         
         <NavLink
-          to="/analytics"
+          to="/profile"
           className={({ isActive }) =>
             cn(
               "inline-flex flex-col items-center justify-center px-5 hover:bg-muted/50 group transition-colors",
@@ -64,8 +61,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ className }) => {
             )
           }
         >
-          <BarChart3 className="w-5 h-5 mb-1" />
-          <span className="text-xs">Analytics</span>
+          <UserRound className="w-5 h-5 mb-1" />
+          <span className="text-xs">Profile</span>
         </NavLink>
         
         <NavLink
