@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -31,6 +30,7 @@ const ResetPasswordPage = lazy(() => import(/* webpackChunkName: "reset-password
 const EditProfile = lazy(() => import(/* webpackChunkName: "edit-profile-page" */ "./pages/EditProfile"));
 const InspectionForm = lazy(() => import(/* webpackChunkName: "inspection-form-page" */ "./pages/InspectionForm"));
 const ReportsPage = lazy(() => import(/* webpackChunkName: "reports-page" */ "./pages/Reports"));
+const AnalyticsPage = lazy(() => import(/* webpackChunkName: "analytics-page" */ "./pages/Analytics"));
 const StartInspection = lazy(() => import(/* webpackChunkName: "start-inspection-page" */ "./pages/StartInspection"));
 const ManualInspection = lazy(() => import(/* webpackChunkName: "manual-inspection-page" */ "./pages/ManualInspection"));
 const FlaggedIssues = lazy(() => import(/* webpackChunkName: "flagged-issues-page" */ "./pages/FlaggedIssues"));
@@ -139,6 +139,13 @@ const App = () => {
                       <Route path="reports" element={
                         <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
                           <ReportsPage />
+                        </RoleProtectedRoute>
+                      } />
+                      
+                      {/* Add analytics dashboard route */}
+                      <Route path="analytics" element={
+                        <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
+                          <AnalyticsPage />
                         </RoleProtectedRoute>
                       } />
                       

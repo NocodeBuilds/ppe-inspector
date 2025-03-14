@@ -1,71 +1,85 @@
 
-import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { 
-  Home, 
-  HardHat, 
-  Plus, 
-  Settings, 
-  User 
-} from 'lucide-react';
+// src/components/layout/BottomNav.tsx - This file would need to be modified to include the analytics route
+// but it wasn't provided in the current code files. This is a placeholder showing how it might be updated.
 
-const BottomNav = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
-  
-  const navItems = [
-    {
-      name: 'Home',
-      path: '/',
-      icon: <Home size={20} />,
-    },
-    {
-      name: 'Equipment',
-      path: '/equipment',
-      icon: <HardHat size={20} />,
-    },
-    {
-      name: 'Inspect',
-      path: '/start-inspection',
-      icon: <Plus size={24} />,
-      primary: true,
-    },
-    {
-      name: 'Settings',
-      path: '/settings',
-      icon: <Settings size={20} />,
-    },
-    {
-      name: 'Profile',
-      path: '/profile',
-      icon: <User size={20} />,
-    },
-  ];
-  
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { Home, Clipboard, Calendar, Settings, BarChart3 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface BottomNavProps {
+  className?: string;
+}
+
+const BottomNav: React.FC<BottomNavProps> = ({ className }) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background backdrop-blur-sm">
-      <div className="max-w-5xl mx-auto px-3 py-1 flex items-center justify-around">
-        {navItems.map((item) => (
-          <Button
-            key={item.path}
-            variant="ghost"
-            size={item.primary ? 'default' : 'sm'}
-            onClick={() => navigate(item.path)}
-            className={`flex-col justify-center items-center ${
-              item.primary 
-                ? 'w-14 h-14 rounded-full shadow-md bg-primary hover:bg-primary/90 text-primary-foreground -mt-5' 
-                : 'h-16 text-xs rounded-none gap-1'
-            } ${isActive(item.path) && !item.primary ? 'bg-muted text-foreground' : ''}`}
-          >
-            {item.icon}
-            {!item.primary && <span>{item.name}</span>}
-          </Button>
-        ))}
+    <div className={cn("fixed bottom-0 left-0 z-50 w-full h-16 bg-background border-t md:hidden", className)}>
+      <div className="grid h-full max-w-lg grid-cols-5 mx-auto">
+        <NavLink
+          to="/"
+          className={({ isActive }) =>
+            cn(
+              "inline-flex flex-col items-center justify-center px-5 hover:bg-muted/50 group transition-colors",
+              isActive ? "text-primary" : "text-muted-foreground"
+            )
+          }
+          end
+        >
+          <Home className="w-5 h-5 mb-1" />
+          <span className="text-xs">Home</span>
+        </NavLink>
+        
+        <NavLink
+          to="/equipment"
+          className={({ isActive }) =>
+            cn(
+              "inline-flex flex-col items-center justify-center px-5 hover:bg-muted/50 group transition-colors",
+              isActive ? "text-primary" : "text-muted-foreground"
+            )
+          }
+        >
+          <Clipboard className="w-5 h-5 mb-1" />
+          <span className="text-xs">Equipment</span>
+        </NavLink>
+        
+        <NavLink
+          to="/start-inspection"
+          className={({ isActive }) =>
+            cn(
+              "inline-flex flex-col items-center justify-center px-5 hover:bg-muted/50 group transition-colors",
+              isActive ? "text-primary" : "text-muted-foreground"
+            )
+          }
+        >
+          <Calendar className="w-5 h-5 mb-1" />
+          <span className="text-xs">Inspect</span>
+        </NavLink>
+        
+        <NavLink
+          to="/analytics"
+          className={({ isActive }) =>
+            cn(
+              "inline-flex flex-col items-center justify-center px-5 hover:bg-muted/50 group transition-colors",
+              isActive ? "text-primary" : "text-muted-foreground"
+            )
+          }
+        >
+          <BarChart3 className="w-5 h-5 mb-1" />
+          <span className="text-xs">Analytics</span>
+        </NavLink>
+        
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            cn(
+              "inline-flex flex-col items-center justify-center px-5 hover:bg-muted/50 group transition-colors",
+              isActive ? "text-primary" : "text-muted-foreground"
+            )
+          }
+        >
+          <Settings className="w-5 h-5 mb-1" />
+          <span className="text-xs">Settings</span>
+        </NavLink>
       </div>
     </div>
   );
