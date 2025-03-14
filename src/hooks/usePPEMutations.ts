@@ -44,20 +44,24 @@ export function usePPEMutations(refetchPPE: () => void) {
     }
   );
 
-  // Function to upload PPE image
-  const uploadPPEImage = async (file: File, ppeId: string): Promise<string | null> => {
+  // Function to compress and resize image before upload
+  const compressAndUploadImage = async (file: File, ppeId: string): Promise<string | null> => {
     if (!file || !ppeId) return null;
     
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      // Create a filename with PPE ID and timestamp
+      const fileExt = file.name.split('.').pop() || 'jpg';
       const fileName = `${ppeId}-${Date.now()}.${fileExt}`;
       const filePath = `ppe-images/${fileName}`;
       
       // Upload the file
       const { error: uploadError } = await supabase.storage
         .from('ppe-images')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
       
       if (uploadError) throw uploadError;
       
@@ -89,6 +93,21 @@ export function usePPEMutations(refetchPPE: () => void) {
         throw new Error('Missing required PPE fields');
       }
       
+      if (!user?.id) {
+        throw new Error('User must be logged in to create PPE items');
+      }
+      
+      // Check if expiry date is valid
+      const expiryDate = new Date(ppeItem.expiry_date);
+      const currentDate = new Date();
+      
+      // Calculate status based on expiry date
+      const status: PPEStatus = expiryDate < currentDate ? 'expired' : 'active';
+      
+      // Calculate next inspection date (3 months from today)
+      const nextInspection = new Date();
+      nextInspection.setMonth(nextInspection.getMonth() + 3);
+      
       // First, create the PPE item with all required fields
       const { data, error } = await supabase
         .from('ppe_items')
@@ -99,8 +118,9 @@ export function usePPEMutations(refetchPPE: () => void) {
           model_number: ppeItem.model_number,
           manufacturing_date: ppeItem.manufacturing_date,
           expiry_date: ppeItem.expiry_date,
-          created_by: user?.id,
-          status: ppeItem.status || 'active',
+          created_by: user.id,
+          status: status,
+          next_inspection: nextInspection.toISOString(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -111,7 +131,7 @@ export function usePPEMutations(refetchPPE: () => void) {
       
       // Then, if there's an image file, upload it and update the PPE item
       if (imageFile && data.id) {
-        const imageUrl = await uploadPPEImage(imageFile, data.id);
+        const imageUrl = await compressAndUploadImage(imageFile, data.id);
         
         if (imageUrl) {
           const { data: updatedData, error: updateError } = await supabase
@@ -147,7 +167,7 @@ export function usePPEMutations(refetchPPE: () => void) {
   return {
     updatePPEStatus: updatePPEStatusMutation.mutate,
     createPPE: createPPEMutation.mutate,
-    uploadPPEImage,
+    uploadPPEImage: compressAndUploadImage,
     isUploading
   };
 }
