@@ -10,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type DatePickerProps = {
   date: Date | undefined;
@@ -33,6 +34,7 @@ export function DatePicker({
   disableFutureDates = false
 }: DatePickerProps) {
   const today = new Date();
+  const isMobile = useIsMobile();
   
   // Disable dates based on props
   const isDateDisabled = (date: Date) => {
@@ -63,14 +65,19 @@ export function DatePicker({
             {date ? format(date, "PPP") : <span>{placeholder}</span>}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
+        <PopoverContent 
+          className="w-auto p-0" 
+          sideOffset={5}
+          align={isMobile ? "center" : "start"}
+          side={isMobile ? "bottom" : "right"}
+        >
           <Calendar
             mode="single"
             selected={date}
             onSelect={setDate}
             disabled={isDateDisabled}
             initialFocus
-            className="p-3 pointer-events-auto"
+            className="p-3 pointer-events-auto border rounded-md shadow"
           />
         </PopoverContent>
       </Popover>
