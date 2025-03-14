@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, X, Camera, Trash2, Ban, Smartphone } from 'lucide-react';
-import CardOverlay from '@/components/ui/card-overlay';
+import { Check, X, Camera, Image as ImageIcon, Trash } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import CheckpointOptions from './CheckpointOptions';
 
 interface CheckpointItemProps {
   id: string;
@@ -13,9 +12,9 @@ interface CheckpointItemProps {
   passed: boolean | null;
   notes: string;
   photoUrl?: string;
-  onPassedChange: (passed: boolean | null) => void;
-  onNotesChange: (notes: string) => void;
-  onPhotoCapture: (photoUrl: string) => void;
+  onPassedChange: (value: boolean | null) => void;
+  onNotesChange: (value: string) => void;
+  onPhotoCapture: (url: string) => void;
   onPhotoDelete: () => void;
 }
 
@@ -28,348 +27,192 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   onPassedChange,
   onNotesChange,
   onPhotoCapture,
-  onPhotoDelete,
+  onPhotoDelete
 }) => {
   const [showCamera, setShowCamera] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [showPhotoDeleteConfirm, setShowPhotoDeleteConfirm] = useState(false);
   
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
-  
-  const fetchAvailableDevices = async () => {
+  const capturePhoto = async () => {
     try {
-      await navigator.mediaDevices.getUserMedia({ video: true });
-      
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      setAvailableDevices(videoDevices);
-      
-      const envCamera = videoDevices.find(device => 
-        device.label.toLowerCase().includes('back') || 
-        device.label.toLowerCase().includes('environment')
-      );
-      
-      if (envCamera) {
-        setSelectedDeviceId(envCamera.deviceId);
-      } else if (videoDevices.length > 0) {
-        setSelectedDeviceId(videoDevices[0].deviceId);
-      }
-    } catch (error) {
-      console.error('Error fetching camera devices:', error);
-    }
-  };
-  
-  const startCamera = async () => {
-    try {
-      stopCamera();
-      setCameraError(null);
-      setShowCamera(true);
-      setIsCapturing(true);
-      
-      await fetchAvailableDevices();
-      
+      // Check if the browser supports getUserMedia
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Your browser does not support camera access');
+        toast({
+          title: 'Camera Error',
+          description: 'Your browser does not support camera access',
+          variant: 'destructive',
+        });
+        return;
       }
       
-      const constraints: MediaStreamConstraints = {
-        video: selectedDeviceId 
-          ? { deviceId: { exact: selectedDeviceId } }
-          : { facingMode: 'environment' }
-      };
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      const video = document.createElement('video');
+      const canvas = document.createElement('canvas');
       
-      console.log('Requesting camera access with constraints:', constraints);
+      // Set up video stream
+      video.srcObject = stream;
+      video.play();
       
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(mediaStream);
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        videoRef.current.onloadedmetadata = () => {
-          if (videoRef.current) {
-            videoRef.current.play().catch(error => {
-              console.error("Error playing video:", error);
-              setCameraError('Failed to start video stream');
-            });
+      // After video is ready, capture a frame
+      video.onloadedmetadata = () => {
+        // Wait a moment for camera to adjust
+        setTimeout(() => {
+          // Set canvas dimensions
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          
+          // Draw video frame to canvas
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(video, 0, 0);
+            
+            // Convert to data URL
+            try {
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+              onPhotoCapture(dataUrl);
+              
+              // Stop all video tracks
+              stream.getTracks().forEach(track => track.stop());
+              
+              setShowCamera(false);
+              
+              toast({
+                title: 'Photo Captured',
+                description: 'Photo has been attached to this checkpoint',
+              });
+            } catch (e) {
+              console.error('Error creating data URL', e);
+              toast({
+                title: 'Error',
+                description: 'Failed to capture photo',
+                variant: 'destructive',
+              });
+            }
           }
-        };
-      } else {
-        console.error('Video reference is null');
-        setCameraError('Failed to initialize camera view');
-      }
-      
-      setIsCapturing(false);
-    } catch (error: any) {
-      console.error('Error accessing camera:', error);
-      setIsCapturing(false);
-      
-      let errorMessage = 'Failed to access camera';
-      
-      if (error.name === 'NotAllowedError') {
-        errorMessage = 'Camera access denied. Please grant permission to use your camera.';
-      } else if (error.name === 'NotFoundError') {
-        errorMessage = 'No camera found on your device.';
-      } else if (error.name === 'NotReadableError') {
-        errorMessage = 'Camera is already in use by another application.';
-      } else if (error.name === 'OverconstrainedError') {
-        errorMessage = 'The requested camera settings are not supported.';
-      } else if (error.name === 'SecurityError') {
-        errorMessage = 'Camera access is restricted due to security settings.';
-      } else if (error.name === 'AbortError') {
-        errorMessage = 'Camera initialization was aborted.';
-      } else if (error.name === 'TypeError') {
-        errorMessage = 'Invalid camera constraints specified.';
-      }
-      
-      setCameraError(errorMessage);
+        }, 500);
+      };
+    } catch (error) {
+      console.error('Camera error:', error);
       toast({
         title: 'Camera Error',
-        description: errorMessage,
+        description: 'Failed to access camera',
         variant: 'destructive',
       });
     }
   };
   
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => {
-        track.stop();
-      });
-      setStream(null);
-    }
-    
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    
-    setShowCamera(false);
-    setIsCapturing(false);
-  };
-  
-  const switchCamera = async () => {
-    if (availableDevices.length <= 1) {
-      toast({
-        title: 'Camera Switch',
-        description: 'No additional cameras available on this device',
-        variant: 'default',
-      });
-      return;
-    }
-    
-    const currentIndex = availableDevices.findIndex(device => device.deviceId === selectedDeviceId);
-    const nextIndex = (currentIndex + 1) % availableDevices.length;
-    const nextDeviceId = availableDevices[nextIndex].deviceId;
-    
-    setSelectedDeviceId(nextDeviceId);
-    
-    stopCamera();
-    setTimeout(() => {
-      startCamera();
-    }, 300);
-  };
-  
-  const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) {
-      console.error('Video or canvas reference is null');
-      return;
-    }
-    
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    
-    if (!context) {
-      console.error('Could not get canvas context');
-      return;
-    }
-    
-    try {
-      console.log('Capturing photo...');
+  const handlePhotoDelete = () => {
+    if (showPhotoDeleteConfirm) {
+      onPhotoDelete();
+      setShowPhotoDeleteConfirm(false);
+    } else {
+      setShowPhotoDeleteConfirm(true);
       
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      const photoUrl = canvas.toDataURL('image/jpeg', 0.85);
-      
-      onPhotoCapture(photoUrl);
-      
-      stopCamera();
-      
-      toast({
-        title: 'Photo Captured',
-        description: 'The image has been attached to this checkpoint',
-      });
-    } catch (error) {
-      console.error('Error capturing photo:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to capture photo',
-        variant: 'destructive',
-      });
+      // Auto-hide confirmation after 3 seconds
+      setTimeout(() => {
+        setShowPhotoDeleteConfirm(false);
+      }, 3000);
     }
   };
 
-  const getBorderColor = () => {
-    if (passed === true) return 'border-l-green-500';
-    if (passed === false) return 'border-l-destructive';
-    if (passed === null) return 'border-l-yellow-500';
-    return 'border-l-gray-300';
-  };
-  
   return (
-    <Card className={`p-4 border-l-4 ${getBorderColor()}`}>
-      <div className="mb-3">
-        <h4 className="font-medium mb-2">{description}</h4>
-        
-        <div className="flex gap-2 mb-3">
-          <CheckpointOptions 
-            passed={passed}
-            onStatusChange={onPassedChange}
-          />
-        </div>
-      </div>
-      
+    <Card className={`p-4 ${passed === false ? 'border-red-300 bg-red-50 dark:bg-red-950/20' : passed === true ? 'border-green-300 bg-green-50 dark:bg-green-950/20' : ''}`}>
       <div className="space-y-3">
+        <div className="flex items-start justify-between">
+          <p className="text-sm font-medium flex-1">{description}</p>
+          
+          <div className="flex gap-2 ml-4">
+            <Button
+              type="button"
+              size="sm"
+              variant={passed === true ? 'default' : 'outline'}
+              className={passed === true ? 'bg-green-600 hover:bg-green-700 border-green-600' : ''}
+              onClick={() => onPassedChange(true)}
+            >
+              <Check size={16} className={passed === true ? "mr-1" : "mr-0"} />
+              {passed === true && <span>Pass</span>}
+            </Button>
+            
+            <Button
+              type="button"
+              size="sm"
+              variant={passed === false ? 'default' : 'outline'}
+              className={passed === false ? 'bg-destructive hover:bg-destructive/90' : ''}
+              onClick={() => onPassedChange(false)}
+            >
+              <X size={16} className={passed === false ? "mr-1" : "mr-0"} />
+              {passed === false && <span>Fail</span>}
+            </Button>
+          </div>
+        </div>
+        
         {passed === false && (
-          <Textarea
-            placeholder="Add notes describing the issue..."
-            value={notes}
-            onChange={(e) => onNotesChange(e.target.value)}
-            className="min-h-[80px]"
-          />
+          <div>
+            <Textarea
+              value={notes}
+              onChange={(e) => onNotesChange(e.target.value)}
+              placeholder="Add notes about the failure..."
+              className={`mt-2 w-full min-h-[80px] ${!notes.trim() && 'border-destructive'}`}
+            />
+            {!notes.trim() && (
+              <p className="text-xs text-destructive mt-1">
+                Please add notes explaining the failure
+              </p>
+            )}
+          </div>
         )}
         
-        <div className="flex justify-between items-center">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={startCamera}
-            className="text-xs"
-            disabled={isCapturing}
-          >
-            {isCapturing ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                Loading...
-              </>
-            ) : (
-              <>
-                <Camera size={14} className="mr-1" />
-                Add Photo
-              </>
-            )}
-          </Button>
-          
-          {photoUrl && (
-            <div className="flex items-center gap-2">
-              <div 
-                className="w-10 h-10 rounded overflow-hidden border cursor-pointer"
-                onClick={() => {
-                  const img = new Image();
-                  img.src = photoUrl;
-                  const w = window.open("");
-                  if (w) {
-                    w.document.write(img.outerHTML);
-                  }
-                }}
-              >
-                <img 
-                  src={photoUrl} 
-                  alt="Checkpoint evidence" 
-                  className="w-full h-full object-cover"
-                />
+        <div className="flex flex-wrap gap-2 pt-1 items-center">
+          {!photoUrl ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => {
+                setShowCamera(true);
+                capturePhoto();
+              }}
+            >
+              <Camera size={14} className="mr-1" />
+              Add Photo
+            </Button>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <div className="group relative">
+                <a 
+                  href={photoUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block w-16 h-16 rounded overflow-hidden border border-border"
+                >
+                  <img 
+                    src={photoUrl} 
+                    alt="Evidence" 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <ImageIcon size={16} className="text-white" />
+                  </div>
+                </a>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full"
+                  onClick={handlePhotoDelete}
+                >
+                  {showPhotoDeleteConfirm ? (
+                    <Check size={12} />
+                  ) : (
+                    <X size={12} />
+                  )}
+                </Button>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onPhotoDelete}
-                className="h-7 w-7 text-destructive hover:text-destructive/90"
-              >
-                <Trash2 size={14} />
-              </Button>
+              <span className="text-xs text-muted-foreground">Evidence</span>
             </div>
           )}
         </div>
       </div>
-      
-      <CardOverlay
-        show={showCamera}
-        onClose={stopCamera}
-        title="Take Photo"
-      >
-        <div className="space-y-4">
-          {cameraError ? (
-            <div className="text-center p-4 border rounded">
-              <p className="text-destructive mb-3">{cameraError}</p>
-              <div className="flex justify-center gap-3">
-                <Button onClick={() => {
-                  setCameraError(null);
-                  startCamera();
-                }}>Try Again</Button>
-                <Button variant="outline" onClick={stopCamera}>Cancel</Button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="aspect-video bg-black rounded-md overflow-hidden relative">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-contain"
-                />
-                {isCapturing && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
-                  </div>
-                )}
-              </div>
-              
-              <canvas ref={canvasRef} className="hidden" />
-              
-              <div className="flex justify-between gap-3">
-                <Button variant="outline" onClick={stopCamera}>
-                  Cancel
-                </Button>
-                
-                {availableDevices.length > 1 && (
-                  <Button 
-                    variant="outline" 
-                    onClick={switchCamera}
-                    disabled={isCapturing}
-                  >
-                    <Smartphone size={16} className="mr-2" />
-                    Switch Camera
-                  </Button>
-                )}
-                
-                <Button 
-                  onClick={capturePhoto}
-                  disabled={!stream || isCapturing}
-                >
-                  <Camera size={16} className="mr-2" />
-                  Capture
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      </CardOverlay>
     </Card>
   );
 };

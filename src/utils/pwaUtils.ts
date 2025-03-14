@@ -12,7 +12,11 @@ interface SyncManager {
 
 interface ExtendedServiceWorkerRegistration extends ServiceWorkerRegistration {
   sync?: SyncManager;
-  periodicSync?: any; // We'll also extend this for the periodicSync manager
+  periodicSync?: {
+    register: (options: { tag: string; minInterval: number }) => Promise<void>;
+    unregister: (tag: string) => Promise<void>;
+    permissionState: () => Promise<string>;
+  };
 }
 
 // Check if the app is in standalone/installed mode
@@ -40,7 +44,7 @@ export const isIOS = (): boolean => {
  */
 export const setupPWAMetaTags = (): void => {
   try {
-    // Set theme color meta tag
+    // Meta tags are now set in index.html directly, so we'll just make sure they exist
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (!themeColorMeta) {
       const meta = document.createElement('meta');
@@ -49,60 +53,13 @@ export const setupPWAMetaTags = (): void => {
       document.head.appendChild(meta);
     }
     
-    // Add apple-touch-icon for iOS
-    const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
-    if (!appleIcon) {
-      const link = document.createElement('link');
-      link.rel = 'apple-touch-icon';
-      link.href = '/favicon.ico';
-      document.head.appendChild(link);
-    }
-    
-    // Add meta description
-    const descriptionMeta = document.querySelector('meta[name="description"]');
-    if (descriptionMeta) {
-      descriptionMeta.setAttribute('content', 'PPE Inspector Pro - Track and manage PPE inventory and inspections');
-    } else {
-      const meta = document.createElement('meta');
-      meta.name = 'description';
-      meta.content = 'PPE Inspector Pro - Track and manage PPE inventory and inspections';
-      document.head.appendChild(meta);
-    }
-    
-    // Add Web App Manifest for better PWA support
+    // Check if manifest link exists
     const manifestLink = document.querySelector('link[rel="manifest"]');
     if (!manifestLink) {
       const link = document.createElement('link');
       link.rel = 'manifest';
       link.href = '/manifest.json';
       document.head.appendChild(link);
-    }
-    
-    // Add viewport meta tag for mobile responsiveness if not present
-    const viewportMeta = document.querySelector('meta[name="viewport"]');
-    if (!viewportMeta) {
-      const meta = document.createElement('meta');
-      meta.name = 'viewport';
-      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-      document.head.appendChild(meta);
-    }
-    
-    // Add apple-mobile-web-app-capable meta tag for iOS full-screen mode
-    const appleMobileWebAppCapableMeta = document.querySelector('meta[name="apple-mobile-web-app-capable"]');
-    if (!appleMobileWebAppCapableMeta) {
-      const meta = document.createElement('meta');
-      meta.name = 'apple-mobile-web-app-capable';
-      meta.content = 'yes';
-      document.head.appendChild(meta);
-    }
-    
-    // Add apple-mobile-web-app-status-bar-style meta tag for iOS status bar
-    const appleMobileWebAppStatusBarStyleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-    if (!appleMobileWebAppStatusBarStyleMeta) {
-      const meta = document.createElement('meta');
-      meta.name = 'apple-mobile-web-app-status-bar-style';
-      meta.content = 'black-translucent';
-      document.head.appendChild(meta);
     }
   } catch (error) {
     console.error('Error setting up PWA meta tags:', error);
@@ -117,7 +74,9 @@ export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration
   if ('serviceWorker' in navigator) {
     try {
       console.log('Registering service worker...');
-      const registration = await navigator.serviceWorker.register('/service-worker.js');
+      const registration = await navigator.serviceWorker.register('/service-worker.js', {
+        updateViaCache: 'none' // Don't use cache for service worker updates
+      });
       console.log('ServiceWorker registration successful with scope: ', registration.scope);
       
       // Set up service worker update handling
@@ -137,10 +96,12 @@ export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration
  * Sets up handling for service worker updates
  */
 const setupServiceWorkerUpdates = (registration: ServiceWorkerRegistration): void => {
-  // Check for updates periodically
+  // Check for updates every 15 minutes
   setInterval(() => {
-    registration.update();
-  }, 60 * 60 * 1000); // Check hourly
+    registration.update().catch(err => {
+      console.error('Error updating service worker:', err);
+    });
+  }, 15 * 60 * 1000); 
   
   // Listen for new service workers
   registration.addEventListener('updatefound', () => {
@@ -209,13 +170,7 @@ export const registerForPushNotifications = async (): Promise<boolean> => {
     const registration = await navigator.serviceWorker.ready;
     
     // Here you would get push subscription from server and subscribe
-    // const subscription = await registration.pushManager.subscribe({
-    //   userVisibleOnly: true,
-    //   applicationServerKey: urlBase64ToUint8Array('YOUR_PUBLIC_VAPID_KEY')
-    // });
-    
-    // Send subscription to server
-    // await sendSubscriptionToServer(subscription);
+    // Implementation left as is
     
     return true;
   } catch (error) {
@@ -309,26 +264,36 @@ export const listenForServiceWorkerMessages = (
 
 /**
  * Initialize all PWA features
+ * Returns a Promise that resolves to a boolean indicating success
  */
-export const initializePWA = async (): Promise<void> => {
-  // Setup meta tags
-  setupPWAMetaTags();
-  
-  // Register service worker
-  const registration = await registerServiceWorker();
-  if (!registration) return;
-  
-  // Request notification permission
-  await requestNotificationPermission();
-  
-  // Register for background sync
-  await registerBackgroundSync();
-  
-  // Try to setup periodic sync
-  await setupPeriodicSync();
-  
-  // Check if running as standalone
-  if (isRunningAsStandalone()) {
-    console.log('App is running in standalone mode (installed)');
+export const initializePWA = async (): Promise<boolean> => {
+  try {
+    // Only do the minimal setup needed to start
+    console.log('Setting up PWA metadata...');
+    setupPWAMetaTags();
+    
+    // Register service worker in background
+    const registration = await registerServiceWorker();
+    if (!registration) {
+      console.warn('Service worker registration failed, but continuing app initialization');
+      return false;
+    }
+    
+    // Try other PWA features later to avoid blocking app startup
+    setTimeout(async () => {
+      try {
+        await requestNotificationPermission();
+        await registerBackgroundSync('sync-inspections');
+        await registerBackgroundSync('sync-offline-actions');
+        await setupPeriodicSync();
+      } catch (error) {
+        console.error('Error setting up additional PWA features:', error);
+      }
+    }, 2000);
+    
+    return true;
+  } catch (error) {
+    console.error('Error initializing PWA:', error);
+    return false;
   }
 };
