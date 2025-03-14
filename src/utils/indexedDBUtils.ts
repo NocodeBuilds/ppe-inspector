@@ -1,102 +1,103 @@
 
 /**
- * IndexedDB utilities for offline data storage
- * Provides a simple API for storing and retrieving data
+ * Utility functions for IndexedDB operations
+ * Handles offline data storage, queuing, and synchronization
  */
 
-// Database configuration
-const DB_NAME = 'ppe-inspector-db';
+const DB_NAME = 'ppe_inspector_db';
 const DB_VERSION = 1;
-const STORES = {
-  inspections: 'inspections',
-  equipment: 'equipment',
-  offlineActions: 'offlineActions',
-  files: 'files'
-};
+const OFFLINE_ACTIONS_STORE = 'offline_actions';
+const INSPECTIONS_STORE = 'inspections';
+const TEMP_IMAGES_STORE = 'temp_images';
+
+interface OfflineAction {
+  id?: string;
+  type: string;
+  data: any;
+  timestamp?: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  metadata?: any;
+  retries?: number;
+}
 
 /**
  * Initialize the IndexedDB database
- * Creates object stores if they don't exist
  */
-export const initDatabase = (): Promise<IDBDatabase> => {
+export const initIndexedDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
-    if (!('indexedDB' in window)) {
-      reject(new Error('IndexedDB is not supported in this browser'));
-      return;
-    }
-
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-
+    
     request.onerror = (event) => {
       console.error('IndexedDB error:', event);
-      reject(new Error('Could not open IndexedDB'));
+      reject('Failed to open IndexedDB');
     };
-
+    
     request.onsuccess = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      console.log('IndexedDB initialized successfully');
       resolve(db);
     };
-
+    
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       
-      // Create object stores if they don't exist
-      if (!db.objectStoreNames.contains(STORES.inspections)) {
-        db.createObjectStore(STORES.inspections, { keyPath: 'id' });
-        console.log('Created inspections store');
-      }
-      
-      if (!db.objectStoreNames.contains(STORES.equipment)) {
-        db.createObjectStore(STORES.equipment, { keyPath: 'id' });
-        console.log('Created equipment store');
-      }
-      
-      if (!db.objectStoreNames.contains(STORES.offlineActions)) {
-        const actionStore = db.createObjectStore(STORES.offlineActions, { 
+      // Create stores if they don't exist
+      if (!db.objectStoreNames.contains(OFFLINE_ACTIONS_STORE)) {
+        const offlineActionsStore = db.createObjectStore(OFFLINE_ACTIONS_STORE, { 
           keyPath: 'id', 
           autoIncrement: true 
         });
-        actionStore.createIndex('type', 'type', { unique: false });
-        actionStore.createIndex('status', 'status', { unique: false });
-        console.log('Created offline actions store');
+        offlineActionsStore.createIndex('status', 'status', { unique: false });
+        offlineActionsStore.createIndex('timestamp', 'timestamp', { unique: false });
       }
       
-      if (!db.objectStoreNames.contains(STORES.files)) {
-        const fileStore = db.createObjectStore(STORES.files, { keyPath: 'id' });
-        fileStore.createIndex('type', 'type', { unique: false });
-        console.log('Created files store');
+      if (!db.objectStoreNames.contains(INSPECTIONS_STORE)) {
+        const inspectionsStore = db.createObjectStore(INSPECTIONS_STORE, { 
+          keyPath: 'id', 
+          autoIncrement: true 
+        });
+        inspectionsStore.createIndex('ppeId', 'ppeId', { unique: false });
+        inspectionsStore.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+      
+      if (!db.objectStoreNames.contains(TEMP_IMAGES_STORE)) {
+        const imagesStore = db.createObjectStore(TEMP_IMAGES_STORE, { 
+          keyPath: 'id', 
+          autoIncrement: true 
+        });
+        imagesStore.createIndex('timestamp', 'timestamp', { unique: false });
       }
     };
   });
 };
 
 /**
- * Save data to IndexedDB
- * @param storeName Name of the object store
- * @param data Data to save
+ * Queue an offline action for later synchronization
  */
-export const saveToIndexedDB = async <T>(
-  storeName: string, 
-  data: T
-): Promise<T> => {
+export const queueOfflineAction = async (action: OfflineAction): Promise<string> => {
   try {
-    const db = await initDatabase();
+    const db = await initIndexedDB();
     
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
+      const transaction = db.transaction(OFFLINE_ACTIONS_STORE, 'readwrite');
+      const store = transaction.objectStore(OFFLINE_ACTIONS_STORE);
       
-      const request = store.put(data);
+      // Add timestamp and default retry count
+      const actionToStore = {
+        ...action,
+        timestamp: Date.now(),
+        retries: 0
+      };
       
-      request.onsuccess = () => {
-        console.log(`Data saved to ${storeName}`);
-        resolve(data);
+      const request = store.add(actionToStore);
+      
+      request.onsuccess = (event) => {
+        const id = (event.target as IDBRequest).result as string;
+        resolve(id);
       };
       
       request.onerror = (event) => {
-        console.error(`Error saving to ${storeName}:`, event);
-        reject(new Error(`Failed to save data to ${storeName}`));
+        console.error('Error queueing offline action:', event);
+        reject('Failed to queue offline action');
       };
       
       transaction.oncomplete = () => {
@@ -104,156 +105,7 @@ export const saveToIndexedDB = async <T>(
       };
     });
   } catch (error) {
-    console.error('Error in saveToIndexedDB:', error);
-    throw error;
-  }
-};
-
-/**
- * Get data from IndexedDB
- * @param storeName Name of the object store
- * @param id ID of the item to retrieve
- */
-export const getFromIndexedDB = async <T>(
-  storeName: string,
-  id: string | number
-): Promise<T | null> => {
-  try {
-    const db = await initDatabase();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readonly');
-      const store = transaction.objectStore(storeName);
-      
-      const request = store.get(id);
-      
-      request.onsuccess = () => {
-        resolve(request.result || null);
-      };
-      
-      request.onerror = (event) => {
-        console.error(`Error retrieving from ${storeName}:`, event);
-        reject(new Error(`Failed to get data from ${storeName}`));
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error('Error in getFromIndexedDB:', error);
-    throw error;
-  }
-};
-
-/**
- * Get all data from an IndexedDB store
- * @param storeName Name of the object store
- */
-export const getAllFromIndexedDB = async <T>(
-  storeName: string
-): Promise<T[]> => {
-  try {
-    const db = await initDatabase();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readonly');
-      const store = transaction.objectStore(storeName);
-      
-      const request = store.getAll();
-      
-      request.onsuccess = () => {
-        resolve(request.result || []);
-      };
-      
-      request.onerror = (event) => {
-        console.error(`Error retrieving all from ${storeName}:`, event);
-        reject(new Error(`Failed to get all data from ${storeName}`));
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error('Error in getAllFromIndexedDB:', error);
-    throw error;
-  }
-};
-
-/**
- * Delete data from IndexedDB
- * @param storeName Name of the object store
- * @param id ID of the item to delete
- */
-export const deleteFromIndexedDB = async (
-  storeName: string,
-  id: string | number
-): Promise<void> => {
-  try {
-    const db = await initDatabase();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      
-      const request = store.delete(id);
-      
-      request.onsuccess = () => {
-        console.log(`Item ${id} deleted from ${storeName}`);
-        resolve();
-      };
-      
-      request.onerror = (event) => {
-        console.error(`Error deleting from ${storeName}:`, event);
-        reject(new Error(`Failed to delete data from ${storeName}`));
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error('Error in deleteFromIndexedDB:', error);
-    throw error;
-  }
-};
-
-/**
- * Queue an action to be performed when online
- * @param action Action details including type, data, and any metadata
- */
-export const queueOfflineAction = async (action: {
-  type: string;
-  data: any;
-  metadata?: any;
-  status?: 'pending' | 'processing' | 'complete' | 'failed';
-}): Promise<void> => {
-  try {
-    await saveToIndexedDB(STORES.offlineActions, {
-      ...action,
-      createdAt: new Date().toISOString(),
-      status: action.status || 'pending'
-    });
-    
-    console.log('Offline action queued:', action.type);
-    
-    // Register for background sync if available
-    if ('serviceWorker' in navigator && 'SyncManager' in window) {
-      const registration = await navigator.serviceWorker.ready;
-      
-      if ('sync' in registration) {
-        try {
-          // @ts-ignore - TypeScript doesn't recognize sync property
-          await registration.sync.register('sync-offline-actions');
-          console.log('Background sync registered for offline actions');
-        } catch (syncError) {
-          console.error('Failed to register sync:', syncError);
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error queueing offline action:', error);
+    console.error('IndexedDB queue action error:', error);
     throw error;
   }
 };
@@ -261,24 +113,24 @@ export const queueOfflineAction = async (action: {
 /**
  * Get all pending offline actions
  */
-export const getPendingOfflineActions = async (): Promise<any[]> => {
+export const getPendingOfflineActions = async (): Promise<OfflineAction[]> => {
   try {
-    const db = await initDatabase();
+    const db = await initIndexedDB();
     
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORES.offlineActions, 'readonly');
-      const store = transaction.objectStore(storeName);
+      const transaction = db.transaction(OFFLINE_ACTIONS_STORE, 'readonly');
+      const store = transaction.objectStore(OFFLINE_ACTIONS_STORE);
       const index = store.index('status');
       
       const request = index.getAll('pending');
       
       request.onsuccess = () => {
-        resolve(request.result || []);
+        resolve(request.result);
       };
       
       request.onerror = (event) => {
-        console.error('Error retrieving pending actions:', event);
-        reject(new Error('Failed to get pending offline actions'));
+        console.error('Error getting pending actions:', event);
+        reject('Failed to get pending actions');
       };
       
       transaction.oncomplete = () => {
@@ -286,77 +138,240 @@ export const getPendingOfflineActions = async (): Promise<any[]> => {
       };
     });
   } catch (error) {
-    console.error('Error in getPendingOfflineActions:', error);
+    console.error('IndexedDB get pending actions error:', error);
     return [];
   }
 };
 
 /**
- * Clear all completed offline actions
+ * Clear completed offline actions
  */
 export const clearCompletedOfflineActions = async (): Promise<void> => {
   try {
-    const db = await initDatabase();
+    const db = await initIndexedDB();
     
-    const transaction = db.transaction(STORES.offlineActions, 'readwrite');
-    const store = transaction.objectStore(STORES.offlineActions);
-    const index = store.index('status');
-    
-    const request = index.openCursor('complete');
-    
-    request.onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest).result;
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(OFFLINE_ACTIONS_STORE, 'readwrite');
+      const store = transaction.objectStore(OFFLINE_ACTIONS_STORE);
+      const index = store.index('status');
       
-      if (cursor) {
-        cursor.delete();
-        cursor.continue();
-      }
-    };
-    
-    transaction.oncomplete = () => {
-      db.close();
-      console.log('Completed offline actions cleared');
-    };
-    
-    transaction.onerror = (event) => {
-      console.error('Error clearing completed actions:', event);
-      db.close();
-    };
+      const request = index.openCursor('completed');
+      
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+      
+      request.onerror = (event) => {
+        console.error('Error clearing completed actions:', event);
+        reject('Failed to clear completed actions');
+      };
+      
+      transaction.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+    });
   } catch (error) {
-    console.error('Error in clearCompletedOfflineActions:', error);
+    console.error('IndexedDB clear completed actions error:', error);
   }
 };
 
-// Fix IndexDB object store reference
-let storeName = STORES.offlineActions;
+/**
+ * Save inspection data for offline use
+ */
+export const saveInspectionOffline = async (inspectionData: any): Promise<string> => {
+  try {
+    const db = await initIndexedDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(INSPECTIONS_STORE, 'readwrite');
+      const store = transaction.objectStore(INSPECTIONS_STORE);
+      
+      // Add timestamp
+      const dataToStore = {
+        ...inspectionData,
+        timestamp: Date.now(),
+        offlineCreated: true
+      };
+      
+      const request = store.add(dataToStore);
+      
+      request.onsuccess = (event) => {
+        const id = (event.target as IDBRequest).result as string;
+        resolve(id);
+      };
+      
+      request.onerror = (event) => {
+        console.error('Error saving inspection offline:', event);
+        reject('Failed to save inspection');
+      };
+      
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error('IndexedDB save inspection error:', error);
+    throw error;
+  }
+};
 
 /**
- * Save a blob/file to IndexedDB for offline access
- * @param id Unique identifier for the file
- * @param blob The file data as a Blob
- * @param metadata Additional file metadata
+ * Get all offline inspections
  */
-export const saveFileToIndexedDB = async (
-  id: string,
-  blob: Blob,
-  metadata: {
-    type: string;
-    name: string;
-    contentType: string;
-    createdAt?: string;
-  }
-): Promise<void> => {
+export const getOfflineInspections = async (): Promise<any[]> => {
   try {
-    await saveToIndexedDB(STORES.files, {
-      id,
-      blob,
-      ...metadata,
-      createdAt: metadata.createdAt || new Date().toISOString()
-    });
+    const db = await initIndexedDB();
     
-    console.log(`File ${metadata.name} saved to IndexedDB`);
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(INSPECTIONS_STORE, 'readonly');
+      const store = transaction.objectStore(INSPECTIONS_STORE);
+      
+      const request = store.getAll();
+      
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+      
+      request.onerror = (event) => {
+        console.error('Error getting offline inspections:', event);
+        reject('Failed to get offline inspections');
+      };
+      
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
   } catch (error) {
-    console.error('Error saving file to IndexedDB:', error);
+    console.error('IndexedDB get offline inspections error:', error);
+    return [];
+  }
+};
+
+/**
+ * Delete an offline inspection by ID
+ */
+export const deleteOfflineInspection = async (id: string): Promise<void> => {
+  try {
+    const db = await initIndexedDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(INSPECTIONS_STORE, 'readwrite');
+      const store = transaction.objectStore(INSPECTIONS_STORE);
+      
+      const request = store.delete(id);
+      
+      request.onsuccess = () => {
+        resolve();
+      };
+      
+      request.onerror = (event) => {
+        console.error('Error deleting offline inspection:', event);
+        reject('Failed to delete inspection');
+      };
+      
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error('IndexedDB delete inspection error:', error);
+  }
+};
+
+/**
+ * Store a temporary image for offline use
+ */
+export const storeTemporaryImage = async (imageData: string): Promise<string> => {
+  try {
+    const db = await initIndexedDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(TEMP_IMAGES_STORE, 'readwrite');
+      const store = transaction.objectStore(TEMP_IMAGES_STORE);
+      
+      const request = store.add({
+        data: imageData,
+        timestamp: Date.now()
+      });
+      
+      request.onsuccess = (event) => {
+        const id = (event.target as IDBRequest).result as string;
+        resolve(id);
+      };
+      
+      request.onerror = (event) => {
+        console.error('Error storing temporary image:', event);
+        reject('Failed to store image');
+      };
+      
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error('IndexedDB store image error:', error);
     throw error;
+  }
+};
+
+/**
+ * Clear old temporary images (older than 7 days)
+ */
+export const clearOldTemporaryImages = async (): Promise<void> => {
+  try {
+    const db = await initIndexedDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(TEMP_IMAGES_STORE, 'readwrite');
+      const store = transaction.objectStore(TEMP_IMAGES_STORE);
+      const index = store.index('timestamp');
+      
+      // Calculate timestamp for 7 days ago
+      const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      
+      const request = index.openCursor(IDBKeyRange.upperBound(sevenDaysAgo));
+      
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+      
+      request.onerror = (event) => {
+        console.error('Error clearing old images:', event);
+        reject('Failed to clear old images');
+      };
+      
+      transaction.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+    });
+  } catch (error) {
+    console.error('IndexedDB clear old images error:', error);
+  }
+};
+
+/**
+ * Initialize database and cleanup old data
+ */
+export const initializeDatabase = async (): Promise<void> => {
+  try {
+    await initIndexedDB();
+    
+    // Run cleanup operations
+    await clearOldTemporaryImages();
+    await clearCompletedOfflineActions();
+    
+    console.log('IndexedDB initialized successfully');
+  } catch (error) {
+    console.error('IndexedDB initialization error:', error);
   }
 };

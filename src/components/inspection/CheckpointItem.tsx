@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, X, Camera, Trash2, Ban, Smartphone } from 'lucide-react';
+import { Camera, Trash2, Smartphone } from 'lucide-react';
 import CardOverlay from '@/components/ui/card-overlay';
 import { toast } from '@/hooks/use-toast';
 import CheckpointOptions from './CheckpointOptions';
@@ -18,6 +19,47 @@ interface CheckpointItemProps {
   onPhotoCapture: (photoUrl: string) => void;
   onPhotoDelete: () => void;
 }
+
+// Function to compress and resize images to reduce storage requirements
+const resizeAndCompressImage = (imageDataUrl: string, maxWidth = 800, quality = 0.8): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      
+      // Calculate new dimensions if image is larger than maxWidth
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+      
+      // Set canvas dimensions
+      canvas.width = width;
+      canvas.height = height;
+      
+      // Draw and compress image
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+      
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Get compressed data URL
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+      resolve(compressedDataUrl);
+    };
+    
+    img.onerror = () => {
+      reject(new Error('Failed to load image'));
+    };
+    
+    img.src = imageDataUrl;
+  });
+};
 
 const CheckpointItem: React.FC<CheckpointItemProps> = ({
   id,
@@ -36,6 +78,7 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   const [isCapturing, setIsCapturing] = useState(false);
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [processingImage, setProcessingImage] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -61,11 +104,16 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
       
       if (envCamera) {
         setSelectedDeviceId(envCamera.deviceId);
+        return envCamera.deviceId;
       } else if (videoDevices.length > 0) {
         setSelectedDeviceId(videoDevices[0].deviceId);
+        return videoDevices[0].deviceId;
       }
+      
+      return null;
     } catch (error) {
       console.error('Error fetching camera devices:', error);
+      return null;
     }
   };
   
@@ -76,15 +124,15 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
       setShowCamera(true);
       setIsCapturing(true);
       
-      await fetchAvailableDevices();
+      const deviceId = await fetchAvailableDevices();
       
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Your browser does not support camera access');
       }
       
       const constraints: MediaStreamConstraints = {
-        video: selectedDeviceId 
-          ? { deviceId: { exact: selectedDeviceId } }
+        video: deviceId 
+          ? { deviceId: { exact: deviceId } }
           : { facingMode: 'environment' }
       };
       
@@ -178,22 +226,24 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     }, 300);
   };
   
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) {
       console.error('Video or canvas reference is null');
       return;
     }
     
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    
-    if (!context) {
-      console.error('Could not get canvas context');
-      return;
-    }
+    setProcessingImage(true);
     
     try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
+      if (!context) {
+        console.error('Could not get canvas context');
+        return;
+      }
+      
       console.log('Capturing photo...');
       
       canvas.width = video.videoWidth || 640;
@@ -203,7 +253,10 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
       
       const photoUrl = canvas.toDataURL('image/jpeg', 0.85);
       
-      onPhotoCapture(photoUrl);
+      // Compress and resize the image
+      const compressedPhotoUrl = await resizeAndCompressImage(photoUrl, 800, 0.7);
+      
+      onPhotoCapture(compressedPhotoUrl);
       
       stopCamera();
       
@@ -218,6 +271,8 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         description: 'Failed to capture photo',
         variant: 'destructive',
       });
+    } finally {
+      setProcessingImage(false);
     }
   };
 
@@ -338,6 +393,13 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
                     <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
                   </div>
                 )}
+                
+                {processingImage && (
+                  <div className="absolute inset-0 flex items-center justify-center flex-col bg-black/50">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white mb-2"></div>
+                    <p className="text-white text-sm">Processing image...</p>
+                  </div>
+                )}
               </div>
               
               <canvas ref={canvasRef} className="hidden" />
@@ -351,7 +413,7 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
                   <Button 
                     variant="outline" 
                     onClick={switchCamera}
-                    disabled={isCapturing}
+                    disabled={isCapturing || processingImage}
                   >
                     <Smartphone size={16} className="mr-2" />
                     Switch Camera
@@ -360,10 +422,19 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
                 
                 <Button 
                   onClick={capturePhoto}
-                  disabled={!stream || isCapturing}
+                  disabled={!stream || isCapturing || processingImage}
                 >
-                  <Camera size={16} className="mr-2" />
-                  Capture
+                  {processingImage ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Camera size={16} className="mr-2" />
+                      Capture
+                    </>
+                  )}
                 </Button>
               </div>
             </>

@@ -4,7 +4,8 @@ import { useNetwork } from '@/hooks/useNetwork';
 import { 
   getPendingOfflineActions, 
   clearCompletedOfflineActions,
-  queueOfflineAction
+  queueOfflineAction,
+  initializeDatabase
 } from '@/utils/indexedDBUtils';
 import { toast } from '@/hooks/use-toast';
 
@@ -25,6 +26,13 @@ export const useOfflineSync = () => {
     lastSyncedAt: null,
     pendingActionsCount: 0
   });
+
+  // Initialize database on mount
+  useEffect(() => {
+    initializeDatabase().catch(err => {
+      console.error('Failed to initialize database:', err);
+    });
+  }, []);
 
   // Function to check for pending actions
   const checkPendingActions = useCallback(async () => {

@@ -139,7 +139,9 @@ export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration
 const setupServiceWorkerUpdates = (registration: ServiceWorkerRegistration): void => {
   // Check for updates periodically
   setInterval(() => {
-    registration.update();
+    registration.update().catch(err => {
+      console.error('Failed to update service worker:', err);
+    });
   }, 60 * 60 * 1000); // Check hourly
   
   // Listen for new service workers
@@ -186,8 +188,13 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   }
   
   if (Notification.permission !== 'denied') {
-    const permission = await Notification.requestPermission();
-    return permission === 'granted';
+    try {
+      const permission = await Notification.requestPermission();
+      return permission === 'granted';
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      return false;
+    }
   }
   
   return false;
@@ -228,8 +235,8 @@ export const registerForPushNotifications = async (): Promise<boolean> => {
  * Register for background sync
  */
 export const registerBackgroundSync = async (syncTag: string = 'sync-inspections'): Promise<boolean> => {
-  if (!('serviceWorker' in navigator) || !('SyncManager' in window)) {
-    console.warn('Background sync not supported');
+  if (!('serviceWorker' in navigator)) {
+    console.warn('Background sync not supported - service workers unavailable');
     return false;
   }
   
@@ -237,12 +244,17 @@ export const registerBackgroundSync = async (syncTag: string = 'sync-inspections
     const registration = await navigator.serviceWorker.ready as ExtendedServiceWorkerRegistration;
     
     // Check if sync is supported
-    if (registration.sync) {
-      await registration.sync.register(syncTag);
-      console.log(`Registered for background sync: ${syncTag}`);
-      return true;
+    if ('SyncManager' in window && registration.sync) {
+      try {
+        await registration.sync.register(syncTag);
+        console.log(`Registered for background sync: ${syncTag}`);
+        return true;
+      } catch (error) {
+        console.error('Error registering sync:', error);
+        return false;
+      }
     } else {
-      console.warn('Background sync API exists but is not available on registration');
+      console.warn('Background sync API not available in this browser');
       return false;
     }
   } catch (error) {
@@ -258,30 +270,42 @@ export const setupPeriodicSync = async (
   tag: string = 'daily-sync',
   minInterval: number = 24 * 60 * 60 * 1000 // 24 hours
 ): Promise<boolean> => {
+  if (!('serviceWorker' in navigator) || !('periodicSync' in window)) {
+    console.warn('Periodic background sync not supported');
+    return false;
+  }
+  
   try {
     const registration = await navigator.serviceWorker.ready as ExtendedServiceWorkerRegistration;
     
     // Check if periodicSync exists
-    if (!registration.periodicSync) {
-      console.warn('Periodic background sync not supported');
+    if (registration.periodicSync) {
+      try {
+        // Check permission
+        const status = await navigator.permissions.query({
+          name: 'periodic-background-sync' as any,
+        });
+        
+        if (status.state !== 'granted') {
+          console.warn('Periodic sync permission not granted');
+          return false;
+        }
+        
+        // Register periodic sync
+        await registration.periodicSync.register(tag, {
+          minInterval,
+        });
+        
+        console.log(`Registered for periodic sync: ${tag}`);
+        return true;
+      } catch (error) {
+        console.error('Error setting up periodic sync:', error);
+        return false;
+      }
+    } else {
+      console.warn('Periodic sync not available on registration');
       return false;
     }
-    
-    // Check permission
-    const permission = await registration.periodicSync.permissionState();
-    if (permission !== 'granted') {
-      console.warn('Periodic sync permission not granted');
-      return false;
-    }
-    
-    // Register periodic sync
-    await registration.periodicSync.register({
-      tag,
-      minInterval
-    });
-    
-    console.log(`Registered for periodic sync: ${tag}`);
-    return true;
   } catch (error) {
     console.error('Periodic sync registration failed:', error);
     return false;
@@ -308,27 +332,65 @@ export const listenForServiceWorkerMessages = (
 };
 
 /**
+ * Safety mechanism to prevent infinite loading
+ * This ensures initialization completes within a reasonable time
+ */
+const PWA_INIT_TIMEOUT = 10000; // 10 seconds
+
+/**
  * Initialize all PWA features
  */
 export const initializePWA = async (): Promise<void> => {
-  // Setup meta tags
-  setupPWAMetaTags();
+  let timeoutId: number;
   
-  // Register service worker
-  const registration = await registerServiceWorker();
-  if (!registration) return;
-  
-  // Request notification permission
-  await requestNotificationPermission();
-  
-  // Register for background sync
-  await registerBackgroundSync();
-  
-  // Try to setup periodic sync
-  await setupPeriodicSync();
-  
-  // Check if running as standalone
-  if (isRunningAsStandalone()) {
-    console.log('App is running in standalone mode (installed)');
+  try {
+    // Create a promise that rejects after timeout
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      timeoutId = window.setTimeout(() => {
+        console.warn('PWA initialization timed out, continuing with app startup');
+        reject(new Error('PWA initialization timed out'));
+      }, PWA_INIT_TIMEOUT);
+    });
+    
+    // Setup meta tags
+    setupPWAMetaTags();
+    
+    // Race between initialization and timeout
+    await Promise.race([
+      (async () => {
+        // Register service worker
+        const registration = await registerServiceWorker();
+        if (!registration) return;
+        
+        // Request notification permission
+        await requestNotificationPermission();
+        
+        try {
+          // Register for background sync (but don't wait for it)
+          await registerBackgroundSync().catch(err => {
+            console.warn('Background sync registration failed, continuing:', err);
+          });
+          
+          // Try to setup periodic sync (but don't wait for it)
+          await setupPeriodicSync().catch(err => {
+            console.warn('Periodic sync setup failed, continuing:', err);
+          });
+        } catch (error) {
+          // Don't let these features block initialization
+          console.warn('Advanced PWA features setup failed, continuing:', error);
+        }
+      })(),
+      timeoutPromise
+    ]);
+  } catch (error) {
+    console.error('Error during PWA initialization, continuing with app startup:', error);
+  } finally {
+    // Clear timeout to prevent memory leaks
+    clearTimeout(timeoutId!);
+    
+    // Log status
+    if (isRunningAsStandalone()) {
+      console.log('App is running in standalone mode (installed)');
+    }
   }
 };

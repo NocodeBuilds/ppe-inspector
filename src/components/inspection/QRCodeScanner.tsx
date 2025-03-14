@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
-import { ScanLine, Camera, X } from 'lucide-react';
+import { ScanLine, Camera, X, Smartphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface QRCodeScannerProps {
@@ -14,7 +15,11 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   const [hasScanned, setHasScanned] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  
   const qrRef = useRef<Html5Qrcode | null>(null);
+  const scanAttempts = useRef<number>(0);
   const scannerContainerId = 'qr-reader';
   const { toast } = useToast();
   
@@ -23,11 +28,13 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
       qrRef.current = new Html5Qrcode(scannerContainerId);
     }
     
-    setTimeout(() => {
+    // Slight delay to ensure DOM is ready
+    const timer = setTimeout(() => {
       startScanner();
-    }, 1000);
+    }, 500);
     
     return () => {
+      clearTimeout(timer);
       stopScanner().then(() => {
         if (qrRef.current) {
           qrRef.current = null;
@@ -38,63 +45,115 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
     };
   }, []);
   
+  const fetchAvailableDevices = async () => {
+    try {
+      // Request camera permission first
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      
+      console.log('Available camera devices:', videoDevices);
+      setAvailableDevices(videoDevices);
+      
+      // Prefer environment (back) camera if available
+      const envCamera = videoDevices.find(device => 
+        device.label.toLowerCase().includes('back') || 
+        device.label.toLowerCase().includes('environment')
+      );
+      
+      if (envCamera) {
+        console.log('Selected environment camera:', envCamera.label);
+        setSelectedDeviceId(envCamera.deviceId);
+        return envCamera.deviceId;
+      } else if (videoDevices.length > 0) {
+        console.log('Selected first available camera:', videoDevices[0].label);
+        setSelectedDeviceId(videoDevices[0].deviceId);
+        return videoDevices[0].deviceId;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching camera devices:', error);
+      return null;
+    }
+  };
+  
   const startScanner = async () => {
     if (!qrRef.current || hasScanned || isScanning) return;
     
     setIsScanning(true);
     setError(null);
     
-    const config = {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
-      aspectRatio: 1.0,
-    };
-    
     try {
-      console.log('Starting scanner with environment facing camera...');
+      // Fetch devices first
+      const deviceId = await fetchAvailableDevices();
       
-      try {
-        await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
-        });
-      } catch (err) {
-        console.log('Pre-check camera permission failed, but continuing with scanner:', err);
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+        formatsToSupport: [Html5Qrcode.FORMATS.QR_CODE],
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        },
+        rememberLastUsedCamera: true,
+      };
+      
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Your browser does not support camera access');
       }
       
+      console.log('Starting scanner...');
+      
+      const cameraConstraints = deviceId 
+        ? { deviceId: { exact: deviceId } } 
+        : { facingMode: 'environment' };
+      
       await qrRef.current.start(
-        { facingMode: 'environment' },
+        cameraConstraints,
         config,
         onQRCodeSuccess,
         onQRCodeError
       );
+      
+      console.log('QR scanner started successfully');
     } catch (err: any) {
       console.error('Error starting QR scanner:', err);
       
-      try {
-        console.log('Trying user facing camera as fallback...');
-        await qrRef.current.start(
-          { facingMode: 'user' },
-          config,
-          onQRCodeSuccess,
-          onQRCodeError
-        );
-        return;
-      } catch (fallbackErr: any) {
-        console.error('Fallback camera also failed:', fallbackErr);
+      // If we failed with the selected device, try with a different camera option
+      if (scanAttempts.current < 2) {
+        scanAttempts.current++;
+        console.log(`Scanner start failed. Trying alternative camera (attempt ${scanAttempts.current})...`);
         
         try {
-          await qrRef.current.start(
-            { facingMode: "environment", deviceId: { ideal: "any" } },
-            config,
-            onQRCodeSuccess,
-            onQRCodeError
-          );
-          return;
-        } catch (lastErr: any) {
-          console.error('All camera options failed:', lastErr);
+          if (scanAttempts.current === 1) {
+            // Try with user facing camera on first retry
+            await qrRef.current.start(
+              { facingMode: 'user' },
+              { fps: 10, qrbox: { width: 250, height: 250 } },
+              onQRCodeSuccess,
+              onQRCodeError
+            );
+            console.log('Started with user-facing camera');
+            return;
+          } else {
+            // Try with any available camera on second retry
+            await qrRef.current.start(
+              { facingMode: { ideal: "environment" } },
+              { fps: 10, qrbox: { width: 250, height: 250 } },
+              onQRCodeSuccess,
+              onQRCodeError
+            );
+            console.log('Started with any available camera');
+            return;
+          }
+        } catch (retryErr) {
+          console.error(`Camera retry attempt ${scanAttempts.current} failed:`, retryErr);
         }
       }
       
+      // All attempts failed, show error
       if (err.name === 'NotAllowedError') {
         setPermissionDenied(true);
         setError('Camera access denied. Please allow camera access and try again.');
@@ -122,6 +181,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
     if (qrRef.current && isScanning) {
       try {
         await qrRef.current.stop();
+        console.log('QR scanner stopped');
         setIsScanning(false);
         return true;
       } catch (err) {
@@ -135,6 +195,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   const onQRCodeSuccess = async (decodedText: string) => {
     console.log("QR code scanned:", decodedText);
     
+    // Prevent multiple scans
+    if (hasScanned) return;
     setHasScanned(true);
     
     try {
@@ -147,26 +209,55 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
           description: 'Successfully scanned QR code',
         });
         
+        // Process the result
         onResult(decodedText);
       }
     } catch (err) {
       console.error('Error stopping QR scanner after successful scan:', err);
       setIsScanning(false);
+      // Still pass the result even if stopping the scanner failed
       onResult(decodedText);
     }
   };
   
   const onQRCodeError = (errorMessage: string) => {
-    console.debug('QR scan error:', errorMessage);
+    // Only log on debug, no need to show to user
+    // console.debug('QR scan error:', errorMessage);
   };
   
   const handleRetry = async () => {
     setPermissionDenied(false);
     setError(null);
     setHasScanned(false);
+    scanAttempts.current = 0;
     
     await stopScanner();
     startScanner();
+  };
+  
+  const switchCamera = async () => {
+    if (availableDevices.length <= 1) {
+      toast({
+        title: 'Camera Switch',
+        description: 'No additional cameras available on this device',
+        variant: 'default',
+      });
+      return;
+    }
+    
+    const currentIndex = availableDevices.findIndex(device => device.deviceId === selectedDeviceId);
+    const nextIndex = (currentIndex + 1) % availableDevices.length;
+    const nextDeviceId = availableDevices[nextIndex].deviceId;
+    
+    console.log(`Switching camera from ${currentIndex} to ${nextIndex}`);
+    setSelectedDeviceId(nextDeviceId);
+    
+    await stopScanner();
+    // Reset scan attempts when manually switching
+    scanAttempts.current = 0;
+    setTimeout(() => {
+      startScanner();
+    }, 300);
   };
   
   return (
@@ -196,8 +287,11 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
         </div>
       ) : error ? (
         <div className="text-center p-6 border rounded-lg">
-          <p className="text-destructive mb-4">{error}</p>
-          <Button onClick={handleRetry}>Try Again</Button>
+          <p className="text-destructive mb-3">{error}</p>
+          <div className="flex justify-center gap-3">
+            <Button onClick={handleRetry}>Try Again</Button>
+            <Button variant="outline" onClick={() => onError('Scanning cancelled')}>Cancel</Button>
+          </div>
         </div>
       ) : (
         <div className="relative border-2 border-primary rounded-lg overflow-hidden bg-black aspect-square">
@@ -221,14 +315,26 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
         </div>
       )}
       
-      <div className="mt-4 flex justify-center">
+      <div className="mt-4 flex justify-between gap-3">
         <Button 
           variant="outline" 
           onClick={() => onError('Scanning cancelled')}
-          className="w-full"
+          className="flex-1"
         >
           Cancel
         </Button>
+        
+        {availableDevices.length > 1 && (
+          <Button 
+            variant="outline" 
+            onClick={switchCamera}
+            disabled={!isScanning || hasScanned}
+            className="flex-1"
+          >
+            <Smartphone size={16} className="mr-2" />
+            Switch Camera
+          </Button>
+        )}
       </div>
     </div>
   );
