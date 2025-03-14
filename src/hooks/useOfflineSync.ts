@@ -11,6 +11,7 @@ import {
   type OfflineAction
 } from '@/utils/indexedDBUtils';
 import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface OfflineSyncState {
   isSyncing: boolean;
@@ -35,6 +36,7 @@ export const useOfflineSync = () => {
     pendingActionsCount: 0,
     lastSyncError: null
   });
+  const { toast } = useToast();
   const syncInProgress = useRef<boolean>(false);
   const retryTimeoutRef = useRef<number | null>(null);
 
@@ -212,7 +214,7 @@ export const useOfflineSync = () => {
           toast({
             title: 'Sync Partially Complete',
             description: `Synced ${successCount} items. ${failureCount} ${failureCount === 1 ? 'item' : 'items'} failed and will be retried.`,
-            variant: 'warning'
+            variant: 'warning' // Using the new warning variant
           });
         }
       } else {
@@ -229,7 +231,7 @@ export const useOfflineSync = () => {
           toast({
             title: 'Sync Complete',
             description: `Successfully synced ${successCount} offline ${successCount === 1 ? 'action' : 'actions'}`,
-            variant: 'success'
+            variant: 'success' // Using the new success variant
           });
         }
       }
@@ -260,7 +262,7 @@ export const useOfflineSync = () => {
     } finally {
       syncInProgress.current = false;
     }
-  }, [isOnline, checkPendingActions, processAction]);
+  }, [isOnline, checkPendingActions, processAction, toast]);
 
   // Queue an offline action for later synchronization
   const queueAction = useCallback(async (

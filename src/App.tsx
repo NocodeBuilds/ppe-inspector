@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,7 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeToggler";
 import { initializePWA } from "./utils/pwaUtils";
-import ErrorBoundaryWithFallback from "./components/ErrorBoundaryWithFallback";
+import EnhancedErrorBoundary from "./components/error/EnhancedErrorBoundary";
 import RoleProtectedRoute from "./components/auth/RoleProtectedRoute";
 import { NetworkStatusListener } from "./hooks/useNetwork";
 import NetworkStatus from "./components/layout/NetworkStatus";
@@ -92,8 +93,17 @@ const App = () => {
     return <PageLoader />;
   }
 
+  // Handle global errors and provide detailed reporting
+  const handleGlobalError = (error: Error, info: React.ErrorInfo) => {
+    console.error('Global error caught:', error);
+    console.error('Component stack:', info.componentStack);
+    
+    // Here you could add reporting to an error tracking service
+    // reportToErrorService(error, info);
+  };
+
   return (
-    <ErrorBoundaryWithFallback>
+    <EnhancedErrorBoundary onError={handleGlobalError} component="AppRoot">
       <BrowserRouter>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
@@ -149,7 +159,7 @@ const App = () => {
           </ThemeProvider>
         </QueryClientProvider>
       </BrowserRouter>
-    </ErrorBoundaryWithFallback>
+    </EnhancedErrorBoundary>
   );
 };
 
