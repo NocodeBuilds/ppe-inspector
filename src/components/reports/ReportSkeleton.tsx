@@ -11,7 +11,7 @@ const ReportSkeleton: React.FC<ReportSkeletonProps> = ({
   showAnalytics = false 
 }) => {
   return (
-    <div className="space-y-6 animate-pulse">
+    <div className="space-y-6 animate-pulse fade-in">
       {showAnalytics && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {[1, 2, 3].map((i) => (

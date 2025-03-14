@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -23,13 +22,11 @@ const StartInspection = () => {
   const { showNotification } = useNotifications();
   const { getPPEBySerialNumber } = usePPEData();
 
-  // Handle scanner close
   const handleCloseScanner = () => {
     setShowScanner(false);
     setScanning(false);
   };
 
-  // Handle successful QR code scan
   const handleScanResult = async (result: string) => {
     setScanning(false);
     setIsLoading(true);
@@ -37,12 +34,10 @@ const StartInspection = () => {
     try {
       console.log('Scan result:', result);
       
-      // Try to find PPE by serial number
       const ppeItems = await getPPEBySerialNumber(result);
       console.log('Found PPE items:', ppeItems);
       
       if (!ppeItems || ppeItems.length === 0) {
-        // No PPE found with this serial number
         showNotification('Not Found', 'error', {
           description: `No PPE found with serial number: ${result}`
         });
@@ -52,10 +47,8 @@ const StartInspection = () => {
       }
       
       if (ppeItems.length === 1) {
-        // Single PPE found, navigate to inspection form
         handlePPESelected(ppeItems[0]);
       } else {
-        // Multiple PPE found, show selection dialog
         setMultiplePPE(ppeItems);
       }
     } catch (error) {
@@ -68,7 +61,6 @@ const StartInspection = () => {
     }
   };
 
-  // Handle PPE selection from dialog
   const handlePPESelected = (ppe: PPEItem) => {
     setMultiplePPE([]);
     setShowScanner(false);
@@ -77,11 +69,9 @@ const StartInspection = () => {
       description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`
     });
     
-    // Navigate to inspection form with PPE ID
     navigate(`/inspection-form/${ppe.id}`);
   };
 
-  // Handle scanner error
   const handleScanError = (error: string) => {
     console.error('Scanner error:', error);
     setScanning(false);
@@ -94,7 +84,6 @@ const StartInspection = () => {
     }
   };
 
-  // Navigate to manual inspection page
   const handleManualInspection = () => {
     navigate('/manual-inspection');
   };
@@ -163,7 +152,6 @@ const StartInspection = () => {
         </>
       )}
       
-      {/* QR Code Scanner Dialog */}
       <Dialog open={showScanner} onOpenChange={setShowScanner}>
         <DialogContent className="max-w-md p-0">
           {showScanner && (
@@ -175,7 +163,6 @@ const StartInspection = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Multiple PPE Selection Dialog */}
       <PPESelectionDialog
         ppeItems={multiplePPE}
         isOpen={multiplePPE.length > 0}

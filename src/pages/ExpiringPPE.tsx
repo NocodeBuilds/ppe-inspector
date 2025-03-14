@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +8,7 @@ import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import EquipmentSkeleton from '@/components/equipment/EquipmentSkeleton';
 
 const ExpiringPPE = () => {
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
@@ -31,7 +31,6 @@ const ExpiringPPE = () => {
     try {
       setIsLoading(true);
       
-      // Calculate expiry cutoff date based on selected timeframe
       const today = new Date();
       const cutoffDate = new Date();
       
@@ -43,7 +42,6 @@ const ExpiringPPE = () => {
         cutoffDate.setFullYear(today.getFullYear() + 1);
       }
       
-      // Fetch PPE items expiring before the cutoff date
       const { data, error } = await supabase
         .from('ppe_items')
         .select('*')
@@ -53,7 +51,6 @@ const ExpiringPPE = () => {
       
       if (error) throw error;
       
-      // Also fetch already expired items
       const { data: expiredData, error: expiredError } = await supabase
         .from('ppe_items')
         .select('*')
@@ -62,7 +59,6 @@ const ExpiringPPE = () => {
         
       if (expiredError) throw expiredError;
       
-      // Combine and map data to PPEItem type
       const allExpiringItems = [...(data || []), ...(expiredData || [])];
       
       const mappedItems: PPEItem[] = allExpiringItems.map((item: any) => ({
@@ -147,9 +143,7 @@ const ExpiringPPE = () => {
       </div>
       
       {isLoading ? (
-        <div className="flex justify-center items-center h-60">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
+        <EquipmentSkeleton />
       ) : filteredItems.length > 0 ? (
         <div className="space-y-4">
           {filteredItems.map((item) => (

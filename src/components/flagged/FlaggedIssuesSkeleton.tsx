@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 
 const FlaggedIssuesSkeleton: React.FC = () => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-pulse fade-in">
       {/* Header and search skeleton */}
       <div className="flex items-center mb-4">
         <Skeleton className="h-6 w-6 mr-2 rounded-full" />

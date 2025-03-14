@@ -9,7 +9,7 @@ interface InspectionsSkeletonProps {
 
 const InspectionsSkeleton: React.FC<InspectionsSkeletonProps> = ({ count = 3 }) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-pulse fade-in">
       {/* Search and filters skeleton */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <Skeleton className="h-10 flex-1" />

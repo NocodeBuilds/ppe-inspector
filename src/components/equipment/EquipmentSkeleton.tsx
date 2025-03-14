@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 
 const EquipmentSkeleton: React.FC = () => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-pulse fade-in">
       {/* Search and filters skeleton */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <Skeleton className="h-10 flex-1" />
@@ -15,7 +15,11 @@ const EquipmentSkeleton: React.FC = () => {
       
       {/* Tab list skeleton */}
       <div className="mb-6">
-        <Skeleton className="h-10 w-full rounded-md mb-4" />
+        <div className="flex space-x-2 overflow-x-auto pb-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-10 w-24 shrink-0" />
+          ))}
+        </div>
       </div>
       
       {/* Equipment cards skeleton */}
@@ -26,7 +30,7 @@ const EquipmentSkeleton: React.FC = () => {
             <div className="flex-1 space-y-2">
               <Skeleton className="h-5 w-1/3" />
               <Skeleton className="h-4 w-1/2" />
-              <div className="flex gap-2">
+              <div className="flex gap-2 mt-2">
                 <Skeleton className="h-8 w-24" />
                 <Skeleton className="h-8 w-8 rounded-full" />
               </div>
