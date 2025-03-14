@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, ImageIcon, RefreshCw, Check, CameraOff, Loader2 } from 'lucide-react';
+import { Camera, ImageIcon, RefreshCw, Check, CameraOff, Loader2, SwitchCamera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
@@ -14,21 +14,26 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
   onImageCapture, 
   existingImage 
 }) => {
+  // State management
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(existingImage || null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isInitializing, setIsInitializing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  
+  // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Clean up camera resources when component unmounts
+  // Clean up resources when component unmounts
   useEffect(() => {
     return () => {
       stopCamera();
     };
   }, []);
 
+  // Stop camera and release resources
   const stopCamera = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => {
@@ -44,81 +49,59 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     setIsCameraActive(false);
   };
 
-  const activateCamera = async () => {
+  // Start camera with current facing mode
+  const startCamera = async () => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
-      setIsInitializing(true);
-      setCameraError(null);
+      if (streamRef.current) {
+        stopCamera();
+      }
       
-      // First try to access the environment facing camera (back camera)
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 } 
-          },
-          audio: false
-        });
+      console.log(`Requesting camera with facing mode: ${facingMode}`);
+      
+      const constraints = {
+        video: {
+          facingMode: facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      console.log('Camera stream obtained successfully');
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
         
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          streamRef.current = stream;
-          
-          // Wait for video to be ready
-          videoRef.current.onloadedmetadata = () => {
-            if (videoRef.current) {
-              videoRef.current.play()
-                .then(() => {
-                  setIsCameraActive(true);
-                  setIsInitializing(false);
-                })
-                .catch(err => {
-                  console.error('Error playing video:', err);
-                  setCameraError('Could not start video stream');
-                  setIsInitializing(false);
-                  stopCamera();
-                });
-            }
-          };
-        }
-      } catch (environmentError) {
-        // If environment camera fails, try user-facing camera
-        console.warn('Could not access environment camera, trying user-facing camera:', environmentError);
-        
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-              facingMode: 'user',
-              width: { ideal: 1280 },
-              height: { ideal: 720 } 
-            },
-            audio: false
-          });
-          
+        // Set up event handlers for video element
+        videoRef.current.onloadedmetadata = () => {
           if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            streamRef.current = stream;
-            
-            // Wait for video to be ready
-            videoRef.current.onloadedmetadata = () => {
-              if (videoRef.current) {
-                videoRef.current.play()
-                  .then(() => {
-                    setIsCameraActive(true);
-                    setIsInitializing(false);
-                  })
-                  .catch(err => {
-                    console.error('Error playing video:', err);
-                    setCameraError('Could not start video stream');
-                    setIsInitializing(false);
-                    stopCamera();
-                  });
-              }
-            };
+            videoRef.current.play()
+              .then(() => {
+                console.log('Video playback started');
+                setIsCameraActive(true);
+                setIsLoading(false);
+              })
+              .catch(err => {
+                console.error('Error playing video:', err);
+                setError('Could not start video playback');
+                setIsLoading(false);
+                stopCamera();
+              });
           }
-        } catch (userFacingError) {
-          throw new Error('Could not access any camera');
-        }
+        };
+        
+        videoRef.current.onerror = () => {
+          console.error('Video element error');
+          setError('Video playback error');
+          setIsLoading(false);
+          stopCamera();
+        };
       }
     } catch (error: any) {
       console.error('Error accessing camera:', error);
@@ -126,7 +109,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       let errorMessage = 'Could not access camera.';
       
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-        errorMessage = 'Camera access denied. Please grant camera permissions in your browser settings.';
+        errorMessage = 'Camera access denied. Please grant camera permissions.';
       } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
         errorMessage = 'No camera found on this device.';
       } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
@@ -135,18 +118,39 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         errorMessage = 'Camera constraints not satisfiable.';
       }
       
-      setCameraError(errorMessage);
-      setIsInitializing(false);
-      stopCamera();
+      setError(errorMessage);
+      setIsLoading(false);
       
-      toast({
-        title: "Camera Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      // If environment camera fails, try user-facing camera
+      if (facingMode === 'environment' && !streamRef.current) {
+        console.log('Environment camera failed, trying user-facing camera');
+        setFacingMode('user');
+        setTimeout(() => startCamera(), 500);
+      } else {
+        toast({
+          title: "Camera Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     }
   };
 
+  // Switch between front and back cameras
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
+    if (isCameraActive) {
+      stopCamera();
+      setTimeout(() => startCamera(), 300);
+    }
+  };
+
+  // Activate camera on button click
+  const activateCamera = () => {
+    startCamera();
+  };
+
+  // Capture image from video stream
   const captureImage = () => {
     if (videoRef.current && canvasRef.current && streamRef.current) {
       try {
@@ -180,7 +184,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
                 description: "Photo saved successfully",
               });
             } else {
-              setCameraError('Failed to process the captured image');
+              setError('Failed to process the captured image');
               toast({
                 title: "Capture Failed",
                 description: "Failed to process the captured image",
@@ -194,7 +198,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         stopCamera();
       } catch (error) {
         console.error('Error capturing image:', error);
-        setCameraError('Failed to capture image');
+        setError('Failed to capture image');
         toast({
           title: "Capture Failed",
           description: "Failed to capture image",
@@ -202,7 +206,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         });
       }
     } else {
-      setCameraError('Camera not properly initialized');
+      setError('Camera not properly initialized');
       toast({
         title: "Capture Failed",
         description: "Camera not properly initialized",
@@ -211,6 +215,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     }
   };
 
+  // Retake photo
   const retakePhoto = () => {
     if (capturedImage) {
       // Revoke the object URL to avoid memory leaks
@@ -221,17 +226,29 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     activateCamera();
   };
 
+  // Render component
   return (
     <Card className="p-4 relative">
       {isCameraActive ? (
         <div className="flex flex-col items-center">
-          <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-            className="w-full rounded-md border overflow-hidden"
-            style={{ height: '240px', objectFit: 'cover' }}
-          />
+          <div className="relative w-full rounded-md border overflow-hidden bg-black">
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              className="w-full rounded-md border overflow-hidden"
+              style={{ height: '240px', objectFit: 'cover' }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="absolute top-2 right-2 bg-black/40 hover:bg-black/60"
+              onClick={toggleCamera}
+            >
+              <SwitchCamera size={16} className="text-white" />
+            </Button>
+          </div>
           
           <div className="mt-4 flex justify-center gap-2">
             <Button
@@ -278,20 +295,19 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       ) : (
         <div className="flex flex-col items-center">
           <div 
-            className="w-full h-[240px] rounded-md border border-dashed flex items-center justify-center bg-muted/30 cursor-pointer"
-            onClick={isInitializing ? undefined : activateCamera}
+            className="w-full h-[240px] rounded-md border border-dashed flex items-center justify-center bg-muted/30"
           >
             <div className="flex flex-col items-center text-muted-foreground p-4">
-              {isInitializing ? (
+              {isLoading ? (
                 <>
                   <Loader2 className="h-12 w-12 mb-2 animate-spin" />
                   <p>Initializing camera...</p>
                 </>
-              ) : cameraError ? (
+              ) : error ? (
                 <>
                   <CameraOff className="h-12 w-12 mb-2 text-destructive" />
                   <p className="text-center">Camera error</p>
-                  <p className="text-red-500 text-xs mt-2 text-center">{cameraError}</p>
+                  <p className="text-red-500 text-xs mt-2 text-center">{error}</p>
                 </>
               ) : (
                 <>
@@ -307,9 +323,9 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
               type="button"
               onClick={activateCamera}
               variant="outline"
-              disabled={isInitializing}
+              disabled={isLoading}
             >
-              {isInitializing ? (
+              {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Initializing...
