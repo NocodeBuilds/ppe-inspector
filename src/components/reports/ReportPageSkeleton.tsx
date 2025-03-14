@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
+import ReportSkeleton from '@/components/reports/ReportSkeleton';
 
 const ReportPageSkeleton = () => {
   return (
