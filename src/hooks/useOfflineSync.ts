@@ -7,7 +7,8 @@ import {
   queueOfflineAction,
   getOfflineAction,
   updateOfflineAction,
-  initializeDatabase
+  initializeDatabase,
+  type OfflineAction
 } from '@/utils/indexedDBUtils';
 import { toast } from '@/hooks/use-toast';
 

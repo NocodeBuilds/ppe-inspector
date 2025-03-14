@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for IndexedDB operations
  * Handles offline data storage, queuing, and synchronization
@@ -10,14 +9,15 @@ const OFFLINE_ACTIONS_STORE = 'offline_actions';
 const INSPECTIONS_STORE = 'inspections';
 const TEMP_IMAGES_STORE = 'temp_images';
 
-interface OfflineAction {
+export interface OfflineAction {
   id?: string;
   type: string;
   data: any;
   timestamp?: number;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   metadata?: any;
-  retries?: number;
+  retryCount?: number;
+  lastError?: string | null;
 }
 
 /**
@@ -85,7 +85,7 @@ export const queueOfflineAction = async (action: OfflineAction): Promise<string>
       const actionToStore = {
         ...action,
         timestamp: Date.now(),
-        retries: 0
+        retryCount: 0
       };
       
       const request = store.add(actionToStore);
@@ -140,6 +140,90 @@ export const getPendingOfflineActions = async (): Promise<OfflineAction[]> => {
   } catch (error) {
     console.error('IndexedDB get pending actions error:', error);
     return [];
+  }
+};
+
+/**
+ * Get a specific offline action by ID
+ */
+export const getOfflineAction = async (id: string): Promise<OfflineAction | null> => {
+  try {
+    const db = await initIndexedDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(OFFLINE_ACTIONS_STORE, 'readonly');
+      const store = transaction.objectStore(OFFLINE_ACTIONS_STORE);
+      
+      const request = store.get(id);
+      
+      request.onsuccess = () => {
+        resolve(request.result || null);
+      };
+      
+      request.onerror = (event) => {
+        console.error('Error getting offline action:', event);
+        reject('Failed to get offline action');
+      };
+      
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error('IndexedDB get offline action error:', error);
+    return null;
+  }
+};
+
+/**
+ * Update an offline action
+ */
+export const updateOfflineAction = async (id: string, updates: Partial<OfflineAction>): Promise<void> => {
+  try {
+    const db = await initIndexedDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(OFFLINE_ACTIONS_STORE, 'readwrite');
+      const store = transaction.objectStore(OFFLINE_ACTIONS_STORE);
+      
+      // First get the current data
+      const getRequest = store.get(id);
+      
+      getRequest.onsuccess = () => {
+        if (!getRequest.result) {
+          reject(`Offline action with id ${id} not found`);
+          return;
+        }
+        
+        // Merge with updates
+        const updatedAction = {
+          ...getRequest.result,
+          ...updates
+        };
+        
+        const updateRequest = store.put(updatedAction);
+        
+        updateRequest.onsuccess = () => {
+          resolve();
+        };
+        
+        updateRequest.onerror = (event) => {
+          console.error('Error updating offline action:', event);
+          reject('Failed to update offline action');
+        };
+      };
+      
+      getRequest.onerror = (event) => {
+        console.error('Error getting offline action for update:', event);
+        reject('Failed to get offline action for update');
+      };
+      
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error('IndexedDB update offline action error:', error);
   }
 };
 

@@ -130,11 +130,21 @@ export const useNotifications = () => {
     type: NotificationType = 'info',
     options?: NotificationOptions
   ) => {
+    // Map notification types to toast variants
+    const getToastVariant = (notificationType: NotificationType) => {
+      switch (notificationType) {
+        case 'error':
+          return 'destructive';
+        default:
+          return 'default';
+      }
+    };
+    
     // Show toast
     toast({
       title,
       description: options?.description,
-      variant: type === 'error' ? 'destructive' : 'default',
+      variant: getToastVariant(type),
       duration: options?.duration || 5000,
       action: options?.action,
     });

@@ -14,6 +14,7 @@ type ToastOptions = Omit<ToastProps, "title" | "description"> & {
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  variant?: "default" | "destructive"; // Only these variants are allowed
 };
 
 // Track last toast to prevent duplicates

@@ -59,8 +59,8 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
   const getStatusColor = () => {
     if (lastSyncError) return 'text-destructive';
     if (!isOnline) return 'text-destructive';
-    if (pendingActionsCount > 0) return 'text-warning';
-    return 'text-success';
+    if (pendingActionsCount > 0) return 'text-amber-500';
+    return 'text-green-500';
   };
   
   const getStatusIcon = () => {
@@ -173,7 +173,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
       )}
       
       {pendingActionsCount > 0 && !isSyncing && (
-        <p className="text-xs text-warning">
+        <p className="text-xs text-amber-500">
           {pendingActionsCount} {pendingActionsCount === 1 ? 'change' : 'changes'} pending synchronization
         </p>
       )}
