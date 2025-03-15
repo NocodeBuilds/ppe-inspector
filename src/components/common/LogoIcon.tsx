@@ -27,11 +27,11 @@ const LogoIcon: React.FC<LogoIconProps> = ({
     '2xl': 'text-4xl'
   };
   const logoSizeMap = {
-    sm: 'w-18 sm:w-22',
-    md: 'w-22 sm:w-26',
-    lg: 'w-26 sm:w-30',
-    xl: 'w-30 sm:w-38',
-    '2xl': 'w-38 sm:w-46'
+    sm: 'w-15 sm:w-19',
+    md: 'w-19 sm:w-23',
+    lg: 'w-23 sm:w-27',
+    xl: 'w-27 sm:w-35',
+    '2xl': 'w-35 sm:w-43'
   };
   return <div className={`flex items-center gap-2 ${className}`}>
       <div className={`${animateOnHover ? 'transition-transform duration-300 hover:scale-105' : ''}`}>
