@@ -26,7 +26,7 @@ const LogoIcon: React.FC<LogoIconProps> = ({
   return <div className={`flex items-center gap-2 ${className}`}>
       <div>
         <img 
-          src="/lovable-uploads/33c7839a-d2fd-44fa-9a32-3c307a931937.png" 
+          src="/lovable-uploads/logo.png" 
           alt="TESTR Logo"
           className={`h-auto ${size === 'sm' ? 'w-20' : size === 'md' ? 'w-24' : size === 'lg' ? 'w-28' : 'w-32'}`}
         />
