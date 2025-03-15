@@ -17,6 +17,11 @@ export interface Notification {
   user_id: string;
 }
 
+export interface NotificationOptions {
+  description?: string;
+  [key: string]: any;
+}
+
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -112,16 +117,73 @@ export const useNotifications = () => {
     }
   };
   
-  const showNotification = (title: string, message: string, type: NotificationType = 'info') => {
-    // Show a toast notification
-    toast({
-      title,
-      description: message,
-      variant: type === 'error' ? 'destructive' : undefined,
-    });
-    
-    // Also add it to the database
-    return addNotification(title, message, type);
+  // Updated to handle both parameter styles
+  const showNotification = (
+    titleOrOptions: string | NotificationOptions,
+    messageOrType: string | NotificationType = 'info',
+    typeOrOptions?: NotificationType | NotificationOptions
+  ) => {
+    // Case 1: Called with (title, message, type)
+    if (typeof titleOrOptions === 'string' && typeof messageOrType === 'string') {
+      const title = titleOrOptions;
+      const message = messageOrType;
+      const type = (typeof typeOrOptions === 'string' ? typeOrOptions : 'info') as NotificationType;
+      
+      // Show a toast notification
+      toast({
+        title,
+        description: message,
+        variant: type === 'error' ? 'destructive' : 
+                 type === 'success' ? 'success' :
+                 type === 'warning' ? 'warning' : undefined,
+      });
+      
+      // Also add it to the database
+      return addNotification(title, message, type);
+    }
+    // Case 2: Called with (title, type, options)
+    else if (typeof titleOrOptions === 'string' && 
+             (messageOrType === 'info' || messageOrType === 'warning' || 
+              messageOrType === 'success' || messageOrType === 'error')) {
+      const title = titleOrOptions;
+      const type = messageOrType;
+      const options = typeOrOptions as NotificationOptions || {};
+      const message = options.description || '';
+      
+      // Show a toast notification
+      toast({
+        title,
+        description: message,
+        variant: type === 'error' ? 'destructive' : 
+                 type === 'success' ? 'success' :
+                 type === 'warning' ? 'warning' : undefined,
+      });
+      
+      // Also add it to the database
+      return addNotification(title, message, type);
+    }
+    // Case 3: Called with (title, options)
+    else {
+      const title = typeof titleOrOptions === 'string' ? titleOrOptions : 'Notification';
+      const options = typeof titleOrOptions === 'string' ? (messageOrType as NotificationOptions) : (titleOrOptions as NotificationOptions);
+      const message = options.description || '';
+      const type = ((typeof messageOrType === 'string' && 
+                    (messageOrType === 'info' || messageOrType === 'warning' || 
+                     messageOrType === 'success' || messageOrType === 'error')) 
+                   ? messageOrType : 'info') as NotificationType;
+      
+      // Show a toast notification
+      toast({
+        title,
+        description: message,
+        variant: type === 'error' ? 'destructive' : 
+                 type === 'success' ? 'success' :
+                 type === 'warning' ? 'warning' : undefined,
+      });
+      
+      // Also add it to the database
+      return addNotification(title, message, type);
+    }
   };
   
   const markAsRead = async (id: string) => {
@@ -139,7 +201,7 @@ export const useNotifications = () => {
       // Update in the database
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true, updated_at: new Date().toISOString() })
+        .update({ read: true })
         .eq('id', id)
         .eq('user_id', user.id);
       
@@ -166,7 +228,7 @@ export const useNotifications = () => {
       // Update in the database
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true, updated_at: new Date().toISOString() })
+        .update({ read: true })
         .eq('user_id', user.id)
         .eq('read', false);
       
