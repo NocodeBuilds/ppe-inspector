@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -14,11 +15,6 @@ export interface Notification {
   createdAt: Date;
   read: boolean;
   user_id: string;
-}
-
-export interface NotificationOptions {
-  description?: string;
-  [key: string]: any;
 }
 
 export const useNotifications = () => {
@@ -115,11 +111,14 @@ export const useNotifications = () => {
   };
   
   const showNotification = (
-    titleOrOptions: string | NotificationOptions,
+    titleOrOptions: string | { description?: string, [key: string]: any },
     messageOrType?: string | NotificationType,
-    typeOrOptions?: NotificationType | NotificationOptions
+    typeOrOptions?: NotificationType | { description?: string, [key: string]: any }
   ) => {
-    if (typeof titleOrOptions === 'string' && typeof messageOrType === 'string') {
+    // Case 1: (title, message, type)
+    if (typeof titleOrOptions === 'string' && typeof messageOrType === 'string' && 
+        (messageOrType !== 'info' && messageOrType !== 'warning' && 
+         messageOrType !== 'success' && messageOrType !== 'error')) {
       const title = titleOrOptions;
       const message = messageOrType;
       const type = (typeof typeOrOptions === 'string' ? typeOrOptions : 'info') as NotificationType;
@@ -133,12 +132,14 @@ export const useNotifications = () => {
       });
       
       return addNotification(title, message, type);
-    } else if (typeof titleOrOptions === 'string' && 
+    } 
+    // Case 2: (title, type, options)
+    else if (typeof titleOrOptions === 'string' && 
              (messageOrType === 'info' || messageOrType === 'warning' || 
               messageOrType === 'success' || messageOrType === 'error')) {
       const title = titleOrOptions;
       const type = messageOrType;
-      const options = typeOrOptions as NotificationOptions || {};
+      const options = typeOrOptions as { description?: string } || {};
       const message = options?.description || '';
       
       toast({
@@ -150,17 +151,19 @@ export const useNotifications = () => {
       });
       
       return addNotification(title, message, type);
-    } else {
+    } 
+    // Case 3: Handle other cases (title, options) or (options)
+    else {
       let title: string;
-      let options: NotificationOptions;
+      let options: { description?: string };
       let type: NotificationType = 'info';
       
       if (typeof titleOrOptions === 'string') {
         title = titleOrOptions;
-        options = (messageOrType as NotificationOptions) || {};
+        options = typeof messageOrType === 'object' ? messageOrType : {};
       } else {
         title = 'Notification';
-        options = titleOrOptions as NotificationOptions;
+        options = titleOrOptions;
       }
       
       const message = options?.description || '';
