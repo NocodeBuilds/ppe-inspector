@@ -32,35 +32,47 @@ const Analytics = () => {
       setInspectionStats(inspectionData);
       
       // Fetch PPE type distribution
-      const { data: ppeTypes, error: ppeError } = await supabase
+      const { data: ppeItems, error: ppeError } = await supabase
         .from('ppe_items')
-        .select('type, count')
-        .group('type');
+        .select('type');
         
       if (ppeError) throw ppeError;
       
-      const formattedPpeTypes = ppeTypes?.map(item => ({
-        name: item.type,
-        value: item.count
-      })) || [];
+      // Process PPE type data
+      const typeCount: Record<string, number> = {};
+      ppeItems?.forEach(item => {
+        typeCount[item.type] = (typeCount[item.type] || 0) + 1;
+      });
+      
+      const formattedPpeTypes = Object.entries(typeCount).map(([name, value]) => ({
+        name,
+        value
+      }));
       
       setPpeTypeDistribution(formattedPpeTypes);
       
       // Fetch status distribution
-      const { data: statuses, error: statusError } = await supabase
+      const { data: statusItems, error: statusError } = await supabase
         .from('ppe_items')
-        .select('status, count')
-        .group('status');
+        .select('status');
         
       if (statusError) throw statusError;
       
-      const formattedStatuses = statuses?.map(item => ({
-        name: item.status === 'active' ? 'Active' : 
-              item.status === 'expired' ? 'Expired' :
-              item.status === 'flagged' ? 'Flagged' :
-              item.status === 'maintenance' ? 'Maintenance' : 'Unknown',
-        value: item.count
-      })) || [];
+      // Process status data
+      const statusCount: Record<string, number> = {};
+      statusItems?.forEach(item => {
+        if (item.status) {
+          statusCount[item.status] = (statusCount[item.status] || 0) + 1;
+        }
+      });
+      
+      const formattedStatuses = Object.entries(statusCount).map(([status, count]) => ({
+        name: status === 'active' ? 'Active' : 
+              status === 'expired' ? 'Expired' :
+              status === 'flagged' ? 'Flagged' :
+              status === 'maintenance' ? 'Maintenance' : 'Unknown',
+        value: count
+      }));
       
       setStatusDistribution(formattedStatuses);
     } catch (error) {
