@@ -24,7 +24,7 @@ const LogoIcon: React.FC<LogoIconProps> = ({
   };
   return <div className={`flex items-center gap-2 ${className}`}>
       <div className="ADD i logo in this section i will ipdate a png format logo externally u just create necessary code first">
-        <span>R</span>
+        <span className="text-green-600 font-bold text-3xl">RENEW</span>
       </div>
       {withText && <span className={`${textSizeMap[size]} font-bold`}>
           <span className="text-primary">PPE</span> Inspector
