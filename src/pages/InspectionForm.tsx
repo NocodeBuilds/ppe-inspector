@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Camera, Check, ChevronLeft, ChevronRight, Delete, Info, Loader2, X, Ban, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Delete, Info, Loader2, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -14,7 +13,9 @@ import CheckpointItem from '@/components/inspection/CheckpointItem';
 import SignatureCanvas from '@/components/inspection/SignatureCanvas';
 import { getStandardCheckpoints } from '@/services/checkpointService';
 import { useAuth } from '@/hooks/useAuth';
-import { v4 as uuidv4 } from 'uuid';
+import InspectionSuccessDialog from '@/components/inspection/InspectionSuccessDialog';
+import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
+import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
 
 const toPPEType = (typeString: string) => {
   const validTypes = [
@@ -33,6 +34,15 @@ const toPPEType = (typeString: string) => {
   }
   
   return 'Safety Helmet';
+};
+
+const mapDbCheckpointToAppCheckpoint = (dbCheckpoint: any): InspectionCheckpoint => {
+  return {
+    id: dbCheckpoint.id,
+    description: dbCheckpoint.description,
+    ppeType: dbCheckpoint.ppe_type,
+    required: true,
+  };
 };
 
 const InspectionForm = () => {
@@ -66,6 +76,10 @@ const InspectionForm = () => {
   const [checkpointsError, setCheckpointsError] = useState<string | null>(null);
   const [resultsError, setResultsError] = useState<string | null>(null);
   
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [submittedInspectionId, setSubmittedInspectionId] = useState<string | null>(null);
+  const [submittedInspectionData, setSubmittedInspectionData] = useState<any | null>(null);
+  
   useEffect(() => {
     if (ppeId) {
       fetchPPEItem(ppeId);
@@ -97,7 +111,7 @@ const InspectionForm = () => {
           modelNumber: data.model_number,
         });
         
-        loadCheckpoints(data.type);
+        await fetchCheckpoints(data.type);
       } else {
         throw new Error('PPE item not found');
       }
@@ -108,38 +122,91 @@ const InspectionForm = () => {
     }
   };
   
-  const loadCheckpoints = (ppeType: string) => {
+  const fetchCheckpoints = async (ppeType: string) => {
     try {
-      const standardCheckpoints = getStandardCheckpoints(ppeType);
-      
-      if (standardCheckpoints.length === 0) {
-        setCheckpointsError('No checkpoints defined for this PPE type');
-        setIsLoading(false);
-        return;
+      const { data: existingCheckpoints, error } = await supabase
+        .from('inspection_checkpoints')
+        .select('*')
+        .eq('ppe_type', ppeType);
+        
+      if (error) {
+        console.error('Error fetching checkpoints:', error);
+        throw error;
       }
       
-      // Use uuidv4() to generate proper UUIDs for checkpoints
-      const formattedCheckpoints = standardCheckpoints.map(checkpoint => ({
-        id: uuidv4(),
-        description: checkpoint.description,
-        ppeType: checkpoint.ppeType as any,
-        required: checkpoint.required
-      }));
+      if (existingCheckpoints && existingCheckpoints.length > 0) {
+        console.log('Using checkpoints from database:', existingCheckpoints);
+        const appCheckpoints = existingCheckpoints.map(mapDbCheckpointToAppCheckpoint);
+        setCheckpoints(appCheckpoints);
+        
+        const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
+        existingCheckpoints.forEach(checkpoint => {
+          initialResults[checkpoint.id] = { passed: null, notes: '' };
+        });
+        setResults(initialResults);
+      } else {
+        const standardCheckpoints = getStandardCheckpoints(ppeType);
+        
+        if (standardCheckpoints.length === 0) {
+          setCheckpointsError('No checkpoints defined for this PPE type');
+          setIsLoading(false);
+          return;
+        }
+        
+        const checkpointsToInsert = standardCheckpoints.map(cp => ({
+          description: cp.description,
+          ppe_type: ppeType
+        }));
+        
+        const { data: insertedCheckpoints, error: insertError } = await supabase
+          .from('inspection_checkpoints')
+          .insert(checkpointsToInsert)
+          .select();
+          
+        if (insertError) {
+          console.error('Error inserting checkpoints:', insertError);
+          throw insertError;
+        }
+        
+        if (insertedCheckpoints) {
+          console.log('Inserted new checkpoints:', insertedCheckpoints);
+          const appCheckpoints = insertedCheckpoints.map(mapDbCheckpointToAppCheckpoint);
+          setCheckpoints(appCheckpoints);
+          
+          const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
+          insertedCheckpoints.forEach(checkpoint => {
+            initialResults[checkpoint.id] = { passed: null, notes: '' };
+          });
+          setResults(initialResults);
+        }
+      }
       
-      setCheckpoints(formattedCheckpoints);
-      
-      // Initialize results with all items set to null (unselected)
-      const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
-      formattedCheckpoints.forEach(checkpoint => {
-        initialResults[checkpoint.id] = { passed: null, notes: '' };
-      });
-      
-      setResults(initialResults);
       setIsLoading(false);
-      
     } catch (error: any) {
-      console.error('Error loading checkpoints:', error);
-      setCheckpointsError(error.message || 'Failed to load inspection checkpoints');
+      console.error('Error with checkpoints:', error);
+      
+      const standardCheckpoints = getStandardCheckpoints(ppeType);
+      if (standardCheckpoints.length > 0) {
+        const tempCheckpoints = standardCheckpoints.map(cp => ({
+          id: crypto.randomUUID(),
+          description: cp.description,
+          ppeType: ppeType,
+          required: true
+        }));
+        
+        setCheckpoints(tempCheckpoints);
+        
+        const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
+        tempCheckpoints.forEach(checkpoint => {
+          initialResults[checkpoint.id] = { passed: null, notes: '' };
+        });
+        setResults(initialResults);
+        
+        setCheckpointsError('Using local checkpoints - database connection error');
+      } else {
+        setCheckpointsError('No checkpoints defined for this PPE type');
+      }
+      
       setIsLoading(false);
     }
   };
@@ -150,7 +217,6 @@ const InspectionForm = () => {
       [checkpointId]: { ...prev[checkpointId], passed: value }
     }));
     
-    // Recalculate overall result
     const allResults = Object.entries({
       ...results,
       [checkpointId]: { ...results[checkpointId], passed: value }
@@ -191,7 +257,6 @@ const InspectionForm = () => {
   
   const handleNextStep = () => {
     if (step === 2) {
-      // Validate all required checkpoints have a value before proceeding
       if (!validateForm()) {
         return;
       }
@@ -250,7 +315,6 @@ const InspectionForm = () => {
     return true;
   };
   
-  // Save form data to local storage
   const saveFormToLocalStorage = () => {
     try {
       const formData = {
@@ -263,7 +327,6 @@ const InspectionForm = () => {
         timestamp: new Date().toISOString()
       };
       
-      // Use UUID for form data key to prevent collisions
       const formKey = `inspection_form_${ppeId || 'new'}_${Date.now()}`;
       localStorage.setItem(formKey, JSON.stringify(formData));
       
@@ -279,13 +342,11 @@ const InspectionForm = () => {
     const formKey = saveFormToLocalStorage();
     
     try {
-      // First, check network connectivity
       const online = navigator.onLine;
       if (!online) {
         throw new Error('You are currently offline. Please check your connection and try again.');
       }
       
-      // Try a simple fetch to test Supabase connectivity without directly accessing protected properties
       const pingResponse = await fetch(`https://oapfjmyyfuopajayrxzw.supabase.co/rest/v1/`, {
         method: 'HEAD',
         headers: {
@@ -298,11 +359,9 @@ const InspectionForm = () => {
         throw new Error('Server connection error. Please try again later.');
       }
       
-      // Clear network error state and retry submission
       setHasNetworkError(false);
       await handleSubmit();
       
-      // If successful, remove from local storage
       if (formKey) {
         localStorage.removeItem(formKey);
       }
@@ -335,8 +394,14 @@ const InspectionForm = () => {
     try {
       const inspectionTypeEnum = inspectionType as "pre-use" | "monthly" | "quarterly";
       
-      // Save form data to local storage in case of network error
       saveFormToLocalStorage();
+      
+      console.log('Submitting inspection with data:', {
+        ppe_id: ppeItem?.id,
+        type: inspectionTypeEnum,
+        overall_result: overallResult,
+        checkpoint_ids: Object.keys(results),
+      });
       
       const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
@@ -344,7 +409,7 @@ const InspectionForm = () => {
           ppe_id: ppeItem?.id,
           type: inspectionTypeEnum,
           date: new Date().toISOString(),
-          overall_result: overallResult,
+          overall_result: overallResult || 'pass',
           notes: notes,
           signature_url: signature,
           inspector_id: user.id,
@@ -357,18 +422,7 @@ const InspectionForm = () => {
         throw inspectionError;
       }
       
-      // Create checkpoint records in the database for our generated checkpoints
-      const checkpointPromises = checkpoints.map(checkpoint => 
-        supabase
-          .from('inspection_checkpoints')
-          .upsert({
-            id: checkpoint.id,
-            description: checkpoint.description,
-            ppe_type: checkpoint.ppeType,
-          })
-      );
-      
-      await Promise.all(checkpointPromises);
+      console.log('Inspection created with ID:', inspection.id);
       
       const resultsToInsert = Object.entries(results).map(([checkpointId, result]) => ({
         inspection_id: inspection.id,
@@ -378,11 +432,16 @@ const InspectionForm = () => {
         photo_url: result.photoUrl,
       }));
       
+      console.log('Inserting inspection results:', resultsToInsert);
+      
       const { error: resultsError } = await supabase
         .from('inspection_results')
         .insert(resultsToInsert);
       
-      if (resultsError) throw resultsError;
+      if (resultsError) {
+        console.error("Results insert error:", resultsError);
+        throw resultsError;
+      }
       
       const now = new Date();
       let nextInspectionDate: Date;
@@ -416,6 +475,33 @@ const InspectionForm = () => {
       
       if (ppeUpdateError) throw ppeUpdateError;
       
+      const checkpointDetails = checkpoints.map(cp => ({
+        id: cp.id,
+        description: cp.description,
+        passed: results[cp.id]?.passed,
+        notes: results[cp.id]?.notes,
+        photo_url: results[cp.id]?.photoUrl,
+      }));
+      
+      const submittedData = {
+        id: inspection.id,
+        date: now.toISOString(),
+        type: inspectionType,
+        overall_result: overallResult || 'pass',
+        notes: notes,
+        signature_url: signature,
+        inspector_name: user.user_metadata?.full_name || 'Unknown Inspector',
+        ppe_type: ppeItem?.type || 'Unknown',
+        ppe_serial: ppeItem?.serialNumber || 'Unknown',
+        ppe_brand: ppeItem?.brand || 'Unknown',
+        ppe_model: ppeItem?.modelNumber || 'Unknown',
+        checkpoints: checkpointDetails
+      };
+      
+      console.log('Setting submitted inspection data:', submittedData);
+      setSubmittedInspectionData(submittedData);
+      setSubmittedInspectionId(inspection.id);
+      
       queryClient.invalidateQueries({ queryKey: ['ppe-items'] });
       queryClient.invalidateQueries({ queryKey: ['upcoming-inspections'] });
       
@@ -424,11 +510,10 @@ const InspectionForm = () => {
         description: 'The inspection has been successfully recorded',
       });
       
-      navigate(`/equipment/${ppeItem?.id}`);
+      setShowSuccessDialog(true);
     } catch (error: any) {
       console.error('Error submitting inspection:', error);
       
-      // Check if it's a network-related error
       if (
         error.message?.includes('fetch') || 
         error.message?.includes('network') ||
@@ -450,6 +535,112 @@ const InspectionForm = () => {
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+  
+  const handlePDFDownload = async () => {
+    try {
+      if (submittedInspectionData) {
+        await generateInspectionDetailPDF(submittedInspectionData);
+        toast({
+          title: 'PDF Generated',
+          description: 'Inspection report has been downloaded as PDF',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Inspection data not available',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: 'PDF Generation Failed',
+        description: 'Could not generate PDF report',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  const handleExcelDownload = async () => {
+    try {
+      if (submittedInspectionData) {
+        await generateInspectionExcelReport(submittedInspectionData);
+        toast({
+          title: 'Excel Generated',
+          description: 'Inspection report has been downloaded as Excel',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Inspection data not available',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Excel generation error:', error);
+      toast({
+        title: 'Excel Generation Failed',
+        description: 'Could not generate Excel report',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  const handleWhatsAppShare = () => {
+    try {
+      const message = 
+        `Inspection Report\n` +
+        `PPE: ${ppeItem?.type} (${ppeItem?.serialNumber})\n` +
+        `Date: ${new Date().toLocaleDateString()}\n` +
+        `Result: ${overallResult?.toUpperCase() || 'UNKNOWN'}\n` +
+        `Inspector: ${user?.user_metadata?.full_name || 'Unknown'}\n`;
+      
+      const encodedMessage = encodeURIComponent(message);
+      
+      window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+      
+      toast({
+        title: 'Share via WhatsApp',
+        description: 'WhatsApp opened with inspection details',
+      });
+    } catch (error) {
+      console.error('WhatsApp share error:', error);
+      toast({
+        title: 'Share Failed',
+        description: 'Could not share via WhatsApp',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  const handleEmailShare = () => {
+    try {
+      const subject = `Inspection Report - ${ppeItem?.type} (${ppeItem?.serialNumber})`;
+      
+      const body = 
+        `Inspection Report\n\n` +
+        `PPE: ${ppeItem?.type} (${ppeItem?.serialNumber})\n` +
+        `Date: ${new Date().toLocaleDateString()}\n` +
+        `Result: ${overallResult?.toUpperCase() || 'UNKNOWN'}\n` +
+        `Inspector: ${user?.user_metadata?.full_name || 'Unknown'}\n`;
+      
+      const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      
+      window.location.href = mailtoLink;
+      
+      toast({
+        title: 'Share via Email',
+        description: 'Email client opened with inspection details',
+      });
+    } catch (error) {
+      console.error('Email share error:', error);
+      toast({
+        title: 'Share Failed',
+        description: 'Could not share via email',
+        variant: 'destructive',
+      });
     }
   };
   
@@ -758,6 +949,20 @@ const InspectionForm = () => {
           </Button>
         )}
       </div>
+      
+      <InspectionSuccessDialog
+        isOpen={showSuccessDialog}
+        onClose={() => {
+          setShowSuccessDialog(false);
+          navigate(`/equipment/${ppeItem?.id}`);
+        }}
+        inspectionId={submittedInspectionId || ''}
+        ppeId={ppeItem?.id || ''}
+        onPDFDownload={handlePDFDownload}
+        onExcelDownload={handleExcelDownload}
+        onWhatsAppShare={handleWhatsAppShare}
+        onEmailShare={handleEmailShare}
+      />
     </div>
   );
 };

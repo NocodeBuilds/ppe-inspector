@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { generatePPEItemReport } from '@/utils/reportGeneratorService';
+import InspectionsSkeleton from '@/components/inspections/InspectionsSkeleton';
 
 const UpcomingInspections = () => {
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
@@ -301,9 +303,7 @@ const UpcomingInspections = () => {
       </div>
       
       {isLoading ? (
-        <div className="flex justify-center items-center h-60">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
+        <InspectionsSkeleton count={4} />
       ) : filteredItems.length > 0 ? (
         <>
           <p className="text-sm text-muted-foreground mb-4">

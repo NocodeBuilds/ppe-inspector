@@ -78,6 +78,7 @@ const ManualInspection = () => {
       if (ppeData && ppeData.length > 0) {
         // PPE exists, redirect to inspection form
         const ppeItem = ppeData[0];
+        // Fix: Update to correct route path
         navigate(`/inspect/${ppeItem.id}`);
         return;
       }
@@ -145,7 +146,7 @@ const ManualInspection = () => {
       
       console.log("New PPE created with ID:", newPpeData.id);
       
-      // Navigate to inspection form with new PPE ID
+      // Fix: Update to correct route path
       navigate(`/inspect/${newPpeData.id}`);
       
     } catch (error: any) {

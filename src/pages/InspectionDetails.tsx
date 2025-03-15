@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +14,10 @@ import {
   FileText, 
   Loader2, 
   Share2,
-  Camera
+  Camera,
+  Download,
+  MessageSquare,
+  Mail
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
@@ -25,11 +27,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
+import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
 
 interface InspectionCheckpoint {
   id: string;
   description: string;
-  passed: boolean;
+  passed: boolean | null;
   notes: string | null;
   photo_url: string | null;
 }
@@ -55,6 +59,7 @@ const InspectionDetails = () => {
   const [inspection, setInspection] = useState<InspectionDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   
   useEffect(() => {
     if (id) {
@@ -141,13 +146,110 @@ const InspectionDetails = () => {
       setIsLoading(false);
     }
   };
+
+  const handleExportPDF = async () => {
+    if (!inspection) return;
+    
+    try {
+      setIsExporting(true);
+      await generateInspectionDetailPDF(inspection);
+      toast({
+        title: 'PDF Generated',
+        description: 'Inspection report has been downloaded as PDF',
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: 'PDF Generation Failed',
+        description: 'Could not generate PDF report',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
   
-  const handleShareReport = () => {
-    // In a real app, this would generate a shareable report
-    toast({
-      title: 'Share Report',
-      description: 'Report sharing functionality will be implemented in a future update.',
-    });
+  const handleExportExcel = async () => {
+    if (!inspection) return;
+    
+    try {
+      setIsExporting(true);
+      await generateInspectionExcelReport(inspection);
+      toast({
+        title: 'Excel Generated',
+        description: 'Inspection report has been downloaded as Excel',
+      });
+    } catch (error) {
+      console.error('Excel generation error:', error);
+      toast({
+        title: 'Excel Generation Failed',
+        description: 'Could not generate Excel report',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+  
+  const handleShareWhatsApp = () => {
+    if (!inspection) return;
+    
+    try {
+      const message = 
+        `Inspection Report\n` +
+        `PPE: ${inspection.ppe_type} (${inspection.ppe_serial})\n` +
+        `Date: ${format(new Date(inspection.date), 'MMM d, yyyy')}\n` +
+        `Result: ${inspection.overall_result.toUpperCase() || 'UNKNOWN'}\n` +
+        `Inspector: ${inspection.inspector_name}\n`;
+      
+      const encodedMessage = encodeURIComponent(message);
+      
+      // Open WhatsApp
+      window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+      
+      toast({
+        title: 'Share via WhatsApp',
+        description: 'WhatsApp opened with inspection details',
+      });
+    } catch (error) {
+      console.error('WhatsApp share error:', error);
+      toast({
+        title: 'Share Failed',
+        description: 'Could not share via WhatsApp',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  const handleShareEmail = () => {
+    if (!inspection) return;
+    
+    try {
+      const subject = `Inspection Report - ${inspection.ppe_type} (${inspection.ppe_serial})`;
+      
+      const body = 
+        `Inspection Report\n\n` +
+        `PPE: ${inspection.ppe_type} (${inspection.ppe_serial})\n` +
+        `Date: ${format(new Date(inspection.date), 'MMM d, yyyy')}\n` +
+        `Result: ${inspection.overall_result.toUpperCase() || 'UNKNOWN'}\n` +
+        `Inspector: ${inspection.inspector_name}\n`;
+      
+      const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      
+      window.location.href = mailtoLink;
+      
+      toast({
+        title: 'Share via Email',
+        description: 'Email client opened with inspection details',
+      });
+    } catch (error) {
+      console.error('Email share error:', error);
+      toast({
+        title: 'Share Failed',
+        description: 'Could not share via email',
+        variant: 'destructive',
+      });
+    }
   };
   
   if (isLoading) {
@@ -188,18 +290,35 @@ const InspectionDetails = () => {
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Share2 size={16} className="mr-2" />
-              Share
+            <Button variant="outline" size="sm" disabled={isExporting}>
+              {isExporting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Share2 size={16} className="mr-2" />
+                  Share
+                </>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleShareReport}>
+            <DropdownMenuItem onClick={handleExportPDF}>
               <FileText size={16} className="mr-2" />
               Export as PDF
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleShareReport}>
-              <Share2 size={16} className="mr-2" />
+            <DropdownMenuItem onClick={handleExportExcel}>
+              <Download size={16} className="mr-2" />
+              Export as Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleShareWhatsApp}>
+              <MessageSquare size={16} className="mr-2" />
+              Share via WhatsApp
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleShareEmail}>
+              <Mail size={16} className="mr-2" />
               Share via Email
             </DropdownMenuItem>
           </DropdownMenuContent>

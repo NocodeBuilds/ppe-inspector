@@ -2,6 +2,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface CardOverlayProps {
   show: boolean;
@@ -23,11 +24,11 @@ const CardOverlay: React.FC<CardOverlayProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={onClose}>
       <div 
-        className={`bg-card rounded-lg shadow-lg max-w-md w-full ${padding} border border-border/40`}
+        className={`bg-card rounded-lg shadow-lg max-w-md w-full max-h-[90vh] flex flex-col border border-border/40`}
         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
       >
         {title && (
-          <div className="mb-4 pb-2 border-b flex justify-between items-center">
+          <div className="p-6 pb-2 border-b flex justify-between items-center">
             <h3 className="text-lg font-medium">{title}</h3>
             <Button 
               variant="ghost" 
@@ -40,7 +41,11 @@ const CardOverlay: React.FC<CardOverlayProps> = ({
           </div>
         )}
         
-        {children}
+        <ScrollArea className="flex-1 overflow-auto">
+          <div className={padding}>
+            {children}
+          </div>
+        </ScrollArea>
       </div>
     </div>
   );

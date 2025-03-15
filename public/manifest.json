@@ -36,5 +36,9 @@
     }
   ],
   "scope": "/",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "categories": ["productivity", "utilities"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false
 }

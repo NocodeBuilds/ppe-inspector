@@ -1,19 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, FileText, BarChart3, Calendar } from 'lucide-react';
+import { 
+  Download, 
+  FileText, 
+  BarChart3, 
+  Calendar,
+  FileSpreadsheet,
+  TrendingUp
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRoleAccess } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useNotifications } from '@/hooks/useNotifications';
+import ReportCard from '@/components/reports/ReportCard';
+import AnalyticsSummary from '@/components/reports/AnalyticsSummary';
+import AnalyticsDashboard from '@/components/reports/AnalyticsDashboard';
+import ReportSkeleton from '@/components/reports/ReportSkeleton';
 import { 
   generatePPEItemReport, 
   generateInspectionsDateReport, 
   generateAnalyticsDataReport 
 } from '@/utils/reportGeneratorService';
-import { InspectionData } from '@/types';
-import { useNotifications } from '@/hooks/useNotifications';
+import {
+  exportPPEItemsToExcel,
+  exportInspectionsToExcel,
+  exportAnalyticsToExcel
+} from '@/utils/exportUtils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import EquipmentLifecycleTracker from '@/components/reports/EquipmentLifecycleTracker';
 
 const ReportsPage = () => {
   const [activeTab, setActiveTab] = useState('ppe');
@@ -21,6 +36,9 @@ const ReportsPage = () => {
   const [inspectionCount, setInspectionCount] = useState(0);
   const [ppeCount, setPpeCount] = useState(0);
   const [flaggedCount, setFlaggedCount] = useState(0);
+  const [recentItems, setRecentItems] = useState<any[]>([]);
+  const [timeframe, setTimeframe] = useState('month');
+  const [inspectionTrend, setInspectionTrend] = useState(5); // Simulating a 5% increase
   const { isAdmin, isUser } = useRoleAccess();
   const navigate = useNavigate();
   const { showNotification } = useNotifications();
@@ -35,6 +53,7 @@ const ReportsPage = () => {
     }
     
     fetchStatistics();
+    fetchRecentItems();
   }, [isAdmin, isUser, navigate]);
   
   const fetchStatistics = async () => {
@@ -69,41 +88,36 @@ const ReportsPage = () => {
     }
   };
 
+  const fetchRecentItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ppe_items')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(4);
+      
+      if (error) throw error;
+      
+      if (data) {
+        setRecentItems(data);
+      }
+    } catch (error) {
+      console.error('Error fetching recent PPE items:', error);
+    }
+  };
+
   const handleGenerateReport = async (type: 'ppe' | 'inspections' | 'analytics') => {
     try {
       setIsGenerating(true);
       
       if (type === 'ppe') {
-        const { data: ppeData, error: ppeError } = await supabase
-          .from('ppe_items')
-          .select('*');
-        
-        if (ppeError) throw ppeError;
-        
         await generatePPEItemReport('all');
-        
       } else if (type === 'inspections') {
-        const { data: inspData, error: inspError } = await supabase
-          .from('inspections')
-          .select(`
-            id, 
-            date, 
-            type,
-            overall_result,
-            ppe_id,
-            inspector_id,
-            profiles:inspector_id (full_name),
-            ppe_items:ppe_id (type, serial_number)
-          `);
-        
-        if (inspError) throw inspError;
-        
         const endDate = new Date();
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - 30);
         
         await generateInspectionsDateReport(startDate, endDate);
-        
       } else if (type === 'analytics') {
         await generateAnalyticsDataReport();
       }
@@ -122,13 +136,61 @@ const ReportsPage = () => {
     }
   };
 
+  const handleExportExcel = async (type: 'ppe' | 'inspections' | 'analytics') => {
+    try {
+      setIsGenerating(true);
+      let success = false;
+      
+      if (type === 'ppe') {
+        success = await exportPPEItemsToExcel();
+      } else if (type === 'inspections') {
+        success = await exportInspectionsToExcel();
+      } else if (type === 'analytics') {
+        success = await exportAnalyticsToExcel();
+      }
+      
+      if (success) {
+        showNotification('Success', 'success', {
+          description: 'Excel report generated and downloaded successfully',
+        });
+      } else {
+        throw new Error('No data available for export');
+      }
+      
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      showNotification('Error', 'error', {
+        description: 'Failed to generate Excel report',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   if (!isAdmin && !isUser) {
     return null;
   }
 
+  const isLoading = !ppeCount && !inspectionCount && !flaggedCount;
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Reports</h1>
+      <div className="flex justify-between items-center mb-2">
+        <h1 className="text-2xl font-bold">Reports</h1>
+        <div className="flex gap-2 items-center">
+          <span className="text-sm text-muted-foreground">Timeframe:</span>
+          <Select defaultValue={timeframe} onValueChange={setTimeframe}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Select timeframe" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">Past Week</SelectItem>
+              <SelectItem value="month">Past Month</SelectItem>
+              <SelectItem value="year">Past Year</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-3 mb-6">
@@ -137,123 +199,75 @@ const ReportsPage = () => {
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="ppe">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <FileText className="mr-2 h-5 w-5" />
-                PPE Inventory Report
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Generate a comprehensive report of all PPE items in the system, including status, expiry dates, and last inspection details.
-              </p>
-              
-              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-md border mb-4">
-                <div>
-                  <p className="font-medium">Total PPE Items</p>
-                  <p className="text-2xl font-bold">{ppeCount}</p>
+        {isLoading ? (
+          <div className="space-y-6">
+            <ReportSkeleton />
+          </div>
+        ) : (
+          <>
+            <TabsContent value="ppe">
+              <ReportCard
+                title={<>
+                  <FileText className="mr-2 h-5 w-5" />
+                  PPE Inventory Report
+                </>}
+                description="Generate a comprehensive report of all PPE items in the system, including status, expiry dates, and last inspection details."
+                count={ppeCount}
+                isEmpty={ppeCount === 0}
+                emptyMessage="No PPE items found in the system. Add PPE items to generate a report."
+                onGenerate={() => handleGenerateReport('ppe')}
+                onGenerateExcel={() => handleExportExcel('ppe')}
+                isGenerating={isGenerating}
+                visualizations={
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {recentItems.map(item => (
+                      <EquipmentLifecycleTracker key={item.id} item={item} />
+                    ))}
+                  </div>
+                }
+              />
+            </TabsContent>
+            
+            <TabsContent value="inspections">
+              <ReportCard
+                title={<>
+                  <Calendar className="mr-2 h-5 w-5" />
+                  Inspections Report
+                </>}
+                description="Generate a detailed report of all inspections, including dates, inspectors, and results."
+                count={inspectionCount}
+                isEmpty={inspectionCount === 0}
+                emptyMessage="No inspections found in the system. Complete inspections to generate a report."
+                onGenerate={() => handleGenerateReport('inspections')}
+                onGenerateExcel={() => handleExportExcel('inspections')}
+                isGenerating={isGenerating}
+              />
+            </TabsContent>
+            
+            <TabsContent value="analytics">
+              <ReportCard
+                title={<>
+                  <BarChart3 className="mr-2 h-5 w-5" />
+                  Analytics Report
+                </>}
+                description="Generate a summary report with key statistics and analytics data."
+                onGenerate={() => handleGenerateReport('analytics')}
+                onGenerateExcel={() => handleExportExcel('analytics')}
+                isGenerating={isGenerating}
+              >
+                <AnalyticsSummary
+                  ppeCount={ppeCount}
+                  inspectionCount={inspectionCount}
+                  flaggedCount={flaggedCount}
+                  inspectionTrend={inspectionTrend}
+                />
+                <div className="mt-6">
+                  <AnalyticsDashboard timeframe={timeframe as 'week' | 'month' | 'year'} />
                 </div>
-                <Button 
-                  onClick={() => handleGenerateReport('ppe')}
-                  disabled={isGenerating || ppeCount === 0}
-                >
-                  {isGenerating ? 'Generating...' : 'Generate Report'}
-                  <Download className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-              
-              {ppeCount === 0 && (
-                <Alert className="mt-4">
-                  <AlertDescription>
-                    No PPE items found in the system. Add PPE items to generate a report.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="inspections">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Calendar className="mr-2 h-5 w-5" />
-                Inspections Report
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Generate a detailed report of all inspections, including dates, inspectors, and results.
-              </p>
-              
-              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-md border mb-4">
-                <div>
-                  <p className="font-medium">Total Inspections</p>
-                  <p className="text-2xl font-bold">{inspectionCount}</p>
-                </div>
-                <Button 
-                  onClick={() => handleGenerateReport('inspections')}
-                  disabled={isGenerating || inspectionCount === 0}
-                >
-                  {isGenerating ? 'Generating...' : 'Generate Report'}
-                  <Download className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-              
-              {inspectionCount === 0 && (
-                <Alert className="mt-4">
-                  <AlertDescription>
-                    No inspections found in the system. Complete inspections to generate a report.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="analytics">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <BarChart3 className="mr-2 h-5 w-5" />
-                Analytics Report
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Generate a summary report with key statistics and analytics data.
-              </p>
-              
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="p-4 bg-muted/30 rounded-md border text-center">
-                  <p className="font-medium text-muted-foreground">Total PPE Items</p>
-                  <p className="text-2xl font-bold">{ppeCount}</p>
-                </div>
-                <div className="p-4 bg-muted/30 rounded-md border text-center">
-                  <p className="font-medium text-muted-foreground">Total Inspections</p>
-                  <p className="text-2xl font-bold">{inspectionCount}</p>
-                </div>
-                <div className="p-4 bg-muted/30 rounded-md border text-center">
-                  <p className="font-medium text-muted-foreground">Flagged Items</p>
-                  <p className="text-2xl font-bold text-destructive">{flaggedCount}</p>
-                </div>
-              </div>
-              
-              <div className="flex justify-center">
-                <Button 
-                  onClick={() => handleGenerateReport('analytics')}
-                  disabled={isGenerating}
-                  className="px-8"
-                >
-                  {isGenerating ? 'Generating...' : 'Generate Analytics Report'}
-                  <Download className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </ReportCard>
+            </TabsContent>
+          </>
+        )}
       </Tabs>
     </div>
   );

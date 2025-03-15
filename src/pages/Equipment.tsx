@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CardOverlay from '@/components/ui/card-overlay';
 import AddPPEForm from '@/components/forms/AddPPEForm';
+import EquipmentSkeleton from '@/components/equipment/EquipmentSkeleton';
 
 const Equipment = () => {
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
@@ -22,7 +22,6 @@ const Equipment = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Complete list of PPE types for consistency across the app
   const allPPETypes = [
     'Full Body Harness',
     'Fall Arrester',
@@ -49,7 +48,6 @@ const Equipment = () => {
     try {
       setIsLoading(true);
       
-      // Fetch all PPE items
       const { data, error } = await supabase
         .from('ppe_items')
         .select('*')
@@ -57,7 +55,6 @@ const Equipment = () => {
       
       if (error) throw error;
       
-      // Map data to PPEItem type
       const mappedItems: PPEItem[] = data.map((item: any) => ({
         id: item.id,
         serialNumber: item.serial_number,
@@ -90,12 +87,10 @@ const Equipment = () => {
   const filterItems = () => {
     let results = [...ppeItems];
     
-    // Apply type filter
     if (activeType !== 'all') {
       results = results.filter(item => item.type === activeType);
     }
     
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       results = results.filter(
@@ -110,13 +105,10 @@ const Equipment = () => {
   };
 
   const getUniqueTypes = () => {
-    // Start with all known PPE types
     const typesSet = new Set(allPPETypes);
     
-    // Add any additional types from the items
     ppeItems.forEach(item => typesSet.add(item.type));
     
-    // Return as array with 'all' first
     return ['all', ...Array.from(typesSet)];
   };
 
@@ -172,9 +164,7 @@ const Equipment = () => {
           
           <TabsContent value={activeType} className="mt-0">
             {isLoading ? (
-              <div className="flex justify-center items-center h-60">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-              </div>
+              <EquipmentSkeleton />
             ) : filteredItems.length > 0 ? (
               <div className="space-y-4">
                 {filteredItems.map((item) => (

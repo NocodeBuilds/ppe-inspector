@@ -7,9 +7,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeToggler";
-import { setupPWAMetaTags, registerServiceWorker } from "./utils/pwaUtils";
-import ErrorBoundaryWithFallback from "./components/ErrorBoundaryWithFallback";
+import { initializePWA } from "./utils/pwaUtils";
+import EnhancedErrorBoundary from "./components/error/EnhancedErrorBoundary";
 import RoleProtectedRoute from "./components/auth/RoleProtectedRoute";
+import { NetworkStatusListener } from "./hooks/useNetwork";
+import NetworkStatus from "./components/layout/NetworkStatus";
 
 // Pages with no lazy loading to prevent flashing
 import MainLayout from "./components/layout/MainLayout";
@@ -19,6 +21,7 @@ const Home = lazy(() => import(/* webpackChunkName: "home-page" */ "./pages/Home
 const ExpiringPPE = lazy(() => import(/* webpackChunkName: "expiring-ppe-page" */ "./pages/ExpiringPPE"));
 const UpcomingInspections = lazy(() => import(/* webpackChunkName: "upcoming-inspections-page" */ "./pages/UpcomingInspections"));
 const Equipment = lazy(() => import(/* webpackChunkName: "equipment-page" */ "./pages/Equipment"));
+const Analytics = lazy(() => import(/* webpackChunkName: "analytics-page" */ "./pages/Analytics"));
 const Settings = lazy(() => import(/* webpackChunkName: "settings-page" */ "./pages/Settings"));
 const Profile = lazy(() => import(/* webpackChunkName: "profile-page" */ "./pages/Profile"));
 const Login = lazy(() => import(/* webpackChunkName: "login-page" */ "./pages/Login"));
@@ -63,33 +66,53 @@ const App = () => {
   useEffect(() => {
     const setupPWA = async () => {
       try {
-        // Set up meta tags
-        setupPWAMetaTags();
-        
-        // Register service worker for offline capabilities
-        await registerServiceWorker();
+        // Use enhanced PWA initialization with timeout
+        await initializePWA();
       } catch (error) {
         console.error('Error setting up PWA:', error);
       } finally {
-        // Finish loading after setup or if there's an error
+        // Ensure loading state is cleared after max 3 seconds if initialization hangs
+        const fallbackTimer = setTimeout(() => {
+          if (isLoading) {
+            console.warn('Forcing app to load after timeout');
+            setIsLoading(false);
+          }
+        }, 3000);
+        
+        // Normal finish loading
         setIsLoading(false);
+        
+        // Clear the fallback timer if we loaded normally
+        return () => clearTimeout(fallbackTimer);
       }
     };
     
     setupPWA();
-  }, []);
+  }, [isLoading]);
 
   if (isLoading) {
     return <PageLoader />;
   }
 
+  // Handle global errors and provide detailed reporting
+  const handleGlobalError = (error: Error, info: React.ErrorInfo) => {
+    console.error('Global error caught:', error);
+    console.error('Component stack:', info.componentStack);
+    
+    // Here you could add reporting to an error tracking service
+    // reportToErrorService(error, info);
+  };
+
   return (
-    <ErrorBoundaryWithFallback>
+    <EnhancedErrorBoundary onError={handleGlobalError} component="AppRoot">
       <BrowserRouter>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <TooltipProvider>
               <AuthProvider>
+                {/* Add NetworkStatusListener to monitor online/offline status */}
+                <NetworkStatusListener />
+                <NetworkStatus />
                 <Toaster />
                 <Sonner />
                 <Suspense fallback={<PageLoader />}>
@@ -110,8 +133,10 @@ const App = () => {
                       <Route path="edit-profile" element={<EditProfile />} />
                       <Route path="start-inspection" element={<StartInspection />} />
                       <Route path="inspect/new" element={<ManualInspection />} />
+                      {/* Ensure this path exactly matches our navigation calls */}
                       <Route path="inspect/:ppeId" element={<InspectionForm />} />
                       <Route path="inspection/:id" element={<InspectionDetails />} />
+                      <Route path="analytics" element={<Analytics />} />
                       
                       {/* Update reports route to be accessible by all authenticated users */}
                       <Route path="reports" element={
@@ -137,7 +162,7 @@ const App = () => {
           </ThemeProvider>
         </QueryClientProvider>
       </BrowserRouter>
-    </ErrorBoundaryWithFallback>
+    </EnhancedErrorBoundary>
   );
 };
 
