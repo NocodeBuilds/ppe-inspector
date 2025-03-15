@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -44,7 +43,6 @@ export const useNotifications = () => {
       
       if (error) throw error;
       
-      // Convert the data to our Notification type with parsed dates
       const formattedNotifications = data.map(item => ({
         ...item,
         createdAt: new Date(item.created_at),
@@ -64,7 +62,6 @@ export const useNotifications = () => {
   useEffect(() => {
     fetchNotifications();
     
-    // Set up a real-time subscription
     if (user) {
       const subscription = supabase
         .channel('notifications_changes')
@@ -117,19 +114,16 @@ export const useNotifications = () => {
     }
   };
   
-  // Updated to handle both parameter styles
   const showNotification = (
     titleOrOptions: string | NotificationOptions,
-    messageOrType: string | NotificationType = 'info',
+    messageOrType?: string | NotificationType,
     typeOrOptions?: NotificationType | NotificationOptions
   ) => {
-    // Case 1: Called with (title, message, type)
     if (typeof titleOrOptions === 'string' && typeof messageOrType === 'string') {
       const title = titleOrOptions;
       const message = messageOrType;
       const type = (typeof typeOrOptions === 'string' ? typeOrOptions : 'info') as NotificationType;
       
-      // Show a toast notification
       toast({
         title,
         description: message,
@@ -138,19 +132,15 @@ export const useNotifications = () => {
                  type === 'warning' ? 'warning' : undefined,
       });
       
-      // Also add it to the database
       return addNotification(title, message, type);
-    }
-    // Case 2: Called with (title, type, options)
-    else if (typeof titleOrOptions === 'string' && 
+    } else if (typeof titleOrOptions === 'string' && 
              (messageOrType === 'info' || messageOrType === 'warning' || 
               messageOrType === 'success' || messageOrType === 'error')) {
       const title = titleOrOptions;
       const type = messageOrType;
       const options = typeOrOptions as NotificationOptions || {};
-      const message = options.description || '';
+      const message = options?.description || '';
       
-      // Show a toast notification
       toast({
         title,
         description: message,
@@ -159,20 +149,28 @@ export const useNotifications = () => {
                  type === 'warning' ? 'warning' : undefined,
       });
       
-      // Also add it to the database
       return addNotification(title, message, type);
-    }
-    // Case 3: Called with (title, options)
-    else {
-      const title = typeof titleOrOptions === 'string' ? titleOrOptions : 'Notification';
-      const options = typeof titleOrOptions === 'string' ? (messageOrType as NotificationOptions) : (titleOrOptions as NotificationOptions);
-      const message = options.description || '';
-      const type = ((typeof messageOrType === 'string' && 
-                    (messageOrType === 'info' || messageOrType === 'warning' || 
-                     messageOrType === 'success' || messageOrType === 'error')) 
-                   ? messageOrType : 'info') as NotificationType;
+    } else {
+      let title: string;
+      let options: NotificationOptions;
+      let type: NotificationType = 'info';
       
-      // Show a toast notification
+      if (typeof titleOrOptions === 'string') {
+        title = titleOrOptions;
+        options = (messageOrType as NotificationOptions) || {};
+      } else {
+        title = 'Notification';
+        options = titleOrOptions as NotificationOptions;
+      }
+      
+      const message = options?.description || '';
+      
+      if (typeof messageOrType === 'string' && 
+         (messageOrType === 'info' || messageOrType === 'warning' || 
+          messageOrType === 'success' || messageOrType === 'error')) {
+        type = messageOrType;
+      }
+      
       toast({
         title,
         description: message,
@@ -181,7 +179,6 @@ export const useNotifications = () => {
                  type === 'warning' ? 'warning' : undefined,
       });
       
-      // Also add it to the database
       return addNotification(title, message, type);
     }
   };
@@ -190,7 +187,6 @@ export const useNotifications = () => {
     if (!user) return;
     
     try {
-      // Optimistically update the UI
       setNotifications(prev => 
         prev.map(notification => 
           notification.id === id ? { ...notification, read: true } : notification
@@ -198,7 +194,6 @@ export const useNotifications = () => {
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
       
-      // Update in the database
       const { error } = await supabase
         .from('notifications')
         .update({ read: true })
@@ -206,7 +201,6 @@ export const useNotifications = () => {
         .eq('user_id', user.id);
       
       if (error) {
-        // If there's an error, queue for sync when online
         await queueAction('update_notification', { id, read: true });
         console.error('Error marking notification as read. Queued for later:', error);
       }
@@ -219,13 +213,11 @@ export const useNotifications = () => {
     if (!user || notifications.length === 0) return;
     
     try {
-      // Optimistically update the UI
       setNotifications(prev => 
         prev.map(notification => ({ ...notification, read: true }))
       );
       setUnreadCount(0);
       
-      // Update in the database
       const { error } = await supabase
         .from('notifications')
         .update({ read: true })
@@ -233,7 +225,6 @@ export const useNotifications = () => {
         .eq('read', false);
       
       if (error) {
-        // If there's an error, queue for sync when online
         await queueAction('mark_all_read', { user_id: user.id });
         console.error('Error marking all notifications as read. Queued for later:', error);
       }
@@ -246,7 +237,6 @@ export const useNotifications = () => {
     if (!user) return;
     
     try {
-      // Optimistically update the UI
       const notificationToDelete = notifications.find(n => n.id === id);
       setNotifications(prev => prev.filter(notification => notification.id !== id));
       
@@ -254,7 +244,6 @@ export const useNotifications = () => {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
       
-      // Delete from the database
       const { error } = await supabase
         .from('notifications')
         .delete()
@@ -262,7 +251,6 @@ export const useNotifications = () => {
         .eq('user_id', user.id);
       
       if (error) {
-        // If there's an error, queue for sync when online
         await queueAction('delete_notification', { id });
         console.error('Error deleting notification. Queued for later:', error);
       }
@@ -275,18 +263,15 @@ export const useNotifications = () => {
     if (!user || notifications.length === 0) return;
     
     try {
-      // Optimistically update the UI
       setNotifications([]);
       setUnreadCount(0);
       
-      // Delete from the database
       const { error } = await supabase
         .from('notifications')
         .delete()
         .eq('user_id', user.id);
       
       if (error) {
-        // If there's an error, queue for sync when online
         await queueAction('delete_all_notifications', { user_id: user.id });
         console.error('Error deleting all notifications. Queued for later:', error);
       }

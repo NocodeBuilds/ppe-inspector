@@ -18,16 +18,6 @@ import {
 
 export type ToastType = "default" | "destructive" | "success" | "warning"
 
-type ToastOptions = Partial<
-  Omit<ToastProps, "children"> & {
-    title?: React.ReactNode
-    description?: React.ReactNode
-    action?: ToastActionElement
-    variant?: ToastType
-  }
->
-
-// Export the interface that will be used by other components
 export interface NotificationOptions {
   title?: React.ReactNode
   description?: React.ReactNode
