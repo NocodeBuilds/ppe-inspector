@@ -10,19 +10,24 @@ const DashboardSkeleton: React.FC = () => {
         <Skeleton className="h-6 w-48 mx-auto" />
       </div>
       
-      {/* Analytics cards skeleton */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-3 mb-4">
-        {[1, 2, 3, 4, 5].map(i => (
-          <div key={i} className="border rounded-lg p-3 space-y-2 bg-background/60">
-            <div className="flex justify-between">
-              <div className="space-y-2">
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-6 w-12" />
-              </div>
-              <Skeleton className="h-10 w-10 rounded-full" />
-            </div>
+      {/* Analytics dashboard skeleton */}
+      <div className="w-full rounded-xl overflow-hidden backdrop-blur-md bg-gradient-to-r from-background/70 to-background/80 border border-border/30 shadow-lg">
+        <div className="p-3 sm:p-4 border-b border-border/20 bg-background/20">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-5 w-24" />
           </div>
-        ))}
+        </div>
+        
+        <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-5 gap-4 sm:gap-6">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="flex flex-col items-center text-center p-3 rounded-lg">
+              <Skeleton className="h-12 w-12 rounded-full mb-2" />
+              <Skeleton className="h-6 w-16 mb-1" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          ))}
+        </div>
       </div>
       
       {/* Dashboard cards skeleton - 2 column grid */}

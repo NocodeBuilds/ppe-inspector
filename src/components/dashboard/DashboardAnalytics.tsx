@@ -10,9 +10,9 @@ import {
   Calendar,
   TrendingUp,
   TrendingDown,
-  AlertCircle
+  AlertCircle,
+  BarChart3
 } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DashboardAnalyticsProps {
@@ -32,94 +32,96 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ className = '' 
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Get current date info for filtering
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString();
-        
-        // Get total inspections
-        const { count: totalCount, error: totalError } = await supabase
-          .from('inspections')
-          .select('*', { count: 'exact', head: true });
-        
-        if (totalError) throw totalError;
-        
-        // Get this month's inspections
-        const { count: monthCount, error: monthError } = await supabase
-          .from('inspections')
-          .select('*', { count: 'exact', head: true })
-          .gte('date', startOfMonth);
-        
-        if (monthError) throw monthError;
-        
-        // Get last month's inspections for trend calculation
-        const { count: lastMonthCount, error: lastMonthError } = await supabase
-          .from('inspections')
-          .select('*', { count: 'exact', head: true })
-          .gte('date', startOfLastMonth)
-          .lt('date', endOfLastMonth);
-        
-        if (lastMonthError) throw lastMonthError;
-        
-        // Calculate trend (percentage change)
-        const trend = lastMonthCount 
-          ? Math.round(((monthCount - lastMonthCount) / lastMonthCount) * 100) 
-          : 0;
-        
-        // Get pending inspections (equipment due for inspection)
-        const { count: pendingCount, error: pendingError } = await supabase
-          .from('ppe_items')
-          .select('*', { count: 'exact', head: true })
-          .lte('next_inspection', now.toISOString());
-        
-        if (pendingError) throw pendingError;
-        
-        // Get pass rate (based on overall_result)
-        const { data: passData, error: passError } = await supabase
-          .from('inspections')
-          .select('overall_result')
-          .eq('overall_result', 'pass');
-        
-        if (passError) throw passError;
-        
-        const passRate = totalCount ? Math.round((passData.length / totalCount) * 100) : 0;
-        
-        // Get critical items (flagged PPE)
-        const { count: criticalCount, error: criticalError } = await supabase
-          .from('ppe_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'flagged');
-        
-        if (criticalError) throw criticalError;
-        
-        setStats({
-          totalInspections: totalCount || 0,
-          thisMonth: monthCount || 0,
-          pendingInspections: pendingCount || 0,
-          passRate,
-          criticalItems: criticalCount || 0,
-          trend
-        });
-      } catch (error) {
-        console.error('Error fetching analytics:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load dashboard analytics',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchAnalytics();
-    
-    // Set up realtime subscription
+  }, []);
+  
+  const fetchAnalytics = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get current date info for filtering
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString();
+      
+      // Get total inspections
+      const { count: totalCount, error: totalError } = await supabase
+        .from('inspections')
+        .select('*', { count: 'exact', head: true });
+      
+      if (totalError) throw totalError;
+      
+      // Get this month's inspections
+      const { count: monthCount, error: monthError } = await supabase
+        .from('inspections')
+        .select('*', { count: 'exact', head: true })
+        .gte('date', startOfMonth);
+      
+      if (monthError) throw monthError;
+      
+      // Get last month's inspections for trend calculation
+      const { count: lastMonthCount, error: lastMonthError } = await supabase
+        .from('inspections')
+        .select('*', { count: 'exact', head: true })
+        .gte('date', startOfLastMonth)
+        .lt('date', endOfLastMonth);
+      
+      if (lastMonthError) throw lastMonthError;
+      
+      // Calculate trend (percentage change)
+      const trend = lastMonthCount 
+        ? Math.round(((monthCount - lastMonthCount) / lastMonthCount) * 100) 
+        : 0;
+      
+      // Get pending inspections (equipment due for inspection)
+      const { count: pendingCount, error: pendingError } = await supabase
+        .from('ppe_items')
+        .select('*', { count: 'exact', head: true })
+        .lte('next_inspection', now.toISOString());
+      
+      if (pendingError) throw pendingError;
+      
+      // Get pass rate (based on overall_result)
+      const { data: passData, error: passError } = await supabase
+        .from('inspections')
+        .select('overall_result')
+        .eq('overall_result', 'pass');
+      
+      if (passError) throw passError;
+      
+      const passRate = totalCount ? Math.round((passData.length / totalCount) * 100) : 0;
+      
+      // Get critical items (flagged PPE)
+      const { count: criticalCount, error: criticalError } = await supabase
+        .from('ppe_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'flagged');
+      
+      if (criticalError) throw criticalError;
+      
+      setStats({
+        totalInspections: totalCount || 0,
+        thisMonth: monthCount || 0,
+        pendingInspections: pendingCount || 0,
+        passRate,
+        criticalItems: criticalCount || 0,
+        trend
+      });
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load dashboard analytics',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Set up realtime subscription
+  useEffect(() => {
     const channel = supabase
       .channel('analytics-changes')
       .on('postgres_changes', { 
@@ -141,95 +143,90 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ className = '' 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, []);
   
   if (isLoading) {
     return (
-      <div className={`grid grid-cols-3 gap-3 sm:gap-3 mb-4 ${className}`}>
-        {[1, 2, 3].map(i => (
-          <Card key={i} className="p-3 h-24">
-            <div className="flex justify-between">
-              <div className="space-y-2">
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-6 w-12" />
-              </div>
+      <div className="w-full p-6 rounded-xl shadow-lg animate-pulse">
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-6 w-16" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="flex flex-col space-y-2">
               <Skeleton className="h-10 w-10 rounded-full" />
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-5 w-3/4" />
             </div>
-          </Card>
-        ))}
+          ))}
+        </div>
       </div>
     );
   }
   
   return (
-    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-3 mb-4 fade-in ${className}`}>
-      <Card className="p-2 sm:p-3 border border-blue-100 dark:border-blue-900 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/30 dark:to-transparent">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">Total Inspections</p>
-            <p className="text-lg sm:text-xl font-semibold">{stats.totalInspections}</p>
-          </div>
-          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-            <ClipboardCheck className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </Card>
+    <div className={`w-full rounded-xl overflow-hidden backdrop-blur-md bg-gradient-to-r from-primary/5 to-background/80 
+      border border-primary/20 shadow-lg ${className}`}>
+      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-primary/10 bg-primary/5">
+        <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+          <BarChart3 className="text-primary h-5 w-5" />
+          <span>Performance Dashboard</span>
+        </h2>
+        <span className="text-xs sm:text-sm text-muted-foreground bg-background/40 px-2 py-1 rounded-full">
+          Real-time insights
+        </span>
+      </div>
       
-      <Card className="p-2 sm:p-3 border border-emerald-100 dark:border-emerald-900 bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/30 dark:to-transparent">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">Pass Rate</p>
-            <p className="text-lg sm:text-xl font-semibold">{stats.passRate}%</p>
+      <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-5 gap-4 sm:gap-6 fade-in">
+        <div className="flex flex-col items-center text-center p-3 rounded-lg transition-all hover:bg-primary/5 hover:scale-105 duration-300">
+          <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center mb-2 shadow-md">
+            <ClipboardCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
-          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
-            <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
+          <span className="text-2xl font-bold text-foreground">{stats.totalInspections}</span>
+          <span className="text-sm text-muted-foreground">Total Inspections</span>
         </div>
-      </Card>
-      
-      <Card className="p-2 sm:p-3 border border-amber-100 dark:border-amber-900 bg-gradient-to-br from-amber-50/50 to-transparent dark:from-amber-950/30 dark:to-transparent">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">Pending</p>
-            <p className="text-lg sm:text-xl font-semibold">{stats.pendingInspections}</p>
+        
+        <div className="flex flex-col items-center text-center p-3 rounded-lg transition-all hover:bg-primary/5 hover:scale-105 duration-300">
+          <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mb-2 shadow-md">
+            <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
-            <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
-          </div>
+          <span className="text-2xl font-bold text-foreground">{stats.passRate}%</span>
+          <span className="text-sm text-muted-foreground">Pass Rate</span>
         </div>
-      </Card>
-      
-      <Card className="p-2 sm:p-3 border border-indigo-100 dark:border-indigo-900 bg-gradient-to-br from-indigo-50/50 to-transparent dark:from-indigo-950/30 dark:to-transparent">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">This Month</p>
-            <div className="flex items-center gap-1">
-              <p className="text-lg sm:text-xl font-semibold">{stats.thisMonth}</p>
-              {stats.trend !== 0 && (
-                <span className={`text-xs ${stats.trend > 0 ? 'text-green-500' : 'text-red-500'} flex items-center`}>
-                  {stats.trend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {Math.abs(stats.trend)}%
-                </span>
-              )}
-            </div>
+        
+        <div className="flex flex-col items-center text-center p-3 rounded-lg transition-all hover:bg-primary/5 hover:scale-105 duration-300">
+          <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center mb-2 shadow-md">
+            <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </div>
-          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-            <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400" />
-          </div>
+          <span className="text-2xl font-bold text-foreground">{stats.pendingInspections}</span>
+          <span className="text-sm text-muted-foreground">Pending Inspections</span>
         </div>
-      </Card>
-      
-      <Card className="p-2 sm:p-3 border border-red-100 dark:border-red-900 bg-gradient-to-br from-red-50/50 to-transparent dark:from-red-950/30 dark:to-transparent">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">Critical Items</p>
-            <p className="text-lg sm:text-xl font-semibold">{stats.criticalItems}</p>
+        
+        <div className="flex flex-col items-center text-center p-3 rounded-lg transition-all hover:bg-primary/5 hover:scale-105 duration-300">
+          <div className="h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center mb-2 shadow-md">
+            <Calendar className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
-            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 dark:text-red-400" />
+          <div className="flex items-center gap-1">
+            <span className="text-2xl font-bold text-foreground">{stats.thisMonth}</span>
+            {stats.trend !== 0 && (
+              <span className={`text-xs ${stats.trend > 0 ? 'text-green-500' : 'text-red-500'} flex items-center`}>
+                {stats.trend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {Math.abs(stats.trend)}%
+              </span>
+            )}
           </div>
+          <span className="text-sm text-muted-foreground">This Month</span>
         </div>
-      </Card>
+        
+        <div className="flex flex-col items-center text-center p-3 rounded-lg transition-all hover:bg-primary/5 hover:scale-105 duration-300">
+          <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center mb-2 shadow-md">
+            <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+          </div>
+          <span className="text-2xl font-bold text-foreground">{stats.criticalItems}</span>
+          <span className="text-sm text-muted-foreground">Critical Items</span>
+        </div>
+      </div>
     </div>
   );
 };

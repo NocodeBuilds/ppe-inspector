@@ -98,10 +98,10 @@ const Home = () => {
   };
   
   return (
-    <div>
+    <div className="space-y-6">
       {profile && (
-        <div className="mb-3 sm:mb-4 fade-in">
-          <p className="text-center text-sm">
+        <div className="mb-3 sm:mb-5 fade-in">
+          <p className="text-center text-base sm:text-lg">
             Welcome, <span className="font-semibold">{profile.full_name || 'User'}</span>
           </p>
         </div>
@@ -112,7 +112,11 @@ const Home = () => {
       ) : (
         <>
           {/* Analytics Dashboard */}
-          <DashboardAnalytics className="slide-up" />
+          <div className="mb-6 sm:mb-8">
+            <DashboardAnalytics className="slide-up" />
+          </div>
+          
+          <h3 className="text-lg font-medium mb-3 text-center">Quick Actions</h3>
           
           {/* Main Dashboard Cards */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-3xl mx-auto">

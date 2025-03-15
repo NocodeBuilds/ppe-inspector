@@ -76,8 +76,8 @@ const Login = () => {
       <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20 w-full">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
-              <LogoIcon size="xl" withText={true} />
+            <div className="flex justify-center mb-8">
+              <LogoIcon size="xl" withText={true} className="transform scale-110 drop-shadow-lg" />
             </div>
           </div>
           
