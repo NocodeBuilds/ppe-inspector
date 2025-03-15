@@ -33,25 +33,25 @@ const DashboardCard = ({
     <Link
       to={to}
       className={cn(
-        'block glass-card rounded-lg transition-all duration-300',
+        'block glass-card rounded-lg transition-all duration-200',
         'border border-border/40 shadow-sm dark:border-border/60',
-        'hover:border-primary/40 hover:shadow-lg dark:hover:border-primary/30',
-        'hover:translate-y-[-2px] hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-ring',
+        'hover:border-primary/40 hover:shadow-md dark:hover:border-primary/30',
+        'hover:translate-y-[-1px] focus:outline-none focus:ring-1 focus:ring-ring',
         'bg-background/80 backdrop-blur-sm',
         className
       )}
       onClick={handleClick}
     >
-      <div className="flex flex-col items-center text-center p-3 sm:p-4 md:p-5 lg:p-6">
+      <div className="flex flex-col items-center text-center p-2 sm:p-2.5">
         <div className={cn(
-          'w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center mb-2 sm:mb-3 md:mb-4',
-          'shadow-sm transition-transform duration-300 hover:scale-105',
+          'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center mb-1.5 sm:mb-2',
+          'shadow-sm transition-transform duration-200 hover:scale-105',
           iconBgColor
         )}>
           {icon}
         </div>
-        <h3 className="text-base sm:text-lg font-semibold mb-0.5 sm:mb-1">{title}</h3>
-        <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>
+        <h3 className="text-sm sm:text-base font-semibold leading-tight">{title}</h3>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{description}</p>
       </div>
     </Link>
   );

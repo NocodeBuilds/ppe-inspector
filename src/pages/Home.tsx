@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Shield, Calendar, AlertTriangle, Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import EnhancedCard from '@/components/ui/enhanced-card';
 import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
-import LogoIcon from '@/components/common/LogoIcon';
 
 const Home = () => {
   const [showAddPPE, setShowAddPPE] = useState(false);
@@ -100,14 +98,10 @@ const Home = () => {
   
   return (
     <div>
-      <div className="flex justify-center mb-6 sm:mb-8 fade-in">
-        <LogoIcon size="lg" />
-      </div>
-      
       {profile && (
-        <div className="mb-4 sm:mb-6 fade-in">
-          <p className="text-center">
-            Welcome back, <span className="font-semibold">{profile.full_name || 'User'}</span>
+        <div className="mb-2 sm:mb-3 fade-in">
+          <p className="text-center text-sm">
+            Welcome, <span className="font-semibold">{profile.full_name || 'User'}</span>
           </p>
         </div>
       )}
@@ -115,23 +109,23 @@ const Home = () => {
       {isLoading ? (
         <DashboardSkeleton />
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 max-w-3xl mx-auto">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 max-w-3xl mx-auto">
           {(isAdmin || isUser) && (
             <div className="slide-up">
               <Button
                 variant="outline"
-                className="w-full h-full aspect-square flex flex-col items-center justify-center gap-2 sm:gap-3 p-3 sm:p-4 
-                border-2 border-success/30 hover:border-success/50 hover:-translate-y-1 transition-all 
+                className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2 
+                border border-success/30 hover:border-success/50 hover:-translate-y-0.5 transition-all 
                 bg-gradient-to-br from-background to-success/5"
                 onClick={() => setShowAddPPE(true)}
               >
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-success rounded-full flex items-center justify-center 
-                shadow-sm transition-transform duration-300 hover:scale-105">
-                  <Plus size={24} className="text-primary-foreground" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-success rounded-full flex items-center justify-center 
+                shadow-sm transition-transform duration-200 hover:scale-105">
+                  <Plus size={16} className="text-primary-foreground" />
                 </div>
                 <div className="text-center">
-                  <div className="font-semibold text-sm sm:text-base">Add PPE</div>
-                  <div className="text-xs text-muted-foreground">Add new equipment</div>
+                  <div className="font-semibold text-xs sm:text-sm">Add PPE</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">New equipment</div>
                 </div>
               </Button>
             </div>
@@ -140,18 +134,18 @@ const Home = () => {
           <div className="slide-up">
             <Button
               variant="outline"
-              className="w-full h-full aspect-square flex flex-col items-center justify-center gap-2 sm:gap-3 p-3 sm:p-4
-              border-2 border-blue-200 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-800 
-              hover:-translate-y-1 transition-all bg-gradient-to-br from-background to-blue-50 dark:from-background dark:to-blue-950/20"
+              className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2
+              border border-blue-200 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-800 
+              hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-blue-50 dark:from-background dark:to-blue-950/20"
               onClick={() => navigate('/equipment')}
             >
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 rounded-full flex items-center justify-center
-              shadow-sm transition-transform duration-300 hover:scale-105">
-                <Shield size={24} className="text-primary-foreground" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-500 rounded-full flex items-center justify-center
+              shadow-sm transition-transform duration-200 hover:scale-105">
+                <Shield size={16} className="text-primary-foreground" />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-sm sm:text-base">Equipment</div>
-                <div className="text-xs text-muted-foreground">View all equipment</div>
+                <div className="font-semibold text-xs sm:text-sm">Equipment</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground">View all</div>
               </div>
             </Button>
           </div>
@@ -159,19 +153,19 @@ const Home = () => {
           <div className="slide-up">
             <Button
               variant="outline"
-              className="w-full h-full aspect-square flex flex-col items-center justify-center gap-2 sm:gap-3 p-3 sm:p-4
-              border-2 border-amber-200 dark:border-amber-900 hover:border-amber-300 dark:hover:border-amber-800
-              hover:-translate-y-1 transition-all bg-gradient-to-br from-background to-amber-50 dark:from-background dark:to-amber-950/20"
+              className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2
+              border border-amber-200 dark:border-amber-900 hover:border-amber-300 dark:hover:border-amber-800
+              hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-amber-50 dark:from-background dark:to-amber-950/20"
               onClick={() => navigate('/upcoming')}
             >
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-500 rounded-full flex items-center justify-center
-              shadow-sm transition-transform duration-300 hover:scale-105">
-                <Calendar size={24} className="text-primary-foreground" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-amber-500 rounded-full flex items-center justify-center
+              shadow-sm transition-transform duration-200 hover:scale-105">
+                <Calendar size={16} className="text-primary-foreground" />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-sm sm:text-base">Upcoming Inspections</div>
-                <div className="text-xs text-muted-foreground">
-                  {stats.upcomingInspections} inspection{stats.upcomingInspections !== 1 ? 's' : ''} due
+                <div className="font-semibold text-xs sm:text-sm">Upcoming</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground">
+                  {stats.upcomingInspections} due
                 </div>
               </div>
             </Button>
@@ -180,19 +174,19 @@ const Home = () => {
           <div className="slide-up">
             <Button
               variant="outline"
-              className="w-full h-full aspect-square flex flex-col items-center justify-center gap-2 sm:gap-3 p-3 sm:p-4
-              border-2 border-red-200 dark:border-red-900 hover:border-red-300 dark:hover:border-red-800
-              hover:-translate-y-1 transition-all bg-gradient-to-br from-background to-red-50 dark:from-background dark:to-red-950/20"
+              className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2
+              border border-red-200 dark:border-red-900 hover:border-red-300 dark:hover:border-red-800
+              hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-red-50 dark:from-background dark:to-red-950/20"
               onClick={() => navigate('/expiring')}
             >
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500 rounded-full flex items-center justify-center
-              shadow-sm transition-transform duration-300 hover:scale-105">
-                <AlertTriangle size={24} className="text-primary-foreground" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-red-500 rounded-full flex items-center justify-center
+              shadow-sm transition-transform duration-200 hover:scale-105">
+                <AlertTriangle size={16} className="text-primary-foreground" />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-sm sm:text-base">Expiring PPE</div>
-                <div className="text-xs text-muted-foreground">
-                  {stats.expiringPPE} item{stats.expiringPPE !== 1 ? 's' : ''} expiring soon
+                <div className="font-semibold text-xs sm:text-sm">Expiring</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground">
+                  {stats.expiringPPE} soon
                 </div>
               </div>
             </Button>
@@ -201,19 +195,19 @@ const Home = () => {
           <div className="slide-up">
             <Button
               variant="outline"
-              className="w-full h-full aspect-square flex flex-col items-center justify-center gap-2 sm:gap-3 p-3 sm:p-4
-              border-2 border-orange-200 dark:border-orange-900 hover:border-orange-300 dark:hover:border-orange-800
-              hover:-translate-y-1 transition-all bg-gradient-to-br from-background to-orange-50 dark:from-background dark:to-orange-950/20"
+              className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2
+              border border-orange-200 dark:border-orange-900 hover:border-orange-300 dark:hover:border-orange-800
+              hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-orange-50 dark:from-background dark:to-orange-950/20"
               onClick={() => navigate('/flagged')}
             >
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-500 rounded-full flex items-center justify-center
-              shadow-sm transition-transform duration-300 hover:scale-105">
-                <AlertTriangle size={24} className="text-primary-foreground" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-orange-500 rounded-full flex items-center justify-center
+              shadow-sm transition-transform duration-200 hover:scale-105">
+                <AlertTriangle size={16} className="text-primary-foreground" />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-sm sm:text-base">Flagged Issues</div>
-                <div className="text-xs text-muted-foreground">
-                  {stats.flaggedPPE} item{stats.flaggedPPE !== 1 ? 's' : ''} need action
+                <div className="font-semibold text-xs sm:text-sm">Flagged</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground">
+                  {stats.flaggedPPE} items
                 </div>
               </div>
             </Button>
@@ -223,18 +217,18 @@ const Home = () => {
             <div className="slide-up">
               <Button
                 variant="outline"
-                className="w-full h-full aspect-square flex flex-col items-center justify-center gap-2 sm:gap-3 p-3 sm:p-4
-                border-2 border-purple-200 dark:border-purple-900 hover:border-purple-300 dark:hover:border-purple-800
-                hover:-translate-y-1 transition-all bg-gradient-to-br from-background to-purple-50 dark:from-background dark:to-purple-950/20"
+                className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2
+                border border-purple-200 dark:border-purple-900 hover:border-purple-300 dark:hover:border-purple-800
+                hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-purple-50 dark:from-background dark:to-purple-950/20"
                 onClick={() => navigate('/reports')}
               >
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500 rounded-full flex items-center justify-center
-                shadow-sm transition-transform duration-300 hover:scale-105">
-                  <FileText size={24} className="text-primary-foreground" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-purple-500 rounded-full flex items-center justify-center
+                shadow-sm transition-transform duration-200 hover:scale-105">
+                  <FileText size={16} className="text-primary-foreground" />
                 </div>
                 <div className="text-center">
-                  <div className="font-semibold text-sm sm:text-base">Reports</div>
-                  <div className="text-xs text-muted-foreground">View & download</div>
+                  <div className="font-semibold text-xs sm:text-sm">Reports</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">View & export</div>
                 </div>
               </Button>
             </div>

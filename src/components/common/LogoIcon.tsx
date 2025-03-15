@@ -9,15 +9,15 @@ interface LogoIconProps {
 
 const LogoIcon: React.FC<LogoIconProps> = ({
   size = 'md',
-  withText = true,
+  withText = false,
   className = ''
 }) => {
   // Size mappings for consistent sizing
   const sizeMap = {
-    sm: 'h-8 w-8',
-    md: 'h-10 w-10',
-    lg: 'h-12 w-12',
-    xl: 'h-16 w-16'
+    sm: 'h-6 w-6',
+    md: 'h-8 w-8',
+    lg: 'h-10 w-10',
+    xl: 'h-12 w-12'
   };
   
   const textSizeMap = {
@@ -28,10 +28,10 @@ const LogoIcon: React.FC<LogoIconProps> = ({
   };
   
   const logoSizeMap = {
-    sm: 'w-16 sm:w-20',
-    md: 'w-20 sm:w-24',
-    lg: 'w-24 sm:w-28',
-    xl: 'w-28 sm:w-32'
+    sm: 'w-12 sm:w-16',
+    md: 'w-16 sm:w-20',
+    lg: 'w-20 sm:w-24',
+    xl: 'w-24 sm:w-28'
   };
   
   return (

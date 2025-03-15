@@ -26,16 +26,16 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
 
   const statusIcon = 
     type === 'expiring' ? (
-      <div className="w-10 h-10 bg-destructive/20 text-destructive rounded-lg flex items-center justify-center flex-shrink-0">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <div className="w-8 h-8 bg-destructive/20 text-destructive rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
           <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
           <path d="M12 9v4"></path>
           <path d="M12 17h.01"></path>
         </svg>
       </div>
     ) : type === 'upcoming' ? (
-      <div className="w-10 h-10 bg-warning/20 text-warning rounded-lg flex items-center justify-center flex-shrink-0">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <div className="w-8 h-8 bg-warning/20 text-warning rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
           <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
           <line x1="16" x2="16" y1="2" y2="6"></line>
           <line x1="8" x2="8" y1="2" y2="6"></line>
@@ -49,8 +49,8 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
         </svg>
       </div>
     ) : type === 'flagged' ? (
-      <div className="w-10 h-10 bg-destructive/20 text-destructive rounded-lg flex items-center justify-center flex-shrink-0">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <div className="w-8 h-8 bg-destructive/20 text-destructive rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0-3.42 0z"></path>
           <line x1="12" y1="9" x2="12" y2="13"></line>
           <line x1="12" y1="17" x2="12.01" y2="17"></line>
@@ -111,28 +111,28 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
 
   return (
     <div className={cn(
-      'h-[120px] glass-card rounded-lg p-4 my-3 transition-all duration-300 hover:shadow-lg border-2 flex',
+      'h-[100px] glass-card rounded-lg p-3 my-2 transition-all duration-200 hover:shadow border-2 flex',
       borderColor
     )}>
-      <div className="flex items-center gap-4 w-full h-full overflow-hidden">
+      <div className="flex items-center gap-3 w-full h-full overflow-hidden">
         {statusIcon}
         <div className="flex-1 min-w-0 overflow-hidden">
-          <h3 className="font-semibold truncate">{item.type}</h3>
-          <p className="text-sm text-muted-foreground truncate">SN: {item.serialNumber}</p>
-          <p className="text-sm truncate">{getStatusText()}</p>
+          <h3 className="font-semibold truncate text-sm">{item.type}</h3>
+          <p className="text-xs text-muted-foreground truncate">SN: {item.serialNumber}</p>
+          <p className="text-xs truncate">{getStatusText()}</p>
         </div>
-        <div className="flex-shrink-0 flex gap-2">
+        <div className="flex-shrink-0 flex gap-1.5">
           {(type === 'upcoming' || type === 'equipment') && (
-            <Button variant="default" size="icon" onClick={handleInspect} className="bg-primary text-primary-foreground h-10 w-10 flex-shrink-0">
-              <FileText size={20} />
+            <Button variant="default" size="icon" onClick={handleInspect} className="bg-primary text-primary-foreground h-8 w-8 flex-shrink-0">
+              <FileText size={16} />
             </Button>
           )}
-          <Button variant="outline" size="icon" onClick={handleDownloadReport} className="bg-background h-10 w-10 flex-shrink-0">
-            <Download size={20} />
+          <Button variant="outline" size="icon" onClick={handleDownloadReport} className="bg-background h-8 w-8 flex-shrink-0">
+            <Download size={16} />
           </Button>
           {onEdit && (
-            <Button variant="default" size="icon" onClick={onEdit} className="bg-primary text-primary-foreground h-10 w-10 flex-shrink-0">
-              <Edit size={20} />
+            <Button variant="default" size="icon" onClick={onEdit} className="bg-primary text-primary-foreground h-8 w-8 flex-shrink-0">
+              <Edit size={16} />
             </Button>
           )}
         </div>

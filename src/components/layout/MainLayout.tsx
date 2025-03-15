@@ -1,4 +1,3 @@
-
 import React, { memo, Suspense, useEffect, useState, createContext, useContext } from 'react';
 import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
@@ -12,7 +11,6 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import LogoIcon from '../common/LogoIcon';
 import NotificationCenter from '../notifications/NotificationCenter';
 
-// Create context for back navigation
 export const BackNavigationContext = createContext<{
   showBackButton: boolean;
   setShowBackButton: React.Dispatch<React.SetStateAction<boolean>>;
@@ -27,10 +25,8 @@ export const BackNavigationContext = createContext<{
   handleBack: () => {},
 });
 
-// Custom hook to use back navigation
 export const useBackNavigation = () => useContext(BackNavigationContext);
 
-// Memoized header component to prevent unnecessary re-renders
 const Header = memo(({ 
   profile, 
   showBackButton,
@@ -41,23 +37,23 @@ const Header = memo(({
   handleBack: () => void
 }) => {
   return (
-    <header className="sticky top-0 z-50 flex justify-between items-center px-4 py-2 border-b bg-background/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 flex justify-between items-center px-3 py-1.5 border-b bg-background/80 backdrop-blur-sm">
       <div className="flex items-center">
         {showBackButton ? (
           <Button 
             variant="ghost" 
             size="sm"
-            className="mr-2"
+            className="mr-1.5 h-8 w-8 p-0"
             onClick={handleBack}
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={16} />
           </Button>
         ) : null}
         
-        <LogoIcon size="sm" />
+        <LogoIcon size="sm" withText={false} />
       </div>
       
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <ThemeToggler />
         <NotificationCenter />
       </div>
@@ -67,7 +63,6 @@ const Header = memo(({
 
 Header.displayName = 'Header';
 
-// Component-specific error fallback
 const LayoutErrorFallback = () => (
   <div className="flex flex-col items-center justify-center p-8 h-screen">
     <div className="max-w-md text-center">
@@ -86,7 +81,6 @@ const MainLayout = () => {
   const { user, profile, isLoading, signOut } = useAuth();
   const { isAdmin } = useRoleAccess();
   
-  // Back navigation state
   const [showBackButton, setShowBackButton] = useState(false);
   const [backTo, setBackTo] = useState<string | number>(-1);
   
@@ -107,23 +101,17 @@ const MainLayout = () => {
     }
   }, [profile]);
   
-  // Handle authentication check
   if (isLoading) {
     return <LoadingSpinner fullScreen text="Loading app..." />;
   }
   
-  // Protected routes require authentication
   if (!user && !hideNavPaths.includes(location.pathname)) {
-    // Save the current path to redirect back after login
     sessionStorage.setItem('redirectPath', location.pathname);
-    
-    // Show notification
     toast({
       title: 'Authentication Required',
       description: 'Please sign in to access this page',
       variant: 'destructive',
     });
-    
     return <Navigate to="/login" />;
   }
 
@@ -147,7 +135,7 @@ const MainLayout = () => {
             />
           )}
           
-          <main className="flex-1 container mx-auto px-4 py-4 w-full max-w-6xl overflow-y-auto">
+          <main className="flex-1 container mx-auto px-2 sm:px-3 py-2 sm:py-3 w-full max-w-6xl overflow-y-auto">
             <Suspense fallback={<LoadingSpinner fullScreen text="Loading..." />}>
               <ErrorBoundaryWithFallback>
                 <Outlet />

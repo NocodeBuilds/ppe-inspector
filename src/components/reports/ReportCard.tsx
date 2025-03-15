@@ -32,22 +32,22 @@ const ReportCard: React.FC<ReportCardProps> = ({
   visualizations,
 }) => {
   return (
-    <Card className="backdrop-blur-sm bg-background/80 border-border/50 transition-all duration-300 hover:shadow-md">
-      <CardHeader>
-        <CardTitle className="flex items-center text-base sm:text-lg md:text-xl">
+    <Card className="backdrop-blur-sm bg-background/80 border-border/50 transition-all duration-200 hover:shadow-md">
+      <CardHeader className="p-3">
+        <CardTitle className="flex items-center text-sm sm:text-base">
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground text-sm mb-4">
+      <CardContent className="p-3 pt-0">
+        <p className="text-muted-foreground text-xs mb-2">
           {description}
         </p>
 
         {visualizations ? (
-          <Tabs defaultValue="data" className="mb-6">
-            <TabsList className="mb-4">
-              <TabsTrigger value="data">Data</TabsTrigger>
-              <TabsTrigger value="visualizations">Visualizations</TabsTrigger>
+          <Tabs defaultValue="data" className="mb-3">
+            <TabsList className="mb-2 h-8">
+              <TabsTrigger value="data" className="text-xs h-6 px-2">Data</TabsTrigger>
+              <TabsTrigger value="visualizations" className="text-xs h-6 px-2">Visualizations</TabsTrigger>
             </TabsList>
             <TabsContent value="data">
               {children}
@@ -59,40 +59,40 @@ const ReportCard: React.FC<ReportCardProps> = ({
         ) : children}
         
         {typeof count === 'number' && (
-          <div className="flex flex-col sm:flex-row justify-between items-center p-3 sm:p-4 bg-muted/30 rounded-md border mb-4 gap-2 sm:gap-0">
+          <div className="flex flex-row justify-between items-center p-2 bg-muted/30 rounded-md border mb-2 gap-1">
             <div>
-              <p className="font-medium text-sm sm:text-base">Total Count</p>
-              <p className="text-xl sm:text-2xl font-bold">{count}</p>
+              <p className="font-medium text-xs">Total Count</p>
+              <p className="text-base sm:text-lg font-bold">{count}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               {onGenerateExcel && (
                 <Button 
                   variant="outline"
                   onClick={onGenerateExcel}
                   disabled={isGenerating || count === 0}
-                  className="text-xs sm:text-sm"
+                  className="text-xs h-7 px-2"
                   size="sm"
                 >
                   Excel
-                  <FileSpreadsheet className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  <FileSpreadsheet className="ml-1 h-3 w-3" />
                 </Button>
               )}
               <Button 
                 onClick={onGenerate}
                 disabled={isGenerating || count === 0}
-                className="text-xs sm:text-sm"
+                className="text-xs h-7 px-2"
                 size="sm"
               >
-                {isGenerating ? 'Generating...' : 'PDF Report'}
-                <Download className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
+                {isGenerating ? 'Generating...' : 'PDF'}
+                <Download className="ml-1 h-3 w-3" />
               </Button>
             </div>
           </div>
         )}
         
         {isEmpty && (
-          <Alert className="mt-4">
-            <AlertDescription className="text-sm">
+          <Alert className="mt-2 p-2">
+            <AlertDescription className="text-xs">
               {emptyMessage}
             </AlertDescription>
           </Alert>
