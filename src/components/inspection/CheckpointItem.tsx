@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ interface CheckpointItemProps {
 // Function to compress and resize images to reduce storage requirements
 const resizeAndCompressImage = (imageDataUrl: string, maxWidth = 800, quality = 0.8): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const img = new Image();
+    const img = document.createElement('img');
     img.onload = () => {
       const canvas = document.createElement('canvas');
       let width = img.width;
@@ -202,6 +203,28 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     
     setShowCamera(false);
     setIsCapturing(false);
+  };
+  
+  const switchCamera = async () => {
+    if (availableDevices.length <= 1) {
+      toast({
+        title: 'Camera Switch',
+        description: 'No additional cameras available on this device',
+        variant: 'default',
+      });
+      return;
+    }
+    
+    const currentIndex = availableDevices.findIndex(device => device.deviceId === selectedDeviceId);
+    const nextIndex = (currentIndex + 1) % availableDevices.length;
+    const nextDeviceId = availableDevices[nextIndex].deviceId;
+    
+    setSelectedDeviceId(nextDeviceId);
+    
+    stopCamera();
+    setTimeout(() => {
+      startCamera();
+    }, 300);
   };
   
   const capturePhoto = async () => {
