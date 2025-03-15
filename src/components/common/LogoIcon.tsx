@@ -32,11 +32,11 @@ const LogoIcon: React.FC<LogoIconProps> = ({
   };
   
   const logoSizeMap = {
-    sm: 'w-12 sm:w-16',
-    md: 'w-16 sm:w-20',
-    lg: 'w-20 sm:w-24',
-    xl: 'w-24 sm:w-32',
-    '2xl': 'w-32 sm:w-40'
+    sm: 'w-18 sm:w-22',
+    md: 'w-22 sm:w-26',
+    lg: 'w-26 sm:w-30',
+    xl: 'w-30 sm:w-38',
+    '2xl': 'w-38 sm:w-46'
   };
   
   return (
