@@ -1,5 +1,7 @@
 // Service Worker for PPE Inspector PWA
 const CACHE_NAME = 'ppe-inspector-v2';
+const DYNAMIC_CACHE = 'ppe-inspector-dynamic-v2';
+const API_CACHE = 'ppe-inspector-api-v2';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
@@ -12,21 +14,85 @@ const STATIC_ASSETS = [
   '/assets/index.js'
 ];
 
-// Cache for dynamic content
-const DYNAMIC_CACHE = 'ppe-inspector-dynamic-v2';
-// Cache for API responses
-const API_CACHE = 'ppe-inspector-api-v2';
+// Helper functions for cache management
+const cacheHelpers = {
+  // Add all resources to a specific cache
+  addResourcesToCache: async (cacheName, resources) => {
+    const cache = await caches.open(cacheName);
+    return cache.addAll(resources);
+  },
+  
+  // Clear old caches that don't match current versions
+  clearOldCaches: async () => {
+    const keyList = await caches.keys();
+    const validCaches = [CACHE_NAME, DYNAMIC_CACHE, API_CACHE];
+    
+    return Promise.all(
+      keyList.map(key => {
+        if (!validCaches.includes(key)) {
+          console.log('[Service Worker] Removing old cache', key);
+          return caches.delete(key);
+        }
+      })
+    );
+  },
+  
+  // Put a network response in cache
+  putInCache: async (cacheName, request, response) => {
+    if (response.status === 200) {
+      const cache = await caches.open(cacheName);
+      await cache.put(request, response.clone());
+    }
+    return response;
+  }
+};
+
+// Helper for sync operations
+const syncHelpers = {
+  notifyClients: async (message) => {
+    const clients = await self.clients.matchAll();
+    clients.forEach(client => {
+      client.postMessage(message);
+    });
+  },
+  
+  // Process offline data and sync with server
+  processOfflineData: async (dataItems, apiEndpoint, successCallback) => {
+    if (!dataItems || dataItems.length === 0) return { success: [], failed: [] };
+    
+    const successfulItems = [];
+    const failedItems = [];
+    
+    for (const item of dataItems) {
+      try {
+        const response = await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item),
+        });
+        
+        if (response.ok) {
+          successfulItems.push(item.id);
+          if (successCallback) await successCallback(item.id);
+        } else {
+          failedItems.push(item.id);
+        }
+      } catch (error) {
+        console.error('[Service Worker] Sync error for item', item.id, error);
+        failedItems.push(item.id);
+      }
+    }
+    
+    return { success: successfulItems, failed: failedItems };
+  }
+};
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   console.log('[Service Worker] Installing...');
   
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('[Service Worker] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
+    cacheHelpers.addResourcesToCache(CACHE_NAME, STATIC_ASSETS)
       .then(() => {
         console.log('[Service Worker] Successfully installed');
         return self.skipWaiting();
@@ -39,17 +105,7 @@ self.addEventListener('activate', (event) => {
   console.log('[Service Worker] Activating...');
   
   event.waitUntil(
-    caches.keys()
-      .then(keyList => {
-        return Promise.all(
-          keyList.map(key => {
-            if (key !== CACHE_NAME && key !== DYNAMIC_CACHE && key !== API_CACHE) {
-              console.log('[Service Worker] Removing old cache', key);
-              return caches.delete(key);
-            }
-          })
-        );
-      })
+    cacheHelpers.clearOldCaches()
       .then(() => {
         console.log('[Service Worker] Now active, controlling clients');
         return self.clients.claim();
@@ -64,7 +120,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Skip Supabase API requests and other non-cacheable requests
+  // Skip non-cacheable API requests
   if (
     event.request.url.includes('/supabase/') || 
     event.request.url.includes('/auth/') ||
@@ -74,44 +130,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Handle page navigation - Use Cache-First for HTML requests
+  // Handle page navigation - Use Network First for HTML requests
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      caches.match(event.request)
-        .then(cachedResponse => {
-          if (cachedResponse) {
-            // Return cached response and update cache in background
-            fetch(event.request)
-              .then(response => {
-                caches.open(CACHE_NAME)
-                  .then(cache => {
-                    cache.put(event.request, response);
-                  });
-              })
-              .catch(() => console.log('[SW] Failed to update navigation cache'));
-            
-            return cachedResponse;
-          }
-          
-          // If not in cache, fetch from network
-          return fetch(event.request)
-            .then(response => {
-              // Clone the response
-              const clonedResponse = response.clone();
-              
-              // Cache the fetched response
-              caches.open(CACHE_NAME)
-                .then(cache => {
-                  cache.put(event.request, clonedResponse);
-                });
-              
-              return response;
-            })
-            .catch(error => {
-              console.log('[SW] Navigation fetch failed:', error);
-              // Return offline page if available
-              return caches.match('/');
-            });
+      fetch(event.request)
+        .then(response => {
+          return cacheHelpers.putInCache(CACHE_NAME, event.request, response);
+        })
+        .catch(() => {
+          console.log('[SW] Navigation fetch failed, falling back to cache');
+          return caches.match(event.request)
+            .then(cachedResponse => cachedResponse || caches.match('/'));
         })
     );
     return;
@@ -122,14 +151,7 @@ self.addEventListener('fetch', (event) => {
     fetch(event.request)
       .then(response => {
         // Cache dynamic content
-        if (response.status === 200) {
-          const clonedResponse = response.clone();
-          caches.open(DYNAMIC_CACHE)
-            .then(cache => {
-              cache.put(event.request, clonedResponse);
-            });
-        }
-        return response;
+        return cacheHelpers.putInCache(DYNAMIC_CACHE, event.request, response);
       })
       .catch(() => {
         // Try to get from cache if network fails
@@ -175,43 +197,18 @@ async function syncInspections() {
     
     console.log('[Service Worker] Syncing', offlineInspections.length, 'inspection(s)');
     
-    const successfulSyncs = [];
-    const failedSyncs = [];
-    
-    // Process each offline inspection
-    for (const inspection of offlineInspections) {
-      try {
-        // Perform API call to save the inspection
-        const response = await fetch('/api/inspections', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(inspection),
-        });
-        
-        if (response.ok) {
-          // Remove from IndexedDB after successful sync
-          await removeOfflineInspection(inspection.id);
-          successfulSyncs.push(inspection.id);
-        } else {
-          failedSyncs.push(inspection.id);
-        }
-      } catch (error) {
-        console.error('[Service Worker] Sync error for inspection', inspection.id, error);
-        failedSyncs.push(inspection.id);
-      }
-    }
+    const { success: successfulSyncs, failed: failedSyncs } = 
+      await syncHelpers.processOfflineData(
+        offlineInspections, 
+        '/api/inspections',
+        removeOfflineInspection
+      );
     
     // Notify clients about the sync
-    const clients = await self.clients.matchAll();
-    clients.forEach(client => {
-      client.postMessage({
-        type: 'SYNC_COMPLETE',
-        message: `Synced ${successfulSyncs.length} inspection(s)`,
-        details: {
-          successful: successfulSyncs,
-          failed: failedSyncs
-        }
-      });
+    await syncHelpers.notifyClients({
+      type: 'SYNC_COMPLETE',
+      message: `Synced ${successfulSyncs.length} inspection(s)`,
+      details: { successful: successfulSyncs, failed: failedSyncs }
     });
     
     // If any failed, register for retry
@@ -226,48 +223,38 @@ async function syncInspections() {
   }
 }
 
-// New function to sync offline reports
+// Function to sync offline reports
 async function syncOfflineReports() {
-  // This would be implemented when offline report generation is added
   console.log('[Service Worker] Syncing offline reports');
   
-  // In a real implementation, this would get and process offline reports
-  // For now just notify clients
-  const clients = await self.clients.matchAll();
-  clients.forEach(client => {
-    client.postMessage({
+  try {
+    // This will be implemented with IndexedDB when offline report generation is added
+    await syncHelpers.notifyClients({
       type: 'REPORT_SYNC_COMPLETE',
       message: 'Offline reports synchronized'
     });
-  });
+  } catch (error) {
+    console.error('[Service Worker] Error syncing reports:', error);
+  }
 }
 
-// New function to sync generic offline actions
+// Function to sync generic offline actions
 async function syncOfflineActions() {
   console.log('[Service Worker] Syncing offline actions');
   
   try {
-    // Open IndexedDB and get pending actions
-    // This would be implemented to work with the IndexedDB API directly
-    
-    // For now, just notify clients
-    const clients = await self.clients.matchAll();
-    clients.forEach(client => {
-      client.postMessage({
-        type: 'SYNC_COMPLETE',
-        message: 'Offline actions synchronized',
-        details: {
-          successful: [],
-          failed: []
-        }
-      });
+    // This will be implemented with IndexedDB for generic offline actions
+    await syncHelpers.notifyClients({
+      type: 'SYNC_COMPLETE',
+      message: 'Offline actions synchronized',
+      details: { successful: [], failed: [] }
     });
   } catch (error) {
     console.error('[Service Worker] Error syncing offline actions:', error);
   }
 }
 
-// Placeholder functions for IndexedDB operations - these would be implemented in real code
+// Placeholder functions for IndexedDB operations
 async function getOfflineInspections() {
   // In a real implementation, this would get data from IndexedDB
   return [];
@@ -278,7 +265,7 @@ async function removeOfflineInspection(id) {
   console.log('[Service Worker] Removed offline inspection:', id);
 }
 
-// Enhanced push notification event with sound and vibration
+// Push notification event with sound and vibration
 self.addEventListener('push', (event) => {
   try {
     let payload = { title: 'New Notification', body: 'Something new happened', url: '/' };
@@ -297,7 +284,7 @@ self.addEventListener('push', (event) => {
       icon: '/favicon.ico',
       badge: '/favicon.ico',
       vibrate: [100, 50, 100],
-      sound: '/notification.mp3', // Add sound (if supported)
+      sound: '/notification.mp3',
       data: {
         url: payload.url || '/'
       },
@@ -321,13 +308,12 @@ self.addEventListener('push', (event) => {
   }
 });
 
-// Enhanced notification click event with action handling
+// Notification click event handler
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
   // Handle notification action clicks
   if (event.action === 'view') {
-    // Special handling for "view" action
     const url = event.notification.data.url || '/';
     
     event.waitUntil(
@@ -346,10 +332,9 @@ self.addEventListener('notificationclick', (event) => {
       })
     );
   }
-  // If no action or "dismiss", just close the notification (already done)
 });
 
-// Handle periodic sync for regular background updates (if supported)
+// Handle periodic sync for regular background updates
 self.addEventListener('periodicsync', (event) => {
   if (event.tag === 'daily-sync') {
     event.waitUntil(dailySync());
@@ -359,20 +344,15 @@ self.addEventListener('periodicsync', (event) => {
 // Function to handle daily sync tasks
 async function dailySync() {
   console.log('[Service Worker] Performing daily sync');
-  // This would update caches, sync data, etc.
   
   try {
     // Update cached resources
-    const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(STATIC_ASSETS);
+    await cacheHelpers.addResourcesToCache(CACHE_NAME, STATIC_ASSETS);
     
     // Notify clients if needed
-    const clients = await self.clients.matchAll();
-    clients.forEach(client => {
-      client.postMessage({
-        type: 'DAILY_SYNC_COMPLETE',
-        message: 'Background sync completed'
-      });
+    await syncHelpers.notifyClients({
+      type: 'DAILY_SYNC_COMPLETE',
+      message: 'Background sync completed'
     });
   } catch (error) {
     console.error('[Service Worker] Daily sync error:', error);

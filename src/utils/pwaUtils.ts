@@ -22,55 +22,39 @@ export const isIOS = (): boolean => {
          (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 };
 
-/**
- * Sets up PWA-specific meta tags
- */
+// Set up PWA meta tags
 export const setupPWAMetaTags = (): void => {
   try {
-    // Set theme color meta tag
-    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (!themeColorMeta) {
-      const meta = document.createElement('meta');
-      meta.name = 'theme-color';
-      meta.content = '#111111';
-      document.head.appendChild(meta);
-    }
+    const metaTags = [
+      { name: 'theme-color', content: '#111111' },
+      { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }
+    ];
     
-    // Add apple-touch-icon for iOS
-    const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
-    if (!appleIcon) {
-      const link = document.createElement('link');
-      link.rel = 'apple-touch-icon';
-      link.href = '/favicon.ico';
-      document.head.appendChild(link);
-    }
+    const linkTags = [
+      { rel: 'apple-touch-icon', href: '/favicon.ico' },
+      { rel: 'manifest', href: '/manifest.json' }
+    ];
     
-    // Make sure the manifest is linked
-    const manifestLink = document.querySelector('link[rel="manifest"]');
-    if (!manifestLink) {
-      const link = document.createElement('link');
-      link.rel = 'manifest';
-      link.href = '/manifest.json';
-      document.head.appendChild(link);
-    }
+    // Add meta tags if they don't exist
+    metaTags.forEach(tag => {
+      if (!document.querySelector(`meta[name="${tag.name}"]`)) {
+        const meta = document.createElement('meta');
+        meta.name = tag.name;
+        meta.content = tag.content;
+        document.head.appendChild(meta);
+      }
+    });
     
-    // Add apple-mobile-web-app-capable meta tag for iOS full-screen mode
-    const appleMobileWebAppCapableMeta = document.querySelector('meta[name="apple-mobile-web-app-capable"]');
-    if (!appleMobileWebAppCapableMeta) {
-      const meta = document.createElement('meta');
-      meta.name = 'apple-mobile-web-app-capable';
-      meta.content = 'yes';
-      document.head.appendChild(meta);
-    }
-    
-    // Add apple-mobile-web-app-status-bar-style meta tag for iOS status bar
-    const appleMobileWebAppStatusBarStyleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-    if (!appleMobileWebAppStatusBarStyleMeta) {
-      const meta = document.createElement('meta');
-      meta.name = 'apple-mobile-web-app-status-bar-style';
-      meta.content = 'black-translucent';
-      document.head.appendChild(meta);
-    }
+    // Add link tags if they don't exist
+    linkTags.forEach(tag => {
+      if (!document.querySelector(`link[rel="${tag.rel}"]`)) {
+        const link = document.createElement('link');
+        link.rel = tag.rel;
+        link.href = tag.href;
+        document.head.appendChild(link);
+      }
+    });
   } catch (error) {
     console.error('Error setting up PWA meta tags:', error);
   }
@@ -78,7 +62,6 @@ export const setupPWAMetaTags = (): void => {
 
 /**
  * Registers the service worker for offline capabilities
- * Returns a promise that resolves with the service worker registration
  */
 export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
   if ('serviceWorker' in navigator) {
@@ -104,12 +87,15 @@ export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration
  * Sets up handling for service worker updates
  */
 const setupServiceWorkerUpdates = (registration: ServiceWorkerRegistration): void => {
+  // Check for updates every hour
+  const UPDATE_INTERVAL = 60 * 60 * 1000;
+  
   // Check for updates periodically
   setInterval(() => {
     registration.update().catch(err => {
       console.error('Failed to update service worker:', err);
     });
-  }, 60 * 60 * 1000); // Check hourly
+  }, UPDATE_INTERVAL);
   
   // Listen for new service workers
   registration.addEventListener('updatefound', () => {
@@ -124,6 +110,11 @@ const setupServiceWorkerUpdates = (registration: ServiceWorkerRegistration): voi
         notifyUpdate();
       }
     });
+  });
+  
+  // Listen for controller change (indicates an update has been applied)
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    console.log('Service worker controller changed - new version activated');
   });
 };
 
@@ -142,7 +133,7 @@ const notifyUpdate = (): void => {
  * Initialize all PWA features
  */
 export const initializePWA = async (): Promise<void> => {
-  const PWA_INIT_TIMEOUT = 5000; // 5 seconds
+  const PWA_INIT_TIMEOUT = 3000; // 3 seconds
   let timeoutId: number;
   
   try {
@@ -174,3 +165,74 @@ export const initializePWA = async (): Promise<void> => {
     }
   }
 };
+
+/**
+ * Request permission for push notifications
+ */
+export const requestNotificationPermission = async (): Promise<boolean> => {
+  if (!('Notification' in window)) {
+    console.warn('This browser does not support notifications');
+    return false;
+  }
+  
+  try {
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+    return false;
+  }
+};
+
+/**
+ * Subscribe to push notifications
+ */
+export const subscribeToPushNotifications = async (): Promise<PushSubscription | null> => {
+  try {
+    const serviceWorkerRegistration = await navigator.serviceWorker.ready;
+    
+    // Check for existing subscription
+    const existingSubscription = await serviceWorkerRegistration.pushManager.getSubscription();
+    if (existingSubscription) {
+      return existingSubscription;
+    }
+    
+    // Create new subscription
+    // In a real app, you would get this from your server
+    const serverPublicKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+    
+    const convertedKey = urlBase64ToUint8Array(serverPublicKey);
+    
+    const subscription = await serviceWorkerRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: convertedKey
+    });
+    
+    console.log('Subscribed to push notifications:', subscription);
+    
+    // In a real app, you would send this subscription to your server
+    return subscription;
+  } catch (error) {
+    console.error('Failed to subscribe to push notifications:', error);
+    return null;
+  }
+};
+
+/**
+ * Helper function to convert base64 to Uint8Array for push notification
+ */
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  
+  return outputArray;
+}

@@ -6,9 +6,16 @@ import { Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import SyncStatusIndicator from '@/components/ui/sync-status-indicator';
 
-export const NetworkStatus: React.FC = () => {
+interface NetworkStatusProps {
+  className?: string;
+}
+
+/**
+ * Component that displays the current network status and pending sync operations
+ */
+export const NetworkStatus: React.FC<NetworkStatusProps> = ({ className = '' }) => {
   const { isOnline, wasOffline } = useNetwork();
-  const { pendingActionsCount } = useOfflineSync();
+  const { pendingActionsCount, syncAllPending } = useOfflineSync();
   
   // Only show when offline or recently reconnected with pending actions
   if (isOnline && (!wasOffline || pendingActionsCount === 0)) {
@@ -16,7 +23,7 @@ export const NetworkStatus: React.FC = () => {
   }
   
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 p-2 bg-background border-b flex items-center justify-between">
+    <div className={`fixed top-0 left-0 right-0 z-50 p-2 bg-background border-b flex items-center justify-between ${className}`}>
       <div className="flex items-center gap-2">
         {isOnline ? (
           <>
@@ -33,7 +40,11 @@ export const NetworkStatus: React.FC = () => {
       
       {pendingActionsCount > 0 && (
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1 items-center">
+          <Badge 
+            variant="outline" 
+            className="gap-1 items-center cursor-pointer hover:bg-muted"
+            onClick={() => isOnline && syncAllPending()}
+          >
             <AlertCircle className="h-3 w-3" />
             <span>
               {pendingActionsCount} {pendingActionsCount === 1 ? 'change' : 'changes'} pending
