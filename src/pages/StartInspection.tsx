@@ -14,6 +14,7 @@ import PPESelectionDialog from '@/components/inspection/PPESelectionDialog';
 import { PPEItem } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
+import PageHeader from '@/components/common/PageHeader';
 
 const StartInspection = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -87,7 +88,7 @@ const StartInspection = () => {
       description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`
     });
     
-    // Fix: Update to correct route path
+    // Navigate to the inspection form with the PPE ID
     navigate(`/inspect/${ppe.id}`);
   };
 
@@ -114,12 +115,11 @@ const StartInspection = () => {
 
   return (
     <div className="fade-in pb-28 space-y-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Start Inspection</h1>
-        <p className="text-muted-foreground">
-          Choose how you want to start your inspection
-        </p>
-      </div>
+      <PageHeader title="Start Inspection" />
+      
+      <p className="text-muted-foreground">
+        Choose how you want to start your inspection
+      </p>
       
       {isLoading && !isSearching ? (
         <>

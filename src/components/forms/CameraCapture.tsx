@@ -5,12 +5,53 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import IconButton from '@/components/ui/icon-button';
+import CardOverlay from '@/components/ui/card-overlay';
 
 interface CameraCaptureProps {
   onImageCapture: (imageFile: File) => void;
   existingImage?: string | null;
 }
+
+// Function to compress and resize images for better performance
+const resizeAndCompressImage = (imageDataUrl: string, maxWidth = 800, quality = 0.8): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      
+      // Calculate new dimensions if image is larger than maxWidth
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+      
+      // Set canvas dimensions
+      canvas.width = width;
+      canvas.height = height;
+      
+      // Draw and compress image
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+      
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Get compressed data URL
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+      resolve(compressedDataUrl);
+    };
+    
+    img.onerror = () => {
+      reject(new Error('Failed to load image'));
+    };
+    
+    img.src = imageDataUrl;
+  });
+};
 
 const CameraCapture: React.FC<CameraCaptureProps> = ({ 
   onImageCapture, 
@@ -22,6 +63,8 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -50,6 +93,35 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     
     setIsCameraActive(false);
   };
+  
+  const fetchAvailableDevices = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      setAvailableDevices(videoDevices);
+      
+      // Try to find a back-facing camera first for mobile devices
+      const envCamera = videoDevices.find(device => 
+        device.label.toLowerCase().includes('back') || 
+        device.label.toLowerCase().includes('environment')
+      );
+      
+      if (envCamera) {
+        setSelectedDeviceId(envCamera.deviceId);
+        return envCamera.deviceId;
+      } else if (videoDevices.length > 0) {
+        setSelectedDeviceId(videoDevices[0].deviceId);
+        return videoDevices[0].deviceId;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching camera devices:', error);
+      return null;
+    }
+  };
 
   // Start camera with current facing mode
   const startCamera = async () => {
@@ -61,14 +133,13 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         stopCamera();
       }
       
+      const deviceId = await fetchAvailableDevices();
+      
       // Request camera access with proper constraints
       const constraints = {
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
+        video: deviceId 
+          ? { deviceId: { exact: deviceId } }
+          : { facingMode }
       };
       
       // Try to get media stream
@@ -126,12 +197,24 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
   };
 
   // Switch between front and back cameras
-  const toggleCamera = () => {
-    setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
-    if (isCameraActive) {
-      stopCamera();
-      setTimeout(() => startCamera(), 300);
+  const switchCamera = async () => {
+    if (availableDevices.length <= 1) {
+      toast({
+        title: 'Camera Switch',
+        description: 'No additional cameras available on this device',
+        variant: 'default',
+      });
+      return;
     }
+    
+    const currentIndex = availableDevices.findIndex(device => device.deviceId === selectedDeviceId);
+    const nextIndex = (currentIndex + 1) % availableDevices.length;
+    const nextDeviceId = availableDevices[nextIndex].deviceId;
+    
+    setSelectedDeviceId(nextDeviceId);
+    
+    stopCamera();
+    setTimeout(() => startCamera(), 300);
   };
 
   // Activate camera on button click
@@ -140,65 +223,61 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
   };
 
   // Capture image from video stream
-  const captureImage = () => {
-    if (videoRef.current && canvasRef.current && streamRef.current) {
-      try {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
+  const captureImage = async () => {
+    if (!videoRef.current || !canvasRef.current || !streamRef.current) {
+      toast({
+        title: "Error",
+        description: "Camera not properly initialized",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      
+      // Set canvas dimensions to match video dimensions
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      const context = canvas.getContext('2d');
+      if (context) {
+        // Draw the current video frame to the canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        // Set canvas dimensions to match video dimensions
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        // Compress the image before converting to file
+        const rawImageUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const compressedImageUrl = await resizeAndCompressImage(rawImageUrl, 800, 0.7);
         
-        const context = canvas.getContext('2d');
-        if (context) {
-          // Draw the current video frame to the canvas
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          
-          // Convert canvas to blob and create a file
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const file = new File([blob], `ppe-image-${Date.now()}.jpg`, { type: 'image/jpeg' });
-              
-              // Pass the file to parent component
-              onImageCapture(file);
-              
-              // Create a URL for preview
-              const imageUrl = URL.createObjectURL(blob);
-              setCapturedImage(imageUrl);
-              
-              // Show success toast
-              toast({
-                title: "Image Captured",
-                description: "Photo saved successfully",
-              });
-            } else {
-              setError('Failed to process the captured image');
-              toast({
-                title: "Capture Failed",
-                description: "Failed to process the captured image",
-                variant: "destructive",
-              });
-            }
-          }, 'image/jpeg', 0.8);
-        }
+        // Convert compressed data URL to blob
+        const response = await fetch(compressedImageUrl);
+        const blob = await response.blob();
+        
+        // Create a File from the blob
+        const file = new File([blob], `ppe-image-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        
+        // Pass the file to parent component
+        onImageCapture(file);
+        
+        // Create a URL for preview
+        setCapturedImage(compressedImageUrl);
+        
+        // Show success toast
+        toast({
+          title: "Image Captured",
+          description: "Photo saved successfully",
+        });
         
         // Stop the camera after capturing
         stopCamera();
-      } catch (error) {
-        console.error('Error capturing image:', error);
-        setError('Failed to capture image');
-        toast({
-          title: "Capture Failed",
-          description: "Failed to capture image",
-          variant: "destructive",
-        });
       }
-    } else {
-      setError('Camera not properly initialized');
+    } catch (error) {
+      console.error('Error capturing image:', error);
+      setError('Failed to capture image');
       toast({
         title: "Capture Failed",
-        description: "Camera not properly initialized",
+        description: "Failed to capture image",
         variant: "destructive",
       });
     }
@@ -228,15 +307,17 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
               className="w-full rounded-md"
               style={{ height: '240px', objectFit: 'cover' }}
             />
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="absolute top-2 right-2 bg-black/40 hover:bg-black/60"
-              onClick={toggleCamera}
-            >
-              <SwitchCamera size={16} className="text-white" />
-            </Button>
+            {availableDevices.length > 1 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="absolute top-2 right-2 bg-black/40 hover:bg-black/60"
+                onClick={switchCamera}
+              >
+                <SwitchCamera size={16} className="text-white" />
+              </Button>
+            )}
           </div>
           
           <div className="mt-4 flex justify-center gap-2">

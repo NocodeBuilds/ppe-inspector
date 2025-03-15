@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, FileText, Download, MessageSquare, Mail, Home, Plus, WifiOff } from 'lucide-react';
+import { FileText, Download, MessageSquare, Mail, Home, Plus, WifiOff } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -47,7 +47,7 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
         toast({
           title: "Offline Mode",
           description: "This action requires an internet connection. It will be queued for when you're back online.",
-          variant: "default", // Changed from "warning" to "default" to match allowed types
+          variant: "default",
         });
         
         // Request sync when back online
@@ -97,11 +97,6 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
             )}
           </DialogDescription>
         </DialogHeader>
-        <div className="absolute right-4 top-4">
-          <Button variant="ghost" size="icon" onClick={onClose} className="text-gray-400 hover:text-white">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
         
         <div className="grid grid-cols-2 gap-3">
           <Button 

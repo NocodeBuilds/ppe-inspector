@@ -14,15 +14,15 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
   onStatusChange, 
   disabled = false 
 }) => {
-  // Ensure all button states are properly updated
+  // Function to handle status change with better state management
   const handleStatusChange = (newStatus: boolean | null) => {
-    // If the status is already the same, do nothing
+    // If the status is already the same, toggle it to null (clear selection)
     if (passed === newStatus) {
-      return;
+      onStatusChange(null);
+    } else {
+      // Update with the new status
+      onStatusChange(newStatus);
     }
-    
-    // Update with the new status
-    onStatusChange(newStatus);
   };
   
   return (

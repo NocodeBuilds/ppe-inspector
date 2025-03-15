@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Camera, Trash2, Smartphone } from 'lucide-react';
+import { Camera, Trash2, Smartphone, Image } from 'lucide-react';
 import CardOverlay from '@/components/ui/card-overlay';
 import { toast } from '@/hooks/use-toast';
 import CheckpointOptions from './CheckpointOptions';
@@ -97,6 +97,7 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
       setAvailableDevices(videoDevices);
       
+      // Try to find a back-facing camera first for mobile devices
       const envCamera = videoDevices.find(device => 
         device.label.toLowerCase().includes('back') || 
         device.label.toLowerCase().includes('environment')
@@ -284,27 +285,24 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   };
   
   return (
-    <Card className={`p-4 border-l-4 ${getBorderColor()}`}>
-      <div className="mb-3">
-        <h4 className="font-medium mb-2">{description}</h4>
+    <Card className={`p-4 border-l-4 ${getBorderColor()} mb-4`}>
+      <div className="mb-4">
+        <h4 className="font-medium mb-3">{description}</h4>
         
-        <div className="flex gap-2 mb-3">
-          <CheckpointOptions 
-            passed={passed}
-            onStatusChange={onPassedChange}
-          />
-        </div>
+        <CheckpointOptions 
+          passed={passed}
+          onStatusChange={onPassedChange}
+        />
       </div>
       
-      <div className="space-y-3">
-        {passed === false && (
-          <Textarea
-            placeholder="Add notes describing the issue..."
-            value={notes}
-            onChange={(e) => onNotesChange(e.target.value)}
-            className="min-h-[80px]"
-          />
-        )}
+      <div className="space-y-4">
+        {/* Show notes textarea for all checkpoints but make it required only for failed ones */}
+        <Textarea
+          placeholder={passed === false ? "Add notes describing the issue... (required)" : "Add notes (optional)"}
+          value={notes}
+          onChange={(e) => onNotesChange(e.target.value)}
+          className={`min-h-[80px] ${passed === false ? 'border-amber-500' : ''}`}
+        />
         
         <div className="flex justify-between items-center">
           <Button
@@ -320,6 +318,11 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
                 <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
                 Loading...
               </>
+            ) : photoUrl ? (
+              <>
+                <Camera size={14} className="mr-1" />
+                Change Photo
+              </>
             ) : (
               <>
                 <Camera size={14} className="mr-1" />
@@ -331,7 +334,7 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
           {photoUrl && (
             <div className="flex items-center gap-2">
               <div 
-                className="w-10 h-10 rounded overflow-hidden border cursor-pointer"
+                className="w-12 h-12 rounded overflow-hidden border cursor-pointer bg-muted flex items-center justify-center"
                 onClick={() => {
                   const img = new Image();
                   img.src = photoUrl;
@@ -341,20 +344,24 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
                   }
                 }}
               >
-                <img 
-                  src={photoUrl} 
-                  alt="Checkpoint evidence" 
-                  className="w-full h-full object-cover"
-                />
+                {photoUrl ? (
+                  <img 
+                    src={photoUrl} 
+                    alt="Checkpoint evidence" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Image size={20} className="text-muted-foreground" />
+                )}
               </div>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={onPhotoDelete}
-                className="h-7 w-7 text-destructive hover:text-destructive/90"
+                className="h-8 w-8 text-destructive hover:text-destructive/90"
               >
-                <Trash2 size={14} />
+                <Trash2 size={16} />
               </Button>
             </div>
           )}

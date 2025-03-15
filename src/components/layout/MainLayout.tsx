@@ -4,7 +4,7 @@ import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import { ThemeToggler } from '@/components/ThemeToggler';
 import { useAuth, useRoleAccess } from '@/hooks/useAuth';
-import { ArrowLeft, Bell } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ErrorBoundaryWithFallback from '@/components/ErrorBoundaryWithFallback';
 import { 
@@ -21,8 +21,6 @@ import { toast } from '@/hooks/use-toast';
 
 // Memoized header component to prevent unnecessary re-renders
 const Header = memo(({ 
-  canGoBack, 
-  navigate, 
   profile, 
   signOut,
   isAdmin,
@@ -31,8 +29,6 @@ const Header = memo(({
   markAsRead,
   markAllAsRead
 }: { 
-  canGoBack: boolean, 
-  navigate: (to: number | string) => void,
   profile: any,
   signOut: () => Promise<void>,
   isAdmin: boolean,
@@ -44,16 +40,6 @@ const Header = memo(({
   return (
     <header className="sticky top-0 z-50 flex justify-between items-center px-4 py-2 border-b bg-background/80 backdrop-blur-sm">
       <div className="flex items-center">
-        {canGoBack && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate(-1)}
-            className="mr-2"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        )}
         <h1 className="text-xl font-bold">
           <span>
             <span className="text-primary">PPE</span> Inspector
@@ -144,7 +130,6 @@ const MainLayout = () => {
   
   const hideNavPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
   const shouldShowNav = !hideNavPaths.includes(location.pathname);
-  const canGoBack = !['/', '/login', '/register'].includes(location.pathname);
   
   useEffect(() => {
     if (profile && profile.role) {
@@ -177,8 +162,6 @@ const MainLayout = () => {
       <div className="flex flex-col min-h-screen bg-background text-foreground">
         {shouldShowNav && (
           <Header 
-            canGoBack={canGoBack} 
-            navigate={navigate} 
             profile={profile} 
             signOut={signOut}
             isAdmin={isAdmin}

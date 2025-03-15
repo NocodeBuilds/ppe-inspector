@@ -3,14 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart3, PieChart as PieChartIcon, Calendar, AlertCircle } from 'lucide-react';
+import PageHeader from '@/components/common/PageHeader';
 
 const Analytics = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [inspectionStats, setInspectionStats] = useState<any>([]);
   const [ppeTypeDistribution, setPpeTypeDistribution] = useState<any>([]);
   const [statusDistribution, setStatusDistribution] = useState<any>([]);
+  const [expiryStats, setExpiryStats] = useState<any>([]);
   
   useEffect(() => {
     fetchAnalyticsData();
@@ -75,6 +77,47 @@ const Analytics = () => {
       }));
       
       setStatusDistribution(formattedStatuses);
+      
+      // Add expiry stats
+      const today = new Date();
+      const nextMonth = new Date();
+      nextMonth.setMonth(today.getMonth() + 1);
+      
+      const { data: expiryItems, error: expiryError } = await supabase
+        .from('ppe_items')
+        .select('*')
+        .lt('expiry_date', nextMonth.toISOString());
+        
+      if (expiryError) throw expiryError;
+      
+      // Process expiry data by grouping
+      const expiryCount = {
+        expired: 0,
+        thisWeek: 0,
+        thisMonth: 0,
+      };
+      
+      const nextWeek = new Date();
+      nextWeek.setDate(today.getDate() + 7);
+      
+      expiryItems?.forEach(item => {
+        const expiryDate = new Date(item.expiry_date);
+        if (expiryDate < today) {
+          expiryCount.expired++;
+        } else if (expiryDate < nextWeek) {
+          expiryCount.thisWeek++;
+        } else if (expiryDate < nextMonth) {
+          expiryCount.thisMonth++;
+        }
+      });
+      
+      const formattedExpiryData = [
+        { name: 'Expired', value: expiryCount.expired, fill: '#ff4d4f' },
+        { name: 'This Week', value: expiryCount.thisWeek, fill: '#faad14' },
+        { name: 'This Month', value: expiryCount.thisMonth, fill: '#52c41a' },
+      ];
+      
+      setExpiryStats(formattedExpiryData);
     } catch (error) {
       console.error('Error fetching analytics data:', error);
     } finally {
@@ -86,7 +129,7 @@ const Analytics = () => {
   
   return (
     <div className="container mx-auto py-6 pb-28">
-      <h1 className="text-2xl font-bold mb-6">Analytics</h1>
+      <PageHeader title="Analytics" />
       
       {isLoading ? (
         <>
@@ -100,10 +143,10 @@ const Analytics = () => {
         <>
           <Card className="mb-6">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-medium">
+              <CardTitle className="text-lg font-medium flex items-center">
+                <Calendar className="h-5 w-5 mr-2 text-primary" />
                 Inspections Over Time
               </CardTitle>
-              <BarChart3 className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
@@ -131,13 +174,13 @@ const Analytics = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-medium">
+                <CardTitle className="text-lg font-medium flex items-center">
+                  <PieChartIcon className="h-5 w-5 mr-2 text-primary" />
                   PPE Type Distribution
                 </CardTitle>
-                <PieChartIcon className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
+                <div className="h-[300px] flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -145,16 +188,17 @@ const Analytics = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       >
                         {ppeTypeDistribution.map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip />
+                      <Legend />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -163,13 +207,13 @@ const Analytics = () => {
             
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-medium">
+                <CardTitle className="text-lg font-medium flex items-center">
+                  <BarChart3 className="h-5 w-5 mr-2 text-primary" />
                   PPE Status Overview
                 </CardTitle>
-                <PieChartIcon className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
+                <div className="h-[300px] flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -177,16 +221,50 @@ const Analytics = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       >
                         {statusDistribution.map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg font-medium flex items-center">
+                  <AlertCircle className="h-5 w-5 mr-2 text-primary" />
+                  Expiring Equipment
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px] flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={expiryStats}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {expiryStats.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill || COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
