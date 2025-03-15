@@ -134,8 +134,8 @@ const Home = () => {
           
           <EnhancedCard
             to="/equipment"
-            title="Start Inspection"
-            description="Begin inspection"
+            title="Equipment"
+            description="View all equipment"
             icon={<Shield size={28} className="text-primary-foreground" />}
             iconBgColor="bg-blue-500"
             iconBorderColor="border-blue-300"
