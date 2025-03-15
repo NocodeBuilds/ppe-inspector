@@ -1,10 +1,10 @@
 
-import React, { memo, Suspense, useEffect, useState } from 'react';
+import React, { memo, Suspense, useEffect, useState, createContext, useContext } from 'react';
 import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import { ThemeToggler } from '@/components/ThemeToggler';
 import { useAuth, useRoleAccess } from '@/hooks/useAuth';
-import { Bell } from 'lucide-react';
+import { Bell, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ErrorBoundaryWithFallback from '@/components/ErrorBoundaryWithFallback';
 import { 
@@ -18,6 +18,25 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useNotifications } from '@/hooks/useNotifications';
 import { toast } from '@/hooks/use-toast';
+import LoadingSpinner from '../common/LoadingSpinner';
+
+// Create context for back navigation
+export const BackNavigationContext = createContext<{
+  showBackButton: boolean;
+  setShowBackButton: React.Dispatch<React.SetStateAction<boolean>>;
+  backTo: string | number;
+  setBackTo: React.Dispatch<React.SetStateAction<string | number>>;
+  handleBack: () => void;
+}>({
+  showBackButton: false,
+  setShowBackButton: () => {},
+  backTo: -1,
+  setBackTo: () => {},
+  handleBack: () => {},
+});
+
+// Custom hook to use back navigation
+export const useBackNavigation = () => useContext(BackNavigationContext);
 
 // Memoized header component to prevent unnecessary re-renders
 const Header = memo(({ 
@@ -27,7 +46,9 @@ const Header = memo(({
   notifications,
   unreadCount,
   markAsRead,
-  markAllAsRead
+  markAllAsRead,
+  showBackButton,
+  handleBack
 }: { 
   profile: any,
   signOut: () => Promise<void>,
@@ -35,11 +56,24 @@ const Header = memo(({
   notifications: any[],
   unreadCount: number,
   markAsRead: (id: string) => void,
-  markAllAsRead: () => void
+  markAllAsRead: () => void,
+  showBackButton: boolean,
+  handleBack: () => void
 }) => {
   return (
     <header className="sticky top-0 z-50 flex justify-between items-center px-4 py-2 border-b bg-background/80 backdrop-blur-sm">
       <div className="flex items-center">
+        {showBackButton ? (
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="mr-2"
+            onClick={handleBack}
+          >
+            <ArrowLeft size={18} />
+          </Button>
+        ) : null}
+        
         <h1 className="text-xl font-bold">
           <span>
             <span className="text-primary">PPE</span> Inspector
@@ -101,13 +135,6 @@ const Header = memo(({
 
 Header.displayName = 'Header';
 
-// Loading spinner component
-const LoadingSpinner = () => (
-  <div className="fixed inset-0 flex items-center justify-center bg-background">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-  </div>
-);
-
 // Component-specific error fallback
 const LayoutErrorFallback = () => (
   <div className="flex flex-col items-center justify-center p-8 h-screen">
@@ -128,6 +155,18 @@ const MainLayout = () => {
   const { isAdmin } = useRoleAccess();
   const { notifications, unreadCount, showNotification, markAsRead, markAllAsRead } = useNotifications();
   
+  // Back navigation state
+  const [showBackButton, setShowBackButton] = useState(false);
+  const [backTo, setBackTo] = useState<string | number>(-1);
+  
+  const handleBack = () => {
+    if (typeof backTo === 'number') {
+      navigate(backTo);
+    } else {
+      navigate(backTo);
+    }
+  };
+  
   const hideNavPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
   const shouldShowNav = !hideNavPaths.includes(location.pathname);
   
@@ -139,7 +178,7 @@ const MainLayout = () => {
   
   // Handle authentication check
   if (isLoading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner fullScreen text="Loading app..." />;
   }
   
   // Protected routes require authentication
@@ -159,29 +198,41 @@ const MainLayout = () => {
 
   return (
     <ErrorBoundaryWithFallback fallback={<LayoutErrorFallback />}>
-      <div className="flex flex-col min-h-screen bg-background text-foreground">
-        {shouldShowNav && (
-          <Header 
-            profile={profile} 
-            signOut={signOut}
-            isAdmin={isAdmin}
-            notifications={notifications}
-            unreadCount={unreadCount}
-            markAsRead={markAsRead}
-            markAllAsRead={markAllAsRead}
-          />
-        )}
-        
-        <main className="flex-1 container mx-auto px-4 py-4 w-full max-w-6xl overflow-y-auto">
-          <Suspense fallback={<LoadingSpinner />}>
-            <ErrorBoundaryWithFallback>
-              <Outlet />
-            </ErrorBoundaryWithFallback>
-          </Suspense>
-        </main>
-        
-        {shouldShowNav && <BottomNav />}
-      </div>
+      <BackNavigationContext.Provider 
+        value={{ 
+          showBackButton, 
+          setShowBackButton, 
+          backTo, 
+          setBackTo, 
+          handleBack 
+        }}
+      >
+        <div className="flex flex-col min-h-screen bg-background text-foreground">
+          {shouldShowNav && (
+            <Header 
+              profile={profile} 
+              signOut={signOut}
+              isAdmin={isAdmin}
+              notifications={notifications}
+              unreadCount={unreadCount}
+              markAsRead={markAsRead}
+              markAllAsRead={markAllAsRead}
+              showBackButton={showBackButton}
+              handleBack={handleBack}
+            />
+          )}
+          
+          <main className="flex-1 container mx-auto px-4 py-4 w-full max-w-6xl overflow-y-auto">
+            <Suspense fallback={<LoadingSpinner fullScreen text="Loading..." />}>
+              <ErrorBoundaryWithFallback>
+                <Outlet />
+              </ErrorBoundaryWithFallback>
+            </Suspense>
+          </main>
+          
+          {shouldShowNav && <BottomNav />}
+        </div>
+      </BackNavigationContext.Provider>
     </ErrorBoundaryWithFallback>
   );
 };

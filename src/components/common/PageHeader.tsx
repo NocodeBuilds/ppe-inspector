@@ -1,8 +1,6 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useBackNavigation } from '@/components/layout/MainLayout';
 
 interface PageHeaderProps {
   title: string;
@@ -17,29 +15,22 @@ const PageHeader = ({
   backTo = -1,
   rightElement
 }: PageHeaderProps) => {
-  const navigate = useNavigate();
+  const { setShowBackButton, setBackTo } = useBackNavigation();
   
-  const handleBack = () => {
-    if (typeof backTo === 'number') {
-      navigate(backTo);
-    } else {
-      navigate(backTo);
-    }
-  };
+  // Update global back navigation state when component mounts or props change
+  React.useEffect(() => {
+    setShowBackButton(showBackButton);
+    setBackTo(backTo);
+    
+    // Clean up when component unmounts
+    return () => {
+      setShowBackButton(false);
+    };
+  }, [showBackButton, backTo, setShowBackButton, setBackTo]);
   
   return (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center">
-        {showBackButton && (
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="mr-2"
-            onClick={handleBack}
-          >
-            <ArrowLeft size={18} />
-          </Button>
-        )}
         <h1 className="text-2xl font-bold">{title}</h1>
       </div>
       
