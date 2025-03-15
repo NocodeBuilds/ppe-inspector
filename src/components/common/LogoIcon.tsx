@@ -16,11 +16,11 @@ const LogoIcon: React.FC<LogoIconProps> = ({
 }) => {
   // Size mappings for consistent sizing - increased for better visibility
   const sizeMap = {
-    sm: 'h-12 w-12',
-    md: 'h-14 w-14',
-    lg: 'h-18 w-18',
-    xl: 'h-24 w-24',
-    '2xl': 'h-28 w-28'
+    sm: 'h-10 w-10',
+    md: 'h-12 w-12',
+    lg: 'h-16 w-16',
+    xl: 'h-20 w-20',
+    '2xl': 'h-24 w-24'
   };
 
   const textSizeMap = {
@@ -38,11 +38,11 @@ const LogoIcon: React.FC<LogoIconProps> = ({
         <img 
           src="/lovable-uploads/logo.png" 
           alt="PPE Inspector Logo" 
-          className={`${sizeMap[size]} object-contain drop-shadow-lg`} 
+          className={`${sizeMap[size]} object-contain drop-shadow-md`} 
         />
       </div>
       {withText && (
-        <span className={`${textSizeMap[size]} font-bold font-sans drop-shadow-sm tracking-tight`}>
+        <span className={`${textSizeMap[size]} font-bold font-sans drop-shadow-sm`}>
           <span className="text-primary">PPE</span> Inspector
         </span>
       )}

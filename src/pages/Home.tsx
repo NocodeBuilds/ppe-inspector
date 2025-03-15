@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Shield, Calendar, AlertTriangle, Download, FileText, AlertCircle, Search } from 'lucide-react';
+import { Plus, Shield, Calendar, AlertTriangle, Download, FileText, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CardOverlay from '@/components/ui/card-overlay';
 import AddPPEForm from '@/components/forms/AddPPEForm';
@@ -10,8 +10,6 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
-import DashboardCard from '@/components/dashboard/DashboardCard';
-import { Input } from '@/components/ui/input';
 
 const Home = () => {
   const [showAddPPE, setShowAddPPE] = useState(false);
@@ -100,117 +98,169 @@ const Home = () => {
   };
   
   return (
-    <div className="relative space-y-8 mx-auto max-w-5xl pb-20">
-      {/* Header with search and welcome message */}
-      <div className="mb-6 fade-in bg-gradient-to-r from-background via-background/90 to-primary/5 rounded-2xl p-6 border border-border/30 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">{profile?.full_name ? `Welcome, ${profile.full_name}` : 'Welcome'}</h1>
-            <p className="text-muted-foreground mt-1">Manage your safety equipment with ease</p>
-          </div>
-          <div className="relative max-w-xs w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input 
-              placeholder="Search equipment..." 
-              className="pl-10 pr-4 bg-background border-border/40 focus:border-primary"
-              onClick={() => navigate('/equipment')}
-            />
-          </div>
+    <div className="space-y-6">
+      {profile && (
+        <div className="mb-3 sm:mb-5 fade-in">
+          <p className="text-center text-base sm:text-lg">
+            Welcome, <span className="font-semibold">{profile.full_name || 'User'}</span>
+          </p>
         </div>
-      </div>
+      )}
       
       {isLoading ? (
         <DashboardSkeleton />
       ) : (
         <>
           {/* Analytics Dashboard */}
-          <section className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <DashboardAnalytics className="slide-up" />
-          </section>
+          </div>
           
-          {/* Quick Actions */}
-          <section className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between">
-              <h2 className="text-xl font-bold">Quick Actions</h2>
-              {(isAdmin || isUser) && (
+          <h3 className="text-lg font-medium mb-3 text-center">Quick Actions</h3>
+          
+          {/* Main Dashboard Cards */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-3xl mx-auto">
+            {(isAdmin || isUser) && (
+              <div className="slide-up">
                 <Button
+                  variant="outline"
+                  className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
+                  border border-success/30 hover:border-success/50 hover:-translate-y-0.5 transition-all 
+                  bg-gradient-to-br from-background to-success/5"
                   onClick={() => setShowAddPPE(true)}
-                  className="bg-primary/90 hover:bg-primary shadow-sm hover:shadow transition-all duration-200 mt-2 sm:mt-0"
                 >
-                  <Plus className="mr-2 h-4 w-4" /> Add New Equipment
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-success rounded-full flex items-center justify-center 
+                  shadow-sm transition-transform duration-200 hover:scale-105">
+                    <Plus size={20} className="text-primary-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-sm sm:text-base">Add PPE</div>
+                    <div className="text-xs text-muted-foreground">New equipment</div>
+                  </div>
                 </Button>
-              )}
+              </div>
+            )}
+            
+            <div className="slide-up">
+              <Button
+                variant="outline"
+                className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
+                border border-blue-200 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-800 
+                hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-blue-50 dark:from-background dark:to-blue-950/20"
+                onClick={() => navigate('/equipment')}
+              >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 rounded-full flex items-center justify-center
+                shadow-sm transition-transform duration-200 hover:scale-105">
+                  <Shield size={20} className="text-primary-foreground" />
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-sm sm:text-base">Equipment</div>
+                  <div className="text-xs text-muted-foreground">
+                    {stats.totalEquipment} items
+                  </div>
+                </div>
+              </Button>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-              {(isAdmin || isUser) && (
-                <DashboardCard
-                  to="#"
-                  onClick={() => setShowAddPPE(true)}
-                  icon={<Plus size={20} className="text-primary-foreground" />}
-                  title="Add PPE"
-                  description="Register new equipment"
-                  iconBgColor="bg-success hover:bg-success/90"
-                  className="slide-up transform hover:scale-105 transition-all duration-300"
-                />
-              )}
-              
-              <DashboardCard
-                to="/equipment"
-                icon={<Shield size={20} className="text-primary-foreground" />}
-                title="Equipment"
-                description={`${stats.totalEquipment} items`}
-                iconBgColor="bg-blue-500 hover:bg-blue-600"
-                className="slide-up transform hover:scale-105 transition-all duration-300"
-              />
-              
-              <DashboardCard
-                to="/upcoming"
-                icon={<Calendar size={20} className="text-primary-foreground" />}
-                title="Upcoming"
-                description={`${stats.upcomingInspections} due`}
-                iconBgColor="bg-amber-500 hover:bg-amber-600"
-                className="slide-up transform hover:scale-105 transition-all duration-300"
-              />
-              
-              <DashboardCard
-                to="/expiring"
-                icon={<AlertTriangle size={20} className="text-primary-foreground" />}
-                title="Expiring"
-                description={`${stats.expiringPPE} soon`}
-                iconBgColor="bg-red-500 hover:bg-red-600"
-                className="slide-up transform hover:scale-105 transition-all duration-300"
-              />
-              
-              <DashboardCard
-                to="/flagged"
-                icon={<AlertCircle size={20} className="text-primary-foreground" />}
-                title="Flagged"
-                description={`${stats.flaggedPPE} items`}
-                iconBgColor="bg-orange-500 hover:bg-orange-600"
-                className="slide-up transform hover:scale-105 transition-all duration-300"
-              />
-              
-              {(isAdmin || isUser) && (
-                <DashboardCard
-                  to="/reports"
-                  icon={<FileText size={20} className="text-primary-foreground" />}
-                  title="Reports"
-                  description="View & export"
-                  iconBgColor="bg-purple-500 hover:bg-purple-600"
-                  className="slide-up transform hover:scale-105 transition-all duration-300"
-                />
-              )}
+            <div className="slide-up">
+              <Button
+                variant="outline"
+                className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
+                border border-amber-200 dark:border-amber-900 hover:border-amber-300 dark:hover:border-amber-800
+                hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-amber-50 dark:from-background dark:to-amber-950/20"
+                onClick={() => navigate('/upcoming')}
+              >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-500 rounded-full flex items-center justify-center
+                shadow-sm transition-transform duration-200 hover:scale-105">
+                  <Calendar size={20} className="text-primary-foreground" />
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-sm sm:text-base">Upcoming</div>
+                  <div className="text-xs text-muted-foreground">
+                    {stats.upcomingInspections} due
+                  </div>
+                </div>
+              </Button>
             </div>
-          </section>
+            
+            <div className="slide-up">
+              <Button
+                variant="outline"
+                className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
+                border border-red-200 dark:border-red-900 hover:border-red-300 dark:hover:border-red-800
+                hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-red-50 dark:from-background dark:to-red-950/20"
+                onClick={() => navigate('/expiring')}
+              >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500 rounded-full flex items-center justify-center
+                shadow-sm transition-transform duration-200 hover:scale-105">
+                  <AlertTriangle size={20} className="text-primary-foreground" />
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-sm sm:text-base">Expiring</div>
+                  <div className="text-xs text-muted-foreground">
+                    {stats.expiringPPE} soon
+                  </div>
+                </div>
+              </Button>
+            </div>
+            
+            <div className="slide-up">
+              <Button
+                variant="outline"
+                className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
+                border border-orange-200 dark:border-orange-900 hover:border-orange-300 dark:hover:border-orange-800
+                hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-orange-50 dark:from-background dark:to-orange-950/20"
+                onClick={() => navigate('/flagged')}
+              >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-500 rounded-full flex items-center justify-center
+                shadow-sm transition-transform duration-200 hover:scale-105">
+                  <AlertCircle size={20} className="text-primary-foreground" />
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-sm sm:text-base">Flagged</div>
+                  <div className="text-xs text-muted-foreground">
+                    {stats.flaggedPPE} items
+                  </div>
+                </div>
+              </Button>
+            </div>
+            
+            {(isAdmin || isUser) && (
+              <div className="slide-up">
+                <Button
+                  variant="outline"
+                  className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
+                  border border-purple-200 dark:border-purple-900 hover:border-purple-300 dark:hover:border-purple-800
+                  hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-purple-50 dark:from-background dark:to-purple-950/20"
+                  onClick={() => navigate('/reports')}
+                >
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500 rounded-full flex items-center justify-center
+                  shadow-sm transition-transform duration-200 hover:scale-105">
+                    <FileText size={20} className="text-primary-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-sm sm:text-base">Reports</div>
+                    <div className="text-xs text-muted-foreground">View & export</div>
+                  </div>
+                </Button>
+              </div>
+            )}
+          </div>
         </>
       )}
 
-      <CardOverlay 
-        show={showAddPPE} 
-        onClose={() => setShowAddPPE(false)}
-        title="Add New PPE Equipment"
-      >
+      <CardOverlay show={showAddPPE} onClose={() => setShowAddPPE(false)}>
+        <div className="mb-4 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-primary">Add New PPE</h2>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShowAddPPE(false)}
+            className="h-8 w-8 p-0 rounded-full"
+          >
+            ✕
+          </Button>
+        </div>
         <AddPPEForm onSuccess={handleAddPPESuccess} />
       </CardOverlay>
     </div>
