@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus, Shield, Calendar, AlertTriangle, Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -99,7 +100,7 @@ const Home = () => {
   return (
     <div>
       {profile && (
-        <div className="mb-2 sm:mb-3 fade-in">
+        <div className="mb-3 sm:mb-4 fade-in">
           <p className="text-center text-sm">
             Welcome, <span className="font-semibold">{profile.full_name || 'User'}</span>
           </p>
@@ -109,23 +110,23 @@ const Home = () => {
       {isLoading ? (
         <DashboardSkeleton />
       ) : (
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 max-w-3xl mx-auto">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-3xl mx-auto">
           {(isAdmin || isUser) && (
             <div className="slide-up">
               <Button
                 variant="outline"
-                className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2 
+                className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
                 border border-success/30 hover:border-success/50 hover:-translate-y-0.5 transition-all 
                 bg-gradient-to-br from-background to-success/5"
                 onClick={() => setShowAddPPE(true)}
               >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-success rounded-full flex items-center justify-center 
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-success rounded-full flex items-center justify-center 
                 shadow-sm transition-transform duration-200 hover:scale-105">
-                  <Plus size={16} className="text-primary-foreground" />
+                  <Plus size={20} className="text-primary-foreground" />
                 </div>
                 <div className="text-center">
-                  <div className="font-semibold text-xs sm:text-sm">Add PPE</div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">New equipment</div>
+                  <div className="font-semibold text-sm sm:text-base">Add PPE</div>
+                  <div className="text-xs text-muted-foreground">New equipment</div>
                 </div>
               </Button>
             </div>
@@ -134,18 +135,20 @@ const Home = () => {
           <div className="slide-up">
             <Button
               variant="outline"
-              className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2
+              className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
               border border-blue-200 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-800 
               hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-blue-50 dark:from-background dark:to-blue-950/20"
               onClick={() => navigate('/equipment')}
             >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-500 rounded-full flex items-center justify-center
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 rounded-full flex items-center justify-center
               shadow-sm transition-transform duration-200 hover:scale-105">
-                <Shield size={16} className="text-primary-foreground" />
+                <Shield size={20} className="text-primary-foreground" />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-xs sm:text-sm">Equipment</div>
-                <div className="text-[10px] sm:text-xs text-muted-foreground">View all</div>
+                <div className="font-semibold text-sm sm:text-base">Equipment</div>
+                <div className="text-xs text-muted-foreground">
+                  {stats.totalEquipment} items
+                </div>
               </div>
             </Button>
           </div>
@@ -153,18 +156,18 @@ const Home = () => {
           <div className="slide-up">
             <Button
               variant="outline"
-              className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2
+              className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
               border border-amber-200 dark:border-amber-900 hover:border-amber-300 dark:hover:border-amber-800
               hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-amber-50 dark:from-background dark:to-amber-950/20"
               onClick={() => navigate('/upcoming')}
             >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-amber-500 rounded-full flex items-center justify-center
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-500 rounded-full flex items-center justify-center
               shadow-sm transition-transform duration-200 hover:scale-105">
-                <Calendar size={16} className="text-primary-foreground" />
+                <Calendar size={20} className="text-primary-foreground" />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-xs sm:text-sm">Upcoming</div>
-                <div className="text-[10px] sm:text-xs text-muted-foreground">
+                <div className="font-semibold text-sm sm:text-base">Upcoming</div>
+                <div className="text-xs text-muted-foreground">
                   {stats.upcomingInspections} due
                 </div>
               </div>
@@ -174,18 +177,18 @@ const Home = () => {
           <div className="slide-up">
             <Button
               variant="outline"
-              className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2
+              className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
               border border-red-200 dark:border-red-900 hover:border-red-300 dark:hover:border-red-800
               hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-red-50 dark:from-background dark:to-red-950/20"
               onClick={() => navigate('/expiring')}
             >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-red-500 rounded-full flex items-center justify-center
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500 rounded-full flex items-center justify-center
               shadow-sm transition-transform duration-200 hover:scale-105">
-                <AlertTriangle size={16} className="text-primary-foreground" />
+                <AlertTriangle size={20} className="text-primary-foreground" />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-xs sm:text-sm">Expiring</div>
-                <div className="text-[10px] sm:text-xs text-muted-foreground">
+                <div className="font-semibold text-sm sm:text-base">Expiring</div>
+                <div className="text-xs text-muted-foreground">
                   {stats.expiringPPE} soon
                 </div>
               </div>
@@ -195,18 +198,18 @@ const Home = () => {
           <div className="slide-up">
             <Button
               variant="outline"
-              className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2
+              className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
               border border-orange-200 dark:border-orange-900 hover:border-orange-300 dark:hover:border-orange-800
               hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-orange-50 dark:from-background dark:to-orange-950/20"
               onClick={() => navigate('/flagged')}
             >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-orange-500 rounded-full flex items-center justify-center
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-500 rounded-full flex items-center justify-center
               shadow-sm transition-transform duration-200 hover:scale-105">
-                <AlertTriangle size={16} className="text-primary-foreground" />
+                <AlertTriangle size={20} className="text-primary-foreground" />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-xs sm:text-sm">Flagged</div>
-                <div className="text-[10px] sm:text-xs text-muted-foreground">
+                <div className="font-semibold text-sm sm:text-base">Flagged</div>
+                <div className="text-xs text-muted-foreground">
                   {stats.flaggedPPE} items
                 </div>
               </div>
@@ -217,18 +220,18 @@ const Home = () => {
             <div className="slide-up">
               <Button
                 variant="outline"
-                className="w-full h-full flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2
+                className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 sm:p-4
                 border border-purple-200 dark:border-purple-900 hover:border-purple-300 dark:hover:border-purple-800
                 hover:-translate-y-0.5 transition-all bg-gradient-to-br from-background to-purple-50 dark:from-background dark:to-purple-950/20"
                 onClick={() => navigate('/reports')}
               >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-purple-500 rounded-full flex items-center justify-center
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500 rounded-full flex items-center justify-center
                 shadow-sm transition-transform duration-200 hover:scale-105">
-                  <FileText size={16} className="text-primary-foreground" />
+                  <FileText size={20} className="text-primary-foreground" />
                 </div>
                 <div className="text-center">
-                  <div className="font-semibold text-xs sm:text-sm">Reports</div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">View & export</div>
+                  <div className="font-semibold text-sm sm:text-base">Reports</div>
+                  <div className="text-xs text-muted-foreground">View & export</div>
                 </div>
               </Button>
             </div>

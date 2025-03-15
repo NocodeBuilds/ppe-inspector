@@ -39,6 +39,49 @@
   animation: scan 1.5s ease-in-out infinite alternate;
 }
 
+/* Typography classes */
+@layer components {
+  .h1 {
+    @apply text-3xl sm:text-4xl font-bold tracking-tight;
+  }
+  
+  .h2 {
+    @apply text-2xl sm:text-3xl font-bold tracking-tight;
+  }
+  
+  .h3 {
+    @apply text-xl sm:text-2xl font-semibold;
+  }
+  
+  .h4 {
+    @apply text-lg sm:text-xl font-semibold;
+  }
+  
+  .p-large {
+    @apply text-base sm:text-lg;
+  }
+  
+  .p-standard {
+    @apply text-sm sm:text-base;
+  }
+  
+  .p-small {
+    @apply text-xs sm:text-sm text-muted-foreground;
+  }
+  
+  .label-text {
+    @apply text-sm font-medium leading-none;
+  }
+  
+  .card-title {
+    @apply font-semibold text-sm sm:text-base leading-tight;
+  }
+  
+  .card-description {
+    @apply text-xs text-muted-foreground mt-0.5 leading-tight;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -94,6 +137,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
   
   /* Make sure content is scrollable when needed */
@@ -105,6 +149,27 @@
   main {
     min-height: calc(100vh - 4rem); /* Subtract header/footer height */
     padding-bottom: 70px; /* Space for bottom navigation */
+  }
+  
+  /* Consistent heading styles */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-semibold tracking-tight;
+  }
+  
+  h1 {
+    @apply text-2xl sm:text-3xl md:text-4xl;
+  }
+  
+  h2 {
+    @apply text-xl sm:text-2xl md:text-3xl;
+  }
+  
+  h3 {
+    @apply text-lg sm:text-xl md:text-2xl;
+  }
+  
+  h4 {
+    @apply text-base sm:text-lg;
   }
   
   /* Smooth scroll for horizontal scrolling components */
@@ -145,5 +210,21 @@
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* Card transitions */
+  .slide-up {
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  @keyframes slideUp {
+    from { 
+      opacity: 0; 
+      transform: translateY(10px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0); 
+    }
   }
 }
