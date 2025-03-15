@@ -31,10 +31,10 @@ const EnhancedCard = ({
   ...props
 }: EnhancedCardProps) => {
   const cardContent = (
-    <CardContent className="p-4 flex items-start gap-4 h-full">
+    <CardContent className="p-4 flex flex-col items-center text-center h-full">
       {icon && (
         <div className={cn(
-          "flex-shrink-0 p-3 rounded-full flex items-center justify-center w-12 h-12", 
+          "flex-shrink-0 p-3 rounded-full flex items-center justify-center w-14 h-14 mb-3", 
           iconBgColor,
           "border-2",
           iconBorderColor,
@@ -43,7 +43,7 @@ const EnhancedCard = ({
           {icon}
         </div>
       )}
-      <div className="flex-1">
+      <div>
         <h3 className="font-semibold text-foreground">{title}</h3>
         {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
         {children && <div className="mt-3">{children}</div>}

@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggler } from '@/components/ThemeToggler';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import LogoIcon from '@/components/common/LogoIcon';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
@@ -54,11 +55,7 @@ const ForgotPasswordPage = () => {
     <div className="flex flex-col min-h-screen bg-background">
       <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border h-14 backdrop-blur-sm bg-opacity-80">
         <div className="flex items-center justify-between h-full px-4">
-          <h1 className="text-xl font-bold">
-            <span>
-              <span className="text-primary">PPE</span> Inspector
-            </span>
-          </h1>
+          <LogoIcon size="sm" />
           <ThemeToggler />
         </div>
       </header>
@@ -66,7 +63,7 @@ const ForgotPasswordPage = () => {
       <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-primary mb-2">RESET PASSWORD</h1>
+            <h1 className="text-3xl font-bold text-primary mb-2">RESET PASSWORD</h1>
             <p className="text-muted-foreground">We'll send you a reset link</p>
           </div>
           

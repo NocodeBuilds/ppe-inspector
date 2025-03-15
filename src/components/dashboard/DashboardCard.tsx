@@ -33,7 +33,7 @@ const DashboardCard = ({
     <Link
       to={to}
       className={cn(
-        'block glass-card rounded-lg p-6 transition-all duration-300',
+        'block glass-card rounded-lg transition-all duration-300',
         'border border-border/40 shadow-sm dark:border-border/60',
         'hover:border-primary/40 hover:shadow-lg dark:hover:border-primary/30',
         'hover:translate-y-[-2px] hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-ring',
@@ -41,9 +41,9 @@ const DashboardCard = ({
       )}
       onClick={handleClick}
     >
-      <div className="flex flex-col items-center text-center">
+      <div className="flex flex-col items-center text-center p-6">
         <div className={cn(
-          'w-16 h-16 rounded-lg flex items-center justify-center mb-4',
+          'w-16 h-16 rounded-full flex items-center justify-center mb-4',
           'shadow-sm',
           iconBgColor
         )}>

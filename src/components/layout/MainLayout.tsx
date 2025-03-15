@@ -4,21 +4,13 @@ import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import { ThemeToggler } from '@/components/ThemeToggler';
 import { useAuth, useRoleAccess } from '@/hooks/useAuth';
-import { Bell, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ErrorBoundaryWithFallback from '@/components/ErrorBoundaryWithFallback';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { useNotifications } from '@/hooks/useNotifications';
 import { toast } from '@/hooks/use-toast';
 import LoadingSpinner from '../common/LoadingSpinner';
+import LogoIcon from '../common/LogoIcon';
+import NotificationCenter from '../notifications/NotificationCenter';
 
 // Create context for back navigation
 export const BackNavigationContext = createContext<{
@@ -41,22 +33,10 @@ export const useBackNavigation = () => useContext(BackNavigationContext);
 // Memoized header component to prevent unnecessary re-renders
 const Header = memo(({ 
   profile, 
-  signOut,
-  isAdmin,
-  notifications,
-  unreadCount,
-  markAsRead,
-  markAllAsRead,
   showBackButton,
   handleBack
 }: { 
   profile: any,
-  signOut: () => Promise<void>,
-  isAdmin: boolean,
-  notifications: any[],
-  unreadCount: number,
-  markAsRead: (id: string) => void,
-  markAllAsRead: () => void,
   showBackButton: boolean,
   handleBack: () => void
 }) => {
@@ -74,60 +54,12 @@ const Header = memo(({
           </Button>
         ) : null}
         
-        <h1 className="text-xl font-bold">
-          <span>
-            <span className="text-primary">PPE</span> Inspector
-            {isAdmin && <span className="ml-2 text-xs font-normal bg-primary/10 text-primary px-2 py-0.5 rounded-full">Admin</span>}
-          </span>
-        </h1>
+        <LogoIcon size="sm" />
       </div>
       
       <div className="flex items-center gap-2">
         <ThemeToggler />
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell size={20} />
-              {unreadCount > 0 && (
-                <Badge 
-                  className="absolute -top-1 -right-1 px-1.5 py-0.5 min-w-[1.2rem] h-[1.2rem] flex items-center justify-center bg-destructive text-[10px]"
-                >
-                  {unreadCount}
-                </Badge>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifications.length > 0 ? (
-              <>
-                {notifications.map((notification) => (
-                  <DropdownMenuItem 
-                    key={notification.id}
-                    className="cursor-pointer"
-                    onClick={() => markAsRead(notification.id)}
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium text-sm">{notification.title}</span>
-                      <span className="text-xs text-muted-foreground">{notification.message}</span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="text-center text-primary cursor-pointer"
-                  onClick={markAllAsRead}
-                >
-                  Mark All as Read
-                </DropdownMenuItem>
-              </>
-            ) : (
-              <DropdownMenuItem disabled>No notifications</DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <NotificationCenter />
       </div>
     </header>
   );
@@ -153,7 +85,6 @@ const MainLayout = () => {
   const navigate = useNavigate();
   const { user, profile, isLoading, signOut } = useAuth();
   const { isAdmin } = useRoleAccess();
-  const { notifications, unreadCount, showNotification, markAsRead, markAllAsRead } = useNotifications();
   
   // Back navigation state
   const [showBackButton, setShowBackButton] = useState(false);
@@ -211,12 +142,6 @@ const MainLayout = () => {
           {shouldShowNav && (
             <Header 
               profile={profile} 
-              signOut={signOut}
-              isAdmin={isAdmin}
-              notifications={notifications}
-              unreadCount={unreadCount}
-              markAsRead={markAsRead}
-              markAllAsRead={markAllAsRead}
               showBackButton={showBackButton}
               handleBack={handleBack}
             />

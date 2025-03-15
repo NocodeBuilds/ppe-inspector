@@ -6,7 +6,6 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { ExtendedProfile } from '@/contexts/AuthContext';
 import { 
   User, Settings, LogOut, Mail, 
@@ -79,10 +78,7 @@ const Profile = () => {
       
       <div className="space-y-6 mt-6">
         <Card>
-          <CardHeader className="pb-4">
-            <CardTitle>Your Profile</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center pt-2 pb-6">
+          <CardContent className="flex flex-col items-center pt-6 pb-6">
             <Avatar className="h-24 w-24 mb-4">
               {profile.avatar_url ? (
                 <AvatarImage src={profile.avatar_url} alt={profile.full_name || 'User'} />
@@ -97,12 +93,6 @@ const Profile = () => {
             <div className="flex items-center text-muted-foreground">
               <Mail className="h-4 w-4 mr-1" />
               <span>{user.email}</span>
-            </div>
-            
-            <div className="mt-2">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                {profile.role || 'User'}
-              </span>
             </div>
           </CardContent>
           <Separator />

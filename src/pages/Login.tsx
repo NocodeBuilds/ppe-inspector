@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
 import { useLoginForm } from '@/hooks/useLoginForm';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import LogoIcon from '@/components/common/LogoIcon';
 
 const Login = () => {
   const [isPageLoading, setIsPageLoading] = useState(true);
@@ -68,9 +69,10 @@ const Login = () => {
       <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20 w-full">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-5xl font-bold text-primary mb-2">RENEW</h1>
-            <p className="text-2xl font-medium mb-1">Inspector Pro</p>
-            <p className="text-muted-foreground">Inspection Portal</p>
+            <div className="flex justify-center mb-4">
+              <LogoIcon size="xl" withText={false} />
+            </div>
+            <p className="text-xl font-medium mb-1">PPE Inspector</p>
           </div>
           
           <div className="glass-card rounded-lg p-6 shadow-lg border border-border/20">

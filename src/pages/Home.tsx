@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus, Shield, Calendar, AlertTriangle, Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import EnhancedCard from '@/components/ui/enhanced-card';
 import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
+import LogoIcon from '@/components/common/LogoIcon';
 
 const Home = () => {
   const [showAddPPE, setShowAddPPE] = useState(false);
@@ -98,19 +100,14 @@ const Home = () => {
   
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8 text-center mt-6 fade-in">
-        <span className="text-primary">PPE</span> Inspector Pro
-      </h1>
+      <div className="flex justify-center mb-8 fade-in">
+        <LogoIcon size="lg" />
+      </div>
       
       {profile && (
         <div className="mb-6 fade-in">
           <p className="text-center">
             Welcome back, <span className="font-semibold">{profile.full_name || 'User'}</span>
-            {profile.role && (
-              <span className="ml-2 text-sm px-2 py-1 bg-primary/10 text-primary rounded-full">
-                {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
-              </span>
-            )}
           </p>
         </div>
       )}
@@ -120,73 +117,109 @@ const Home = () => {
       ) : (
         <div className="grid grid-cols-2 gap-4">
           {(isAdmin || isUser) && (
-            <EnhancedCard
-              title="Add PPE"
-              description="Add new equipment"
-              icon={<Plus size={28} className="text-primary-foreground" />}
-              iconBgColor="bg-success"
-              iconBorderColor="border-success/20"
-              cardBorderColor="border-success/30"
-              className="slide-up"
-              onClick={() => setShowAddPPE(true)}
-            />
+            <div className="slide-up">
+              <Button
+                variant="outline"
+                className="w-full h-full aspect-square flex flex-col items-center justify-center gap-3 p-4 border-2 border-success/30 hover:border-success/50 hover:-translate-y-1 transition-all"
+                onClick={() => setShowAddPPE(true)}
+              >
+                <div className="w-12 h-12 bg-success rounded-full flex items-center justify-center">
+                  <Plus size={28} className="text-primary-foreground" />
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold">Add PPE</div>
+                  <div className="text-xs text-muted-foreground">Add new equipment</div>
+                </div>
+              </Button>
+            </div>
           )}
           
-          <EnhancedCard
-            to="/equipment"
-            title="Equipment"
-            description="View all equipment"
-            icon={<Shield size={28} className="text-primary-foreground" />}
-            iconBgColor="bg-blue-500"
-            iconBorderColor="border-blue-300"
-            cardBorderColor="border-blue-200 dark:border-blue-900"
-            className="slide-up"
-          />
+          <div className="slide-up">
+            <Button
+              variant="outline"
+              className="w-full h-full aspect-square flex flex-col items-center justify-center gap-3 p-4 border-2 border-blue-200 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-800 hover:-translate-y-1 transition-all"
+              onClick={() => navigate('/equipment')}
+            >
+              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                <Shield size={28} className="text-primary-foreground" />
+              </div>
+              <div className="text-center">
+                <div className="font-semibold">Equipment</div>
+                <div className="text-xs text-muted-foreground">View all equipment</div>
+              </div>
+            </Button>
+          </div>
           
-          <EnhancedCard
-            to="/upcoming"
-            title="Upcoming Inspections"
-            description={`${stats.upcomingInspections} inspection${stats.upcomingInspections !== 1 ? 's' : ''} due`}
-            icon={<Calendar size={28} className="text-primary-foreground" />}
-            iconBgColor="bg-amber-500"
-            iconBorderColor="border-amber-300"
-            cardBorderColor="border-amber-200 dark:border-amber-900"
-            className="slide-up"
-          />
+          <div className="slide-up">
+            <Button
+              variant="outline"
+              className="w-full h-full aspect-square flex flex-col items-center justify-center gap-3 p-4 border-2 border-amber-200 dark:border-amber-900 hover:border-amber-300 dark:hover:border-amber-800 hover:-translate-y-1 transition-all"
+              onClick={() => navigate('/upcoming')}
+            >
+              <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center">
+                <Calendar size={28} className="text-primary-foreground" />
+              </div>
+              <div className="text-center">
+                <div className="font-semibold">Upcoming Inspections</div>
+                <div className="text-xs text-muted-foreground">
+                  {stats.upcomingInspections} inspection{stats.upcomingInspections !== 1 ? 's' : ''} due
+                </div>
+              </div>
+            </Button>
+          </div>
           
-          <EnhancedCard
-            to="/expiring"
-            title="Expiring PPE"
-            description={`${stats.expiringPPE} item${stats.expiringPPE !== 1 ? 's' : ''} expiring soon`}
-            icon={<AlertTriangle size={28} className="text-primary-foreground" />}
-            iconBgColor="bg-red-500"
-            iconBorderColor="border-red-300"
-            cardBorderColor="border-red-200 dark:border-red-900"
-            className="slide-up"
-          />
+          <div className="slide-up">
+            <Button
+              variant="outline"
+              className="w-full h-full aspect-square flex flex-col items-center justify-center gap-3 p-4 border-2 border-red-200 dark:border-red-900 hover:border-red-300 dark:hover:border-red-800 hover:-translate-y-1 transition-all"
+              onClick={() => navigate('/expiring')}
+            >
+              <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
+                <AlertTriangle size={28} className="text-primary-foreground" />
+              </div>
+              <div className="text-center">
+                <div className="font-semibold">Expiring PPE</div>
+                <div className="text-xs text-muted-foreground">
+                  {stats.expiringPPE} item{stats.expiringPPE !== 1 ? 's' : ''} expiring soon
+                </div>
+              </div>
+            </Button>
+          </div>
           
-          <EnhancedCard
-            to="/flagged"
-            title="Flagged Issues"
-            description={`${stats.flaggedPPE} item${stats.flaggedPPE !== 1 ? 's' : ''} need action`}
-            icon={<AlertTriangle size={28} className="text-primary-foreground" />}
-            iconBgColor="bg-orange-500"
-            iconBorderColor="border-orange-300"
-            cardBorderColor="border-orange-200 dark:border-orange-900"
-            className="slide-up col-span-1"
-          />
+          <div className="slide-up">
+            <Button
+              variant="outline"
+              className="w-full h-full aspect-square flex flex-col items-center justify-center gap-3 p-4 border-2 border-orange-200 dark:border-orange-900 hover:border-orange-300 dark:hover:border-orange-800 hover:-translate-y-1 transition-all"
+              onClick={() => navigate('/flagged')}
+            >
+              <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
+                <AlertTriangle size={28} className="text-primary-foreground" />
+              </div>
+              <div className="text-center">
+                <div className="font-semibold">Flagged Issues</div>
+                <div className="text-xs text-muted-foreground">
+                  {stats.flaggedPPE} item{stats.flaggedPPE !== 1 ? 's' : ''} need action
+                </div>
+              </div>
+            </Button>
+          </div>
           
           {(isAdmin || isUser) && (
-            <EnhancedCard
-              to="/reports"
-              title="Reports"
-              description="View & download"
-              icon={<FileText size={28} className="text-primary-foreground" />}
-              iconBgColor="bg-purple-500"
-              iconBorderColor="border-purple-300"
-              cardBorderColor="border-purple-200 dark:border-purple-900"
-              className="slide-up col-span-1"
-            />
+            <div className="slide-up">
+              <Button
+                variant="outline"
+                className="w-full h-full aspect-square flex flex-col items-center justify-center gap-3 p-4 border-2 border-purple-200 dark:border-purple-900 hover:border-purple-300 dark:hover:border-purple-800 hover:-translate-y-1 transition-all"
+                onClick={() => navigate('/reports')}
+              >
+                <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
+                  <FileText size={28} className="text-primary-foreground" />
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold">Reports</div>
+                  <div className="text-xs text-muted-foreground">View & download</div>
+                </div>
+              </Button>
+            </div>
           )}
         </div>
       )}

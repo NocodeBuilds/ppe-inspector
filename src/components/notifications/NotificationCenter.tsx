@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Bell, X, CheckCheck, Info, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Bell, X, CheckCheck, Info, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   Popover, 
@@ -11,6 +11,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 
 interface NotificationItemProps {
   id: string;
@@ -60,6 +67,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
                   size="icon"
                   className="h-5 w-5"
                   onClick={() => onMarkAsRead(id)}
+                  title="Mark as read"
                 >
                   <CheckCheck className="h-3 w-3" />
                 </Button>
@@ -67,8 +75,9 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-5 w-5"
+                className="h-5 w-5 text-destructive hover:text-destructive/80"
                 onClick={() => onDelete(id)}
+                title="Delete notification"
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -91,7 +100,8 @@ const NotificationCenter: React.FC = () => {
     isLoading,
     markAsRead, 
     markAllAsRead, 
-    deleteNotification 
+    deleteNotification,
+    deleteAllNotifications 
   } = useNotifications();
 
   return (
@@ -100,25 +110,51 @@ const NotificationCenter: React.FC = () => {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
+            <Badge 
+              className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white"
+            >
               {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+            </Badge>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[350px] p-0" align="end">
         <div className="border-b px-4 py-3 flex justify-between items-center">
           <h3 className="font-medium text-sm">Notifications</h3>
-          {unreadCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-xs h-8" 
-              onClick={markAllAsRead}
-            >
-              Mark all as read
-            </Button>
-          )}
+          <div className="flex gap-1">
+            {unreadCount > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs h-7 px-2" 
+                onClick={markAllAsRead}
+              >
+                Mark all read
+              </Button>
+            )}
+            
+            {notifications.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="text-destructive cursor-pointer"
+                    onClick={deleteAllNotifications}
+                  >
+                    Delete all notifications
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
         
         <ScrollArea className="h-[300px]">
