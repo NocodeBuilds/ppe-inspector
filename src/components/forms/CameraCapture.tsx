@@ -4,6 +4,8 @@ import { Camera, ImageIcon, RefreshCw, Check, CameraOff, Loader2, SwitchCamera }
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
+import IconButton from '@/components/ui/icon-button';
 
 interface CameraCaptureProps {
   onImageCapture: (imageFile: File) => void;
@@ -59,8 +61,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         stopCamera();
       }
       
-      console.log(`Requesting camera with facing mode: ${facingMode}`);
-      
+      // Request camera access with proper constraints
       const constraints = {
         video: {
           facingMode: facingMode,
@@ -70,20 +71,16 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         audio: false
       };
       
+      // Try to get media stream
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      
-      console.log('Camera stream obtained successfully');
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
-        
-        // Set up event handlers for video element
         videoRef.current.onloadedmetadata = () => {
           if (videoRef.current) {
             videoRef.current.play()
               .then(() => {
-                console.log('Video playback started');
                 setIsCameraActive(true);
                 setIsLoading(false);
               })
@@ -94,13 +91,6 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
                 stopCamera();
               });
           }
-        };
-        
-        videoRef.current.onerror = () => {
-          console.error('Video element error');
-          setError('Video playback error');
-          setIsLoading(false);
-          stopCamera();
         };
       }
     } catch (error: any) {
@@ -123,7 +113,6 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       
       // If environment camera fails, try user-facing camera
       if (facingMode === 'environment' && !streamRef.current) {
-        console.log('Environment camera failed, trying user-facing camera');
         setFacingMode('user');
         setTimeout(() => startCamera(), 500);
       } else {
@@ -226,17 +215,17 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     activateCamera();
   };
 
-  // Render component
-  return (
-    <Card className="p-4 relative">
-      {isCameraActive ? (
+  // Render the camera states: idle, active or captured
+  const renderCameraState = () => {
+    if (isCameraActive) {
+      return (
         <div className="flex flex-col items-center">
-          <div className="relative w-full rounded-md border overflow-hidden bg-black">
+          <div className="relative w-full rounded-md overflow-hidden bg-black">
             <video 
               ref={videoRef} 
               autoPlay 
               playsInline 
-              className="w-full rounded-md border overflow-hidden"
+              className="w-full rounded-md"
               style={{ height: '240px', objectFit: 'cover' }}
             />
             <Button
@@ -268,9 +257,11 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
             </Button>
           </div>
         </div>
-      ) : capturedImage ? (
+      );
+    } else if (capturedImage) {
+      return (
         <div className="flex flex-col items-center">
-          <div className="relative w-full rounded-md border overflow-hidden" style={{ height: '240px' }}>
+          <div className="relative w-full rounded-md overflow-hidden" style={{ height: '240px' }}>
             <img 
               src={capturedImage} 
               alt="Captured PPE"
@@ -292,17 +283,16 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
             </Button>
           </div>
         </div>
-      ) : (
+      );
+    } else {
+      return (
         <div className="flex flex-col items-center">
           <div 
             className="w-full h-[240px] rounded-md border border-dashed flex items-center justify-center bg-muted/30"
           >
             <div className="flex flex-col items-center text-muted-foreground p-4">
               {isLoading ? (
-                <>
-                  <Loader2 className="h-12 w-12 mb-2 animate-spin" />
-                  <p>Initializing camera...</p>
-                </>
+                <LoadingSpinner size="md" text="Initializing camera..." />
               ) : error ? (
                 <>
                   <CameraOff className="h-12 w-12 mb-2 text-destructive" />
@@ -339,8 +329,13 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
             </Button>
           </div>
         </div>
-      )}
-      
+      );
+    }
+  };
+
+  return (
+    <Card className="p-4 relative">
+      {renderCameraState()}
       {/* Hidden canvas for processing */}
       <canvas ref={canvasRef} style={{ display: 'none' }} />
     </Card>
