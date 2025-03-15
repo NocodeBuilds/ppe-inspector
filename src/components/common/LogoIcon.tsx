@@ -1,3 +1,4 @@
+
 import React from 'react';
 interface LogoIconProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -23,8 +24,12 @@ const LogoIcon: React.FC<LogoIconProps> = ({
     xl: 'text-3xl'
   };
   return <div className={`flex items-center gap-2 ${className}`}>
-      <div className="ADD i logo in this section i will ipdate a png format logo externally u just create necessary code first">
-        <span className="text-green-600 font-bold text-3xl">RENEW</span>
+      <div>
+        <img 
+          src="/lovable-uploads/33c7839a-d2fd-44fa-9a32-3c307a931937.png" 
+          alt="TESTR Logo"
+          className={`h-auto ${size === 'sm' ? 'w-20' : size === 'md' ? 'w-24' : size === 'lg' ? 'w-28' : 'w-32'}`}
+        />
       </div>
       {withText && <span className={`${textSizeMap[size]} font-bold`}>
           <span className="text-primary">PPE</span> Inspector

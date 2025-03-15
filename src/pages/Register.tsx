@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -7,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggler } from '@/components/ThemeToggler';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import LogoIcon from '@/components/common/LogoIcon';
 
 const RegisterPage = () => {
   const [email, setEmail] = useState('');
@@ -21,12 +21,10 @@ const RegisterPage = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    // Redirect if already logged in
     if (user) {
       navigate('/');
     }
     
-    // Set a timeout to prevent the page loading indicator from flickering
     const timer = setTimeout(() => {
       setIsPageLoading(false);
     }, 500);
@@ -73,11 +71,7 @@ const RegisterPage = () => {
     <div className="flex flex-col min-h-screen bg-background">
       <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border h-14 backdrop-blur-sm bg-opacity-80">
         <div className="flex items-center justify-between h-full px-4">
-          <h1 className="text-xl font-bold">
-            <span>
-              <span className="text-primary">RENEW</span> Inspector
-            </span>
-          </h1>
+          <LogoIcon size="sm" withText={true} />
           <ThemeToggler />
         </div>
       </header>
@@ -86,7 +80,7 @@ const RegisterPage = () => {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-primary mb-2">REGISTER</h1>
-            <p className="text-muted-foreground">Create your RENEW Inspector account</p>
+            <p className="text-muted-foreground">Create your TESTR Inspector account</p>
           </div>
           
           <div className="glass-card rounded-lg p-6 shadow-lg border border-border/20">
