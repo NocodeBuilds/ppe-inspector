@@ -32,14 +32,14 @@ const ReportCard: React.FC<ReportCardProps> = ({
   visualizations,
 }) => {
   return (
-    <Card>
+    <Card className="backdrop-blur-sm bg-background/80 border-border/50 transition-all duration-300 hover:shadow-md">
       <CardHeader>
-        <CardTitle className="flex items-center">
+        <CardTitle className="flex items-center text-base sm:text-lg md:text-xl">
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-muted-foreground mb-4">
+        <p className="text-muted-foreground text-sm mb-4">
           {description}
         </p>
 
@@ -59,10 +59,10 @@ const ReportCard: React.FC<ReportCardProps> = ({
         ) : children}
         
         {typeof count === 'number' && (
-          <div className="flex justify-between items-center p-4 bg-muted/30 rounded-md border mb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center p-3 sm:p-4 bg-muted/30 rounded-md border mb-4 gap-2 sm:gap-0">
             <div>
-              <p className="font-medium">Total Count</p>
-              <p className="text-2xl font-bold">{count}</p>
+              <p className="font-medium text-sm sm:text-base">Total Count</p>
+              <p className="text-xl sm:text-2xl font-bold">{count}</p>
             </div>
             <div className="flex gap-2">
               {onGenerateExcel && (
@@ -70,17 +70,21 @@ const ReportCard: React.FC<ReportCardProps> = ({
                   variant="outline"
                   onClick={onGenerateExcel}
                   disabled={isGenerating || count === 0}
+                  className="text-xs sm:text-sm"
+                  size="sm"
                 >
                   Excel
-                  <FileSpreadsheet className="ml-2 h-4 w-4" />
+                  <FileSpreadsheet className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
               )}
               <Button 
                 onClick={onGenerate}
                 disabled={isGenerating || count === 0}
+                className="text-xs sm:text-sm"
+                size="sm"
               >
                 {isGenerating ? 'Generating...' : 'PDF Report'}
-                <Download className="ml-2 h-4 w-4" />
+                <Download className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
               </Button>
             </div>
           </div>
@@ -88,7 +92,7 @@ const ReportCard: React.FC<ReportCardProps> = ({
         
         {isEmpty && (
           <Alert className="mt-4">
-            <AlertDescription>
+            <AlertDescription className="text-sm">
               {emptyMessage}
             </AlertDescription>
           </Alert>
