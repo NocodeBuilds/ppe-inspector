@@ -9,23 +9,25 @@ interface ErrorFallbackProps {
   resetErrorBoundary: () => void;
   componentStack?: string;
   errorInfo?: React.ErrorInfo;
+  componentName?: string; // Add this optional property to the interface
 }
 
 const ErrorFallback: React.FC<ErrorFallbackProps> = ({ 
   error, 
   resetErrorBoundary,
   componentStack,
+  componentName = 'Unknown Component', // Provide a default value
 }) => {
   const navigate = useNavigate();
   
   // Log the error for debugging
   React.useEffect(() => {
-    console.error('Error caught by ErrorBoundary:', error);
+    console.error(`Error caught in ${componentName}:`, error);
     console.error('Component stack:', componentStack);
     
     // You can add error reporting service here
-    // reportErrorToService(error, componentStack);
-  }, [error, componentStack]);
+    // reportErrorToService(error, componentStack, componentName);
+  }, [error, componentStack, componentName]);
   
   const handleGoHome = () => {
     navigate('/');
@@ -41,6 +43,11 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
           </div>
           
           <h2 className="text-xl font-bold text-red-600">Something went wrong</h2>
+          {componentName && (
+            <p className="text-sm text-muted-foreground">
+              Error in: {componentName}
+            </p>
+          )}
           
           <div className="bg-red-50 border border-red-200 rounded p-3 w-full overflow-auto max-h-28 text-left">
             <p className="text-sm font-mono text-red-800 whitespace-pre-wrap">

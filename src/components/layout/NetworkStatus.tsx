@@ -15,7 +15,7 @@ interface NetworkStatusProps {
  */
 export const NetworkStatus: React.FC<NetworkStatusProps> = ({ className = '' }) => {
   const { isOnline, wasOffline } = useNetwork();
-  const { pendingActionsCount, syncAllPending } = useOfflineSync();
+  const { pendingActionsCount, syncOfflineData } = useOfflineSync();
   
   // Only show when offline or recently reconnected with pending actions
   if (isOnline && (!wasOffline || pendingActionsCount === 0)) {
@@ -43,7 +43,7 @@ export const NetworkStatus: React.FC<NetworkStatusProps> = ({ className = '' }) 
           <Badge 
             variant="outline" 
             className="gap-1 items-center cursor-pointer hover:bg-muted"
-            onClick={() => isOnline && syncAllPending()}
+            onClick={() => isOnline && syncOfflineData(true)}
           >
             <AlertCircle className="h-3 w-3" />
             <span>
