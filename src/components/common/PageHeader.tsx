@@ -19,13 +19,15 @@ const PageHeader = ({
   
   // Update global back navigation state when component mounts or props change
   React.useEffect(() => {
-    setShowBackButton(showBackButton);
-    setBackTo(backTo);
-    
-    // Clean up when component unmounts
-    return () => {
-      setShowBackButton(false);
-    };
+    if (showBackButton) {
+      setShowBackButton(true);
+      setBackTo(backTo);
+      
+      // Clean up when component unmounts
+      return () => {
+        setShowBackButton(false);
+      };
+    }
   }, [showBackButton, backTo, setShowBackButton, setBackTo]);
   
   return (

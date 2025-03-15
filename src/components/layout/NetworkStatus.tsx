@@ -31,17 +31,17 @@ export const NetworkStatus: React.FC = () => {
         )}
       </div>
       
-      <div className="flex items-center gap-2">
-        {pendingActionsCount > 0 && (
+      {pendingActionsCount > 0 && (
+        <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1 items-center">
             <AlertCircle className="h-3 w-3" />
             <span>
               {pendingActionsCount} {pendingActionsCount === 1 ? 'change' : 'changes'} pending
             </span>
           </Badge>
-        )}
-        <SyncStatusIndicator />
-      </div>
+          <SyncStatusIndicator />
+        </div>
+      )}
     </div>
   );
 };

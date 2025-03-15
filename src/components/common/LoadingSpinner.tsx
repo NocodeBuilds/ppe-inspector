@@ -12,7 +12,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = 'md', 
   fullScreen = false,
   text,
-  className
+  className = ''
 }) => {
   // Size mappings
   const sizeMap = {

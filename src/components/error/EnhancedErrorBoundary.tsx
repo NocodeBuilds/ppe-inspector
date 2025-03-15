@@ -33,9 +33,6 @@ const EnhancedErrorBoundary: React.FC<EnhancedErrorBoundaryProps> = ({
     if (onError) {
       onError(error, info);
     }
-    
-    // Here you could also report to an error tracking service
-    // reportError(error, info, component);
   };
   
   return (

@@ -121,7 +121,6 @@ const setupServiceWorkerUpdates = (registration: ServiceWorkerRegistration): voi
     newWorker.addEventListener('statechange', () => {
       if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
         console.log('New service worker installed and waiting to activate');
-        // Notify user of update
         notifyUpdate();
       }
     });
@@ -134,96 +133,16 @@ const setupServiceWorkerUpdates = (registration: ServiceWorkerRegistration): voi
 const notifyUpdate = (): void => {
   console.log('App update available');
   
-  // Example implementation with dialog
   if (confirm('New version available! Reload to update?')) {
     window.location.reload();
   }
 };
 
 /**
- * Request permission for push notifications
- */
-export const requestNotificationPermission = async (): Promise<boolean> => {
-  if (!('Notification' in window)) {
-    console.warn('This browser does not support notifications');
-    return false;
-  }
-  
-  if (Notification.permission === 'granted') {
-    return true;
-  }
-  
-  if (Notification.permission !== 'denied') {
-    try {
-      const permission = await Notification.requestPermission();
-      return permission === 'granted';
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      return false;
-    }
-  }
-  
-  return false;
-};
-
-/**
- * Register for background sync
- */
-export const registerBackgroundSync = async (): Promise<boolean> => {
-  if (!('serviceWorker' in navigator) || !('SyncManager' in window)) {
-    console.warn('Background sync not supported');
-    return false;
-  }
-  
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    
-    // Check if sync is supported
-    if ('sync' in registration) {
-      try {
-        // @ts-ignore - TypeScript doesn't recognize sync property
-        await registration.sync.register('sync-offline-data');
-        console.log('Registered for background sync');
-        return true;
-      } catch (error) {
-        console.error('Error registering sync:', error);
-        return false;
-      }
-    } else {
-      console.warn('Background sync API not available in this browser');
-      return false;
-    }
-  } catch (error) {
-    console.error('Background sync registration failed:', error);
-    return false;
-  }
-};
-
-/**
- * Listen for service worker messages
- */
-export const listenForServiceWorkerMessages = (
-  callback: (event: MessageEvent) => void
-): () => void => {
-  const listener = (event: MessageEvent) => {
-    if (event.origin !== window.location.origin) return;
-    callback(event);
-  };
-  
-  navigator.serviceWorker.addEventListener('message', listener);
-  
-  // Return function to unregister listener
-  return () => {
-    navigator.serviceWorker.removeEventListener('message', listener);
-  };
-};
-
-const PWA_INIT_TIMEOUT = 5000; // 5 seconds
-
-/**
  * Initialize all PWA features
  */
 export const initializePWA = async (): Promise<void> => {
+  const PWA_INIT_TIMEOUT = 5000; // 5 seconds
   let timeoutId: number;
   
   try {
@@ -240,19 +159,7 @@ export const initializePWA = async (): Promise<void> => {
     
     // Race between initialization and timeout
     await Promise.race([
-      (async () => {
-        // Register service worker
-        const registration = await registerServiceWorker();
-        if (!registration) return;
-        
-        // Request notification permission
-        await requestNotificationPermission();
-        
-        // Register for background sync but don't wait
-        registerBackgroundSync().catch(err => {
-          console.warn('Background sync registration failed, continuing:', err);
-        });
-      })(),
+      registerServiceWorker(),
       timeoutPromise
     ]);
   } catch (error) {

@@ -21,8 +21,6 @@ export const useBackButton = (show: boolean = true, destination: string | number
       setShowBackButton(false);
     };
   }, [show, destination, setShowBackButton, setBackTo]);
-  
-  return null;
 };
 
 export default useBackButton;
