@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Shield, Calendar, AlertTriangle, Download, FileText } from 'lucide-react';
+import { Plus, Shield, Calendar, AlertTriangle, Download, FileText, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CardOverlay from '@/components/ui/card-overlay';
 import AddPPEForm from '@/components/forms/AddPPEForm';
