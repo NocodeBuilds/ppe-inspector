@@ -10,6 +10,21 @@ const DashboardSkeleton: React.FC = () => {
         <Skeleton className="h-6 w-48 mx-auto" />
       </div>
       
+      {/* Analytics cards skeleton */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-3 mb-4">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="border rounded-lg p-3 space-y-2 bg-background/60">
+            <div className="flex justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-6 w-12" />
+              </div>
+              <Skeleton className="h-10 w-10 rounded-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+      
       {/* Dashboard cards skeleton - 2 column grid */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-3xl mx-auto">
         {/* Generate 6 card skeletons in a 2-column layout */}

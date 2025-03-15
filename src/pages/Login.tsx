@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { useLoginForm } from '@/hooks/useLoginForm';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import LogoIcon from '@/components/common/LogoIcon';
+
 const Login = () => {
   const [isPageLoading, setIsPageLoading] = useState(true);
   const {
@@ -74,10 +76,9 @@ const Login = () => {
       <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20 w-full">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="flex justify-center mb-4 px-0">
-              <LogoIcon size="xl" withText={false} />
+            <div className="flex justify-center mb-4">
+              <LogoIcon size="xl" withText={true} />
             </div>
-            <p className="mb-1 font-light text-sm">PPE Inspector</p>
           </div>
           
           <div className="glass-card rounded-lg p-6 shadow-lg border border-border/20">
