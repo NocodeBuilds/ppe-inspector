@@ -4,17 +4,6 @@
  * Handles PWA setup, registration, updates and features
  */
 
-// Extend ServiceWorkerRegistration type to include sync property
-interface SyncManager {
-  register(tag: string): Promise<void>;
-  getTags(): Promise<string[]>;
-}
-
-interface ExtendedServiceWorkerRegistration extends ServiceWorkerRegistration {
-  sync?: SyncManager;
-  periodicSync?: any; // We'll also extend this for the periodicSync manager
-}
-
 // Check if the app is in standalone/installed mode
 export const isRunningAsStandalone = (): boolean => {
   return window.matchMedia('(display-mode: standalone)').matches || 
@@ -23,16 +12,14 @@ export const isRunningAsStandalone = (): boolean => {
 
 // Detect iOS devices
 export const isIOS = (): boolean => {
-  return [
-    'iPad Simulator',
-    'iPhone Simulator',
-    'iPod Simulator',
-    'iPad',
-    'iPhone',
-    'iPod'
-  ].includes(navigator.platform) || 
-  // iPad on iOS 13+ detection
-  (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+  const iOSPlatforms = [
+    'iPad Simulator', 'iPhone Simulator', 'iPod Simulator',
+    'iPad', 'iPhone', 'iPod'
+  ];
+  
+  return iOSPlatforms.includes(navigator.platform) || 
+         // iPad on iOS 13+ detection
+         (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 };
 
 /**
@@ -58,33 +45,13 @@ export const setupPWAMetaTags = (): void => {
       document.head.appendChild(link);
     }
     
-    // Add meta description
-    const descriptionMeta = document.querySelector('meta[name="description"]');
-    if (descriptionMeta) {
-      descriptionMeta.setAttribute('content', 'PPE Inspector Pro - Track and manage PPE inventory and inspections');
-    } else {
-      const meta = document.createElement('meta');
-      meta.name = 'description';
-      meta.content = 'PPE Inspector Pro - Track and manage PPE inventory and inspections';
-      document.head.appendChild(meta);
-    }
-    
-    // Add Web App Manifest for better PWA support
+    // Make sure the manifest is linked
     const manifestLink = document.querySelector('link[rel="manifest"]');
     if (!manifestLink) {
       const link = document.createElement('link');
       link.rel = 'manifest';
       link.href = '/manifest.json';
       document.head.appendChild(link);
-    }
-    
-    // Add viewport meta tag for mobile responsiveness if not present
-    const viewportMeta = document.querySelector('meta[name="viewport"]');
-    if (!viewportMeta) {
-      const meta = document.createElement('meta');
-      meta.name = 'viewport';
-      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-      document.head.appendChild(meta);
     }
     
     // Add apple-mobile-web-app-capable meta tag for iOS full-screen mode
@@ -165,7 +132,6 @@ const setupServiceWorkerUpdates = (registration: ServiceWorkerRegistration): voi
  * Notify user of service worker update and prompt for refresh
  */
 const notifyUpdate = (): void => {
-  // This would use your app's notification system
   console.log('App update available');
   
   // Example implementation with dialog
@@ -201,53 +167,23 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 };
 
 /**
- * Register device for push notifications
- */
-export const registerForPushNotifications = async (): Promise<boolean> => {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    console.warn('Push notifications not supported');
-    return false;
-  }
-  
-  try {
-    const permission = await requestNotificationPermission();
-    if (!permission) return false;
-    
-    const registration = await navigator.serviceWorker.ready;
-    
-    // Here you would get push subscription from server and subscribe
-    // const subscription = await registration.pushManager.subscribe({
-    //   userVisibleOnly: true,
-    //   applicationServerKey: urlBase64ToUint8Array('YOUR_PUBLIC_VAPID_KEY')
-    // });
-    
-    // Send subscription to server
-    // await sendSubscriptionToServer(subscription);
-    
-    return true;
-  } catch (error) {
-    console.error('Failed to register for push notifications:', error);
-    return false;
-  }
-};
-
-/**
  * Register for background sync
  */
-export const registerBackgroundSync = async (syncTag: string = 'sync-inspections'): Promise<boolean> => {
-  if (!('serviceWorker' in navigator)) {
-    console.warn('Background sync not supported - service workers unavailable');
+export const registerBackgroundSync = async (): Promise<boolean> => {
+  if (!('serviceWorker' in navigator) || !('SyncManager' in window)) {
+    console.warn('Background sync not supported');
     return false;
   }
   
   try {
-    const registration = await navigator.serviceWorker.ready as ExtendedServiceWorkerRegistration;
+    const registration = await navigator.serviceWorker.ready;
     
     // Check if sync is supported
-    if ('SyncManager' in window && registration.sync) {
+    if ('sync' in registration) {
       try {
-        await registration.sync.register(syncTag);
-        console.log(`Registered for background sync: ${syncTag}`);
+        // @ts-ignore - TypeScript doesn't recognize sync property
+        await registration.sync.register('sync-offline-data');
+        console.log('Registered for background sync');
         return true;
       } catch (error) {
         console.error('Error registering sync:', error);
@@ -259,55 +195,6 @@ export const registerBackgroundSync = async (syncTag: string = 'sync-inspections
     }
   } catch (error) {
     console.error('Background sync registration failed:', error);
-    return false;
-  }
-};
-
-/**
- * Setup periodic background sync (if supported)
- */
-export const setupPeriodicSync = async (
-  tag: string = 'daily-sync',
-  minInterval: number = 24 * 60 * 60 * 1000 // 24 hours
-): Promise<boolean> => {
-  if (!('serviceWorker' in navigator) || !('periodicSync' in window)) {
-    console.warn('Periodic background sync not supported');
-    return false;
-  }
-  
-  try {
-    const registration = await navigator.serviceWorker.ready as ExtendedServiceWorkerRegistration;
-    
-    // Check if periodicSync exists
-    if (registration.periodicSync) {
-      try {
-        // Check permission
-        const status = await navigator.permissions.query({
-          name: 'periodic-background-sync' as any,
-        });
-        
-        if (status.state !== 'granted') {
-          console.warn('Periodic sync permission not granted');
-          return false;
-        }
-        
-        // Register periodic sync
-        await registration.periodicSync.register(tag, {
-          minInterval,
-        });
-        
-        console.log(`Registered for periodic sync: ${tag}`);
-        return true;
-      } catch (error) {
-        console.error('Error setting up periodic sync:', error);
-        return false;
-      }
-    } else {
-      console.warn('Periodic sync not available on registration');
-      return false;
-    }
-  } catch (error) {
-    console.error('Periodic sync registration failed:', error);
     return false;
   }
 };
@@ -331,11 +218,7 @@ export const listenForServiceWorkerMessages = (
   };
 };
 
-/**
- * Safety mechanism to prevent infinite loading
- * This ensures initialization completes within a reasonable time
- */
-const PWA_INIT_TIMEOUT = 10000; // 10 seconds
+const PWA_INIT_TIMEOUT = 5000; // 5 seconds
 
 /**
  * Initialize all PWA features
@@ -365,20 +248,10 @@ export const initializePWA = async (): Promise<void> => {
         // Request notification permission
         await requestNotificationPermission();
         
-        try {
-          // Register for background sync (but don't wait for it)
-          await registerBackgroundSync().catch(err => {
-            console.warn('Background sync registration failed, continuing:', err);
-          });
-          
-          // Try to setup periodic sync (but don't wait for it)
-          await setupPeriodicSync().catch(err => {
-            console.warn('Periodic sync setup failed, continuing:', err);
-          });
-        } catch (error) {
-          // Don't let these features block initialization
-          console.warn('Advanced PWA features setup failed, continuing:', error);
-        }
+        // Register for background sync but don't wait
+        registerBackgroundSync().catch(err => {
+          console.warn('Background sync registration failed, continuing:', err);
+        });
       })(),
       timeoutPromise
     ]);

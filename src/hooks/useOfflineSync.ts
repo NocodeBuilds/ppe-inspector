@@ -10,7 +10,6 @@ import {
   initializeDatabase,
   type OfflineAction
 } from '@/utils/indexedDBUtils';
-import { toast } from '@/hooks/use-toast';
 import { useToast } from '@/hooks/use-toast';
 
 interface OfflineSyncState {
@@ -26,7 +25,6 @@ const RETRY_DELAY_MS = 5000; // 5 seconds
 /**
  * Hook for managing offline data synchronization
  * Handles syncing when the device comes back online
- * Includes more robust error handling and retry mechanisms
  */
 export const useOfflineSync = () => {
   const { isOnline, wasOffline } = useNetwork();
@@ -58,7 +56,6 @@ export const useOfflineSync = () => {
       setState(prev => ({
         ...prev,
         pendingActionsCount: pendingActions.length,
-        // Clear error if we successfully checked
         lastSyncError: pendingActions.length > 0 ? prev.lastSyncError : null
       }));
       return pendingActions;
@@ -81,26 +78,8 @@ export const useOfflineSync = () => {
       
       console.log(`Processing offline action: ${action.type}, attempt ${attempt}`);
       
-      // In a real implementation, we would process based on action type
-      // For example:
-      if (action.type === 'create_inspection') {
-        // Process inspection creation
-        // await api.createInspection(action.data);
-        console.log('Processing create_inspection action:', action.data);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } else if (action.type === 'update_ppe') {
-        // Process PPE update
-        // await api.updatePPE(action.data);
-        console.log('Processing update_ppe action:', action.data);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } else {
-        // Generic handling for other action types
-        console.log(`Processing generic action: ${action.type}`);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
+      // In a real implementation, process based on action type
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
       
       // Mark action as completed
       await updateOfflineAction(actionId, { status: 'completed' });
@@ -174,7 +153,7 @@ export const useOfflineSync = () => {
       let failureCount = 0;
       
       for (const action of pendingActions) {
-        const success = await processAction(action.id);
+        const success = await processAction(action.id as string);
         if (success) {
           successCount++;
         } else {
@@ -214,7 +193,7 @@ export const useOfflineSync = () => {
           toast({
             title: 'Sync Partially Complete',
             description: `Synced ${successCount} items. ${failureCount} ${failureCount === 1 ? 'item' : 'items'} failed and will be retried.`,
-            variant: 'warning' // Using the new warning variant
+            variant: 'default'
           });
         }
       } else {
@@ -231,7 +210,7 @@ export const useOfflineSync = () => {
           toast({
             title: 'Sync Complete',
             description: `Successfully synced ${successCount} offline ${successCount === 1 ? 'action' : 'actions'}`,
-            variant: 'success' // Using the new success variant
+            variant: 'default'
           });
         }
       }
@@ -304,7 +283,7 @@ export const useOfflineSync = () => {
   useEffect(() => {
     checkPendingActions();
     
-    // Set up periodic check for pending actions
+    // Set up periodic check
     const intervalId = setInterval(() => {
       checkPendingActions();
     }, 60000); // Check every minute
@@ -331,7 +310,7 @@ export const useOfflineSync = () => {
       const { data } = event;
       
       // Handle sync complete messages from service worker
-      if (data?.type === 'SYNC_COMPLETE' || data?.type === 'REPORT_SYNC_COMPLETE') {
+      if (data?.type === 'SYNC_COMPLETE') {
         console.log('Received sync completion from service worker:', data.message);
         
         // Refresh pending actions count

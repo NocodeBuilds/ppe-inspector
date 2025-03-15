@@ -1,3 +1,4 @@
+
 /**
  * Utility functions for IndexedDB operations
  * Handles offline data storage, queuing, and synchronization
@@ -6,7 +7,6 @@
 const DB_NAME = 'ppe_inspector_db';
 const DB_VERSION = 1;
 const OFFLINE_ACTIONS_STORE = 'offline_actions';
-const INSPECTIONS_STORE = 'inspections';
 const TEMP_IMAGES_STORE = 'temp_images';
 
 export interface OfflineAction {
@@ -48,15 +48,6 @@ export const initIndexedDB = (): Promise<IDBDatabase> => {
         });
         offlineActionsStore.createIndex('status', 'status', { unique: false });
         offlineActionsStore.createIndex('timestamp', 'timestamp', { unique: false });
-      }
-      
-      if (!db.objectStoreNames.contains(INSPECTIONS_STORE)) {
-        const inspectionsStore = db.createObjectStore(INSPECTIONS_STORE, { 
-          keyPath: 'id', 
-          autoIncrement: true 
-        });
-        inspectionsStore.createIndex('ppeId', 'ppeId', { unique: false });
-        inspectionsStore.createIndex('timestamp', 'timestamp', { unique: false });
       }
       
       if (!db.objectStoreNames.contains(TEMP_IMAGES_STORE)) {
@@ -261,109 +252,6 @@ export const clearCompletedOfflineActions = async (): Promise<void> => {
     });
   } catch (error) {
     console.error('IndexedDB clear completed actions error:', error);
-  }
-};
-
-/**
- * Save inspection data for offline use
- */
-export const saveInspectionOffline = async (inspectionData: any): Promise<string> => {
-  try {
-    const db = await initIndexedDB();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(INSPECTIONS_STORE, 'readwrite');
-      const store = transaction.objectStore(INSPECTIONS_STORE);
-      
-      // Add timestamp
-      const dataToStore = {
-        ...inspectionData,
-        timestamp: Date.now(),
-        offlineCreated: true
-      };
-      
-      const request = store.add(dataToStore);
-      
-      request.onsuccess = (event) => {
-        const id = (event.target as IDBRequest).result as string;
-        resolve(id);
-      };
-      
-      request.onerror = (event) => {
-        console.error('Error saving inspection offline:', event);
-        reject('Failed to save inspection');
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error('IndexedDB save inspection error:', error);
-    throw error;
-  }
-};
-
-/**
- * Get all offline inspections
- */
-export const getOfflineInspections = async (): Promise<any[]> => {
-  try {
-    const db = await initIndexedDB();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(INSPECTIONS_STORE, 'readonly');
-      const store = transaction.objectStore(INSPECTIONS_STORE);
-      
-      const request = store.getAll();
-      
-      request.onsuccess = () => {
-        resolve(request.result);
-      };
-      
-      request.onerror = (event) => {
-        console.error('Error getting offline inspections:', event);
-        reject('Failed to get offline inspections');
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error('IndexedDB get offline inspections error:', error);
-    return [];
-  }
-};
-
-/**
- * Delete an offline inspection by ID
- */
-export const deleteOfflineInspection = async (id: string): Promise<void> => {
-  try {
-    const db = await initIndexedDB();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(INSPECTIONS_STORE, 'readwrite');
-      const store = transaction.objectStore(INSPECTIONS_STORE);
-      
-      const request = store.delete(id);
-      
-      request.onsuccess = () => {
-        resolve();
-      };
-      
-      request.onerror = (event) => {
-        console.error('Error deleting offline inspection:', event);
-        reject('Failed to delete inspection');
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error('IndexedDB delete inspection error:', error);
   }
 };
 

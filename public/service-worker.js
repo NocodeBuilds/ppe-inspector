@@ -1,4 +1,3 @@
-
 // Service Worker for PPE Inspector PWA
 const CACHE_NAME = 'ppe-inspector-v2';
 
