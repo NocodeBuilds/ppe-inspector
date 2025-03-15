@@ -5,7 +5,6 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   ClipboardCheck, 
   CheckCircle, 
-  XCircle, 
   Clock, 
   Calendar,
   TrendingUp,
@@ -14,6 +13,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DashboardAnalyticsProps {
   className?: string;
@@ -30,6 +30,7 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ className = '' 
     trend: 0 // percentage change from last month
   });
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     fetchAnalytics();
@@ -147,17 +148,17 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ className = '' 
   
   if (isLoading) {
     return (
-      <div className="w-full p-6 rounded-xl shadow-lg animate-pulse">
-        <div className="flex items-center justify-between mb-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-6 w-16" />
+      <div className="w-full p-2 rounded-xl animate-pulse">
+        <div className="flex items-center justify-between mb-2">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-16" />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-5 gap-1">
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="flex flex-col space-y-2">
-              <Skeleton className="h-10 w-10 rounded-full" />
-              <Skeleton className="h-6 w-full" />
-              <Skeleton className="h-5 w-3/4" />
+            <div key={i} className="flex flex-col space-y-1">
+              <Skeleton className="h-6 w-6 rounded-full mx-auto" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-3 w-3/4 mx-auto" />
             </div>
           ))}
         </div>
@@ -165,68 +166,87 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ className = '' 
     );
   }
   
+  const getIconSize = () => isMobile ? 14 : 18;
+  
   return (
-    <div className={`w-full rounded-xl overflow-hidden backdrop-blur-md bg-gradient-to-r from-primary/5 to-background/80 
-      border border-primary/20 shadow-lg ${className}`}>
-      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-primary/10 bg-primary/5">
-        <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
-          <BarChart3 className="text-primary h-5 w-5" />
+    <div className={`w-full rounded-lg overflow-hidden bg-background/80 
+      border border-primary/20 shadow-sm ${className}`}>
+      <div className="flex items-center justify-between p-1.5 border-b border-primary/10 bg-primary/5">
+        <h2 className="text-sm font-medium flex items-center gap-1">
+          <BarChart3 className="text-primary h-4 w-4" />
           <span>Performance Dashboard</span>
         </h2>
-        <span className="text-xs sm:text-sm text-muted-foreground bg-background/40 px-2 py-1 rounded-full">
-          Real-time insights
+        <span className="text-xs text-muted-foreground bg-background/40 px-1.5 py-0.5 rounded-full">
+          Real-time
         </span>
       </div>
       
-      <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-5 gap-4 sm:gap-6 fade-in">
-        <div className="flex flex-col items-center text-center p-3 rounded-lg transition-all hover:bg-primary/5 hover:scale-105 duration-300">
-          <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center mb-2 shadow-md">
-            <ClipboardCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <span className="text-2xl font-bold text-foreground">{stats.totalInspections}</span>
-          <span className="text-sm text-muted-foreground">Total Inspections</span>
-        </div>
+      <div className="p-1 grid grid-cols-5 gap-1">
+        <StatCard 
+          icon={<ClipboardCheck className={`h-${getIconSize()} w-${getIconSize()} text-blue-600 dark:text-blue-400`} />}
+          value={stats.totalInspections}
+          label="Total"
+          bgColor="bg-blue-100 dark:bg-blue-900/40"
+        />
         
-        <div className="flex flex-col items-center text-center p-3 rounded-lg transition-all hover:bg-primary/5 hover:scale-105 duration-300">
-          <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mb-2 shadow-md">
-            <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <span className="text-2xl font-bold text-foreground">{stats.passRate}%</span>
-          <span className="text-sm text-muted-foreground">Pass Rate</span>
-        </div>
+        <StatCard 
+          icon={<CheckCircle className={`h-${getIconSize()} w-${getIconSize()} text-emerald-600 dark:text-emerald-400`} />}
+          value={`${stats.passRate}%`}
+          label="Pass"
+          bgColor="bg-emerald-100 dark:bg-emerald-900/40"
+        />
         
-        <div className="flex flex-col items-center text-center p-3 rounded-lg transition-all hover:bg-primary/5 hover:scale-105 duration-300">
-          <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center mb-2 shadow-md">
-            <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-          </div>
-          <span className="text-2xl font-bold text-foreground">{stats.pendingInspections}</span>
-          <span className="text-sm text-muted-foreground">Pending Inspections</span>
-        </div>
+        <StatCard 
+          icon={<Clock className={`h-${getIconSize()} w-${getIconSize()} text-amber-600 dark:text-amber-400`} />}
+          value={stats.pendingInspections}
+          label="Pending"
+          bgColor="bg-amber-100 dark:bg-amber-900/40"
+        />
         
-        <div className="flex flex-col items-center text-center p-3 rounded-lg transition-all hover:bg-primary/5 hover:scale-105 duration-300">
-          <div className="h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center mb-2 shadow-md">
-            <Calendar className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-2xl font-bold text-foreground">{stats.thisMonth}</span>
-            {stats.trend !== 0 && (
-              <span className={`text-xs ${stats.trend > 0 ? 'text-green-500' : 'text-red-500'} flex items-center`}>
-                {stats.trend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {Math.abs(stats.trend)}%
-              </span>
-            )}
-          </div>
-          <span className="text-sm text-muted-foreground">This Month</span>
-        </div>
+        <StatCard 
+          icon={<Calendar className={`h-${getIconSize()} w-${getIconSize()} text-indigo-600 dark:text-indigo-400`} />}
+          value={stats.thisMonth}
+          label="Month"
+          bgColor="bg-indigo-100 dark:bg-indigo-900/40"
+          trend={stats.trend}
+        />
         
-        <div className="flex flex-col items-center text-center p-3 rounded-lg transition-all hover:bg-primary/5 hover:scale-105 duration-300">
-          <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center mb-2 shadow-md">
-            <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
-          </div>
-          <span className="text-2xl font-bold text-foreground">{stats.criticalItems}</span>
-          <span className="text-sm text-muted-foreground">Critical Items</span>
-        </div>
+        <StatCard 
+          icon={<AlertCircle className={`h-${getIconSize()} w-${getIconSize()} text-red-600 dark:text-red-400`} />}
+          value={stats.criticalItems}
+          label="Critical"
+          bgColor="bg-red-100 dark:bg-red-900/40"
+        />
       </div>
+    </div>
+  );
+};
+
+interface StatCardProps {
+  icon: React.ReactNode;
+  value: number | string;
+  label: string;
+  bgColor: string;
+  trend?: number;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ icon, value, label, bgColor, trend }) => {
+  const isMobile = useIsMobile();
+  
+  return (
+    <div className="flex flex-col items-center text-center py-1">
+      <div className={`h-6 w-6 rounded-full ${bgColor} flex items-center justify-center mb-0.5 shadow-sm`}>
+        {icon}
+      </div>
+      <div className="flex items-center gap-0.5 justify-center">
+        <span className="text-sm font-bold">{value}</span>
+        {trend !== undefined && trend !== 0 && (
+          <span className={`text-xs ${trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
+            {trend > 0 ? <TrendingUp className="h-2 w-2 inline" /> : <TrendingDown className="h-2 w-2 inline" />}
+          </span>
+        )}
+      </div>
+      <span className="text-xs text-muted-foreground leading-tight">{label}</span>
     </div>
   );
 };
