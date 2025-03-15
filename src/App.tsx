@@ -21,6 +21,7 @@ const Home = lazy(() => import(/* webpackChunkName: "home-page" */ "./pages/Home
 const ExpiringPPE = lazy(() => import(/* webpackChunkName: "expiring-ppe-page" */ "./pages/ExpiringPPE"));
 const UpcomingInspections = lazy(() => import(/* webpackChunkName: "upcoming-inspections-page" */ "./pages/UpcomingInspections"));
 const Equipment = lazy(() => import(/* webpackChunkName: "equipment-page" */ "./pages/Equipment"));
+const Analytics = lazy(() => import(/* webpackChunkName: "analytics-page" */ "./pages/Analytics"));
 const Settings = lazy(() => import(/* webpackChunkName: "settings-page" */ "./pages/Settings"));
 const Profile = lazy(() => import(/* webpackChunkName: "profile-page" */ "./pages/Profile"));
 const Login = lazy(() => import(/* webpackChunkName: "login-page" */ "./pages/Login"));
@@ -132,8 +133,10 @@ const App = () => {
                       <Route path="edit-profile" element={<EditProfile />} />
                       <Route path="start-inspection" element={<StartInspection />} />
                       <Route path="inspect/new" element={<ManualInspection />} />
+                      {/* Ensure this path exactly matches our navigation calls */}
                       <Route path="inspect/:ppeId" element={<InspectionForm />} />
                       <Route path="inspection/:id" element={<InspectionDetails />} />
+                      <Route path="analytics" element={<Analytics />} />
                       
                       {/* Update reports route to be accessible by all authenticated users */}
                       <Route path="reports" element={

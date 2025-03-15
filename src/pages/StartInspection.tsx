@@ -87,7 +87,8 @@ const StartInspection = () => {
       description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`
     });
     
-    navigate(`/inspection-form/${ppe.id}`);
+    // Fix: Update to correct route path
+    navigate(`/inspect/${ppe.id}`);
   };
 
   const handleScanError = (error: string) => {
@@ -108,7 +109,7 @@ const StartInspection = () => {
   };
 
   const handleManualInspection = () => {
-    navigate('/manual-inspection');
+    navigate('/inspect/new');
   };
 
   return (
