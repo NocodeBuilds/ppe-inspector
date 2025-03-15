@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -205,28 +204,6 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     setIsCapturing(false);
   };
   
-  const switchCamera = async () => {
-    if (availableDevices.length <= 1) {
-      toast({
-        title: 'Camera Switch',
-        description: 'No additional cameras available on this device',
-        variant: 'default',
-      });
-      return;
-    }
-    
-    const currentIndex = availableDevices.findIndex(device => device.deviceId === selectedDeviceId);
-    const nextIndex = (currentIndex + 1) % availableDevices.length;
-    const nextDeviceId = availableDevices[nextIndex].deviceId;
-    
-    setSelectedDeviceId(nextDeviceId);
-    
-    stopCamera();
-    setTimeout(() => {
-      startCamera();
-    }, 300);
-  };
-  
   const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) {
       console.error('Video or canvas reference is null');
@@ -336,7 +313,7 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
               <div 
                 className="w-12 h-12 rounded overflow-hidden border cursor-pointer bg-muted flex items-center justify-center"
                 onClick={() => {
-                  const img = new Image();
+                  const img = document.createElement('img');
                   img.src = photoUrl;
                   const w = window.open("");
                   if (w) {

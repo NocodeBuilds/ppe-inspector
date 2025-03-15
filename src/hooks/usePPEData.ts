@@ -1,6 +1,7 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { PPEItem } from '@/integrations/supabase/client';
+import { PPEItem, PPEStatus } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
 
 export function usePPEData() {
@@ -83,7 +84,7 @@ export function usePPEData() {
     }
   };
 
-  const updatePPEStatus = async ({ id, status }: { id: string; status: string }) => {
+  const updatePPEStatus = async ({ id, status }: { id: string; status: PPEStatus }) => {
     try {
       const { data, error } = await supabase
         .from('ppe_items')
