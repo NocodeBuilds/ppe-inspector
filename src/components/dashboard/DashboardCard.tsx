@@ -44,16 +44,16 @@ const DashboardCard = ({
       )}
       onClick={handleClick}
     >
-      <div className="flex items-center text-center p-2">
+      <div className="flex items-center text-center p-3">
         <div className={cn(
-          'w-8 h-8 rounded-full flex items-center justify-center mr-2',
+          'w-10 h-10 rounded-full flex items-center justify-center mr-3',
           iconBgColor
         )}>
           {icon}
         </div>
         <div className="text-left">
-          <h3 className="text-sm font-medium leading-tight">{title}</h3>
-          <p className="text-xs text-muted-foreground leading-tight">{description}</p>
+          <h3 className="text-base font-medium leading-tight">{title}</h3>
+          <p className="text-sm text-muted-foreground leading-tight">{description}</p>
         </div>
       </div>
     </Link>

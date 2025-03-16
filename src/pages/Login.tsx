@@ -68,6 +68,7 @@ const Login = () => {
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>;
   }
+
   return <div className="flex flex-col min-h-screen bg-background overflow-y-auto">
       <div className="absolute top-4 right-4">
         <ThemeToggler />
@@ -75,10 +76,8 @@ const Login = () => {
       
       <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20 w-full">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-8">
-              <LogoIcon size="xl" withText={true} className="transform scale-110 drop-shadow-lg" />
-            </div>
+          <div className="text-center mb-10">
+            <LogoIcon size="2xl" withText={true} className="transform drop-shadow-lg" />
           </div>
           
           <div className="glass-card rounded-lg p-6 shadow-lg border border-border/20">
@@ -97,9 +96,9 @@ const Login = () => {
                 <FormField control={form.control} name="email" render={({
                 field
               }) => <FormItem>
-                      <FormLabel>Email address</FormLabel>
+                      <FormLabel className="text-base">Email address</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="Your email address" disabled={isSubmitting} className="bg-background" {...field} />
+                        <Input type="email" placeholder="Your email address" disabled={isSubmitting} className="bg-background text-base p-6" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>} />
@@ -107,25 +106,25 @@ const Login = () => {
                 <FormField control={form.control} name="password" render={({
                 field
               }) => <FormItem>
-                      <FormLabel>Your Password</FormLabel>
+                      <FormLabel className="text-base">Your Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Your password" disabled={isSubmitting} className="bg-background" {...field} />
+                        <Input type="password" placeholder="Your password" disabled={isSubmitting} className="bg-background text-base p-6" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>} />
                 
-                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-5 text-lg" disabled={isSubmitting}>
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-6 text-lg" disabled={isSubmitting}>
                   {isSubmitting ? <div className="flex items-center justify-center">
                       <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
                       Signing in...
                     </div> : 'Sign in'}
                 </Button>
                 
-                <div className="text-center space-y-2 mt-4">
-                  <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground block">
+                <div className="text-center space-y-3 mt-6">
+                  <Link to="/forgot-password" className="text-base text-muted-foreground hover:text-foreground block">
                     Forgot your password?
                   </Link>
-                  <div className="block text-sm">
+                  <div className="block text-base pt-2">
                     Don't have an account?{' '}
                     <Link to="/register" className="text-primary hover:underline">
                       Sign up
@@ -139,4 +138,5 @@ const Login = () => {
       </div>
     </div>;
 };
+
 export default Login;

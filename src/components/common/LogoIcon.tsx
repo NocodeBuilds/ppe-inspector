@@ -1,10 +1,13 @@
+
 import React from 'react';
+
 interface LogoIconProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   withText?: boolean;
   className?: string;
   animateOnHover?: boolean;
 }
+
 const LogoIcon: React.FC<LogoIconProps> = ({
   size = 'md',
   withText = false,
@@ -16,9 +19,10 @@ const LogoIcon: React.FC<LogoIconProps> = ({
     sm: 'h-10 w-10',
     md: 'h-12 w-12',
     lg: 'h-16 w-16',
-    xl: 'h-20 w-20',
-    '2xl': 'h-24 w-24'
+    xl: 'h-24 w-24',
+    '2xl': 'h-32 w-32'
   };
+  
   const textSizeMap = {
     sm: 'text-xl',
     md: 'text-2xl',
@@ -26,6 +30,27 @@ const LogoIcon: React.FC<LogoIconProps> = ({
     xl: 'text-4xl',
     '2xl': 'text-5xl'
   };
-  return;
+
+  return (
+    <div className={`flex flex-col items-center ${className}`}>
+      <div className={`${animateOnHover ? 'transition-transform duration-300 hover:scale-105' : ''} 
+        rounded-full p-1 shadow-lg`}>
+        <img 
+          src="/lovable-uploads/logo.png" 
+          alt="PPE Inspector Logo" 
+          className={`${sizeMap[size]} object-contain drop-shadow-md`} 
+        />
+      </div>
+      {withText && (
+        <div className="flex flex-col items-center mt-2">
+          <span className={`${textSizeMap[size]} font-bold font-sans drop-shadow-sm`}>
+            <span className="text-primary">PPE</span> Inspector
+          </span>
+          <span className="text-sm text-muted-foreground">Safety Management System</span>
+        </div>
+      )}
+    </div>
+  );
 };
+
 export default LogoIcon;
