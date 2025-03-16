@@ -84,12 +84,16 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
       
       console.log('Starting scanner with configuration:', config);
       
-      // Always prefer back camera
-      const cameraConstraints = { facingMode: 'environment' };
+      // Camera constraints logic
+      let cameraConstraints: { facingMode?: string, deviceId?: { exact: string } } = { 
+        facingMode: 'environment' 
+      };
       
-      // Only use specific device ID if explicitly provided
+      // If a specific device ID is provided, use it
       if (selectedDeviceId) {
-        cameraConstraints.deviceId = { exact: selectedDeviceId };
+        cameraConstraints = {
+          deviceId: { exact: selectedDeviceId }
+        };
       }
       
       await scannerRef.current.start(

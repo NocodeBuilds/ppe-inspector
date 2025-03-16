@@ -15,6 +15,7 @@ interface ReportCardProps {
   onGenerateExcel?: () => void;
   isGenerating: boolean;
   children?: React.ReactNode;
+  visualizations?: React.ReactNode;
 }
 
 const ReportCard: React.FC<ReportCardProps> = ({
@@ -27,6 +28,7 @@ const ReportCard: React.FC<ReportCardProps> = ({
   onGenerateExcel,
   isGenerating,
   children,
+  visualizations,
 }) => {
   return (
     <Card className="backdrop-blur-sm bg-background/80 border-border/50 transition-all duration-200 hover:shadow-md">
@@ -41,6 +43,12 @@ const ReportCard: React.FC<ReportCardProps> = ({
         </p>
 
         {children}
+        
+        {visualizations && (
+          <div className="mt-4 mb-3">
+            {visualizations}
+          </div>
+        )}
         
         {typeof count === 'number' && (
           <div className="flex flex-row justify-between items-center p-2 bg-muted/30 rounded-md border mb-2 gap-1">
