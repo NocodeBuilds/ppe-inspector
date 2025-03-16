@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 interface ReportCardProps {
   title: React.ReactNode;
@@ -16,7 +15,6 @@ interface ReportCardProps {
   onGenerateExcel?: () => void;
   isGenerating: boolean;
   children?: React.ReactNode;
-  visualizations?: React.ReactNode;
 }
 
 const ReportCard: React.FC<ReportCardProps> = ({
@@ -29,7 +27,6 @@ const ReportCard: React.FC<ReportCardProps> = ({
   onGenerateExcel,
   isGenerating,
   children,
-  visualizations,
 }) => {
   return (
     <Card className="backdrop-blur-sm bg-background/80 border-border/50 transition-all duration-200 hover:shadow-md">
@@ -43,20 +40,7 @@ const ReportCard: React.FC<ReportCardProps> = ({
           {description}
         </p>
 
-        {visualizations ? (
-          <Tabs defaultValue="data" className="mb-3">
-            <TabsList className="mb-2 h-8">
-              <TabsTrigger value="data" className="text-xs h-6 px-2">Data</TabsTrigger>
-              <TabsTrigger value="visualizations" className="text-xs h-6 px-2">Visualizations</TabsTrigger>
-            </TabsList>
-            <TabsContent value="data">
-              {children}
-            </TabsContent>
-            <TabsContent value="visualizations">
-              {visualizations}
-            </TabsContent>
-          </Tabs>
-        ) : children}
+        {children}
         
         {typeof count === 'number' && (
           <div className="flex flex-row justify-between items-center p-2 bg-muted/30 rounded-md border mb-2 gap-1">

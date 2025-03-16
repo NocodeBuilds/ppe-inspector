@@ -26,6 +26,46 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const { showNotification } = useNotifications();
 
+  // Handle successful scan with proper data extraction
+  const handleScanSuccess = useCallback((decodedText: string) => {
+    console.log('QR code scan successful, raw text:', decodedText);
+    
+    // Try to extract a serial number from the QR code
+    // Common QR code formats: plain text, URL with params, or JSON
+    let serialNumber = decodedText.trim();
+    
+    try {
+      // Check if it's a URL with parameters
+      if (decodedText.includes('?')) {
+        const url = new URL(decodedText);
+        // Look for serial parameter
+        const serialParam = url.searchParams.get('serial') || 
+                           url.searchParams.get('serialNumber') || 
+                           url.searchParams.get('serial_number');
+        if (serialParam) {
+          serialNumber = serialParam;
+        }
+      } 
+      // Check if it's JSON
+      else if (decodedText.startsWith('{') && decodedText.endsWith('}')) {
+        const jsonData = JSON.parse(decodedText);
+        // Try common JSON key names for serial number
+        serialNumber = jsonData.serial || 
+                      jsonData.serialNumber || 
+                      jsonData.serial_number || 
+                      jsonData.id || 
+                      decodedText;
+      }
+      
+      console.log('Extracted serial number:', serialNumber);
+      onScanSuccess(serialNumber);
+    } catch (error) {
+      console.log('Error parsing QR code, using raw text:', error);
+      // If parsing fails, just use the raw text
+      onScanSuccess(decodedText);
+    }
+  }, [onScanSuccess]);
+
   const startScanner = useCallback(async () => {
     try {
       if (!scannerRef.current) {
@@ -40,19 +80,22 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: true
         },
-        rememberLastUsedCamera: true,
       };
       
       console.log('Starting scanner with configuration:', config);
       
-      const cameraConstraints = selectedDeviceId 
-        ? { deviceId: { exact: selectedDeviceId } } 
-        : { facingMode: 'environment' };
+      // Always prefer back camera
+      const cameraConstraints = { facingMode: 'environment' };
+      
+      // Only use specific device ID if explicitly provided
+      if (selectedDeviceId) {
+        cameraConstraints.deviceId = { exact: selectedDeviceId };
+      }
       
       await scannerRef.current.start(
         cameraConstraints,
         config,
-        onScanSuccess,
+        handleScanSuccess,
         onScanError
       );
       
@@ -66,7 +109,7 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
       console.error('Error starting QR scanner:', err);
       onScannerError(err);
     }
-  }, [scannerContainerId, onScanSuccess, onScanError, onScannerStart, onScannerError, selectedDeviceId, showNotification]);
+  }, [scannerContainerId, handleScanSuccess, onScanError, onScannerStart, onScannerError, selectedDeviceId, showNotification]);
 
   // Initialize scanner on mount or when deviceId changes
   useEffect(() => {

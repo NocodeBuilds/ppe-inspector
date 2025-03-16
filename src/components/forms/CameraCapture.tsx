@@ -1,11 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, ImageIcon, RefreshCw, Check, CameraOff, Loader2, SwitchCamera } from 'lucide-react';
+import { Camera, ImageIcon, RefreshCw, Check, CameraOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import CardOverlay from '@/components/ui/card-overlay';
 
 interface CameraCaptureProps {
   onImageCapture: (imageFile: File) => void;
@@ -62,9 +61,6 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
   const [capturedImage, setCapturedImage] = useState<string | null>(existingImage || null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
-  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -93,37 +89,8 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     
     setIsCameraActive(false);
   };
-  
-  const fetchAvailableDevices = async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ video: true });
-      
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      setAvailableDevices(videoDevices);
-      
-      // Try to find a back-facing camera first for mobile devices
-      const envCamera = videoDevices.find(device => 
-        device.label.toLowerCase().includes('back') || 
-        device.label.toLowerCase().includes('environment')
-      );
-      
-      if (envCamera) {
-        setSelectedDeviceId(envCamera.deviceId);
-        return envCamera.deviceId;
-      } else if (videoDevices.length > 0) {
-        setSelectedDeviceId(videoDevices[0].deviceId);
-        return videoDevices[0].deviceId;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error fetching camera devices:', error);
-      return null;
-    }
-  };
 
-  // Start camera with current facing mode
+  // Start camera with back camera
   const startCamera = async () => {
     setIsLoading(true);
     setError(null);
@@ -133,13 +100,9 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         stopCamera();
       }
       
-      const deviceId = await fetchAvailableDevices();
-      
-      // Request camera access with proper constraints
+      // Always request back-facing camera for PPE photos
       const constraints = {
-        video: deviceId 
-          ? { deviceId: { exact: deviceId } }
-          : { facingMode }
+        video: { facingMode: 'environment' }
       };
       
       // Try to get media stream
@@ -182,39 +145,12 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       setError(errorMessage);
       setIsLoading(false);
       
-      // If environment camera fails, try user-facing camera
-      if (facingMode === 'environment' && !streamRef.current) {
-        setFacingMode('user');
-        setTimeout(() => startCamera(), 500);
-      } else {
-        toast({
-          title: "Camera Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  // Switch between front and back cameras
-  const switchCamera = async () => {
-    if (availableDevices.length <= 1) {
       toast({
-        title: 'Camera Switch',
-        description: 'No additional cameras available on this device',
-        variant: 'default',
+        title: "Camera Error",
+        description: errorMessage,
+        variant: "destructive",
       });
-      return;
     }
-    
-    const currentIndex = availableDevices.findIndex(device => device.deviceId === selectedDeviceId);
-    const nextIndex = (currentIndex + 1) % availableDevices.length;
-    const nextDeviceId = availableDevices[nextIndex].deviceId;
-    
-    setSelectedDeviceId(nextDeviceId);
-    
-    stopCamera();
-    setTimeout(() => startCamera(), 300);
   };
 
   // Activate camera on button click
@@ -307,17 +243,6 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
               className="w-full rounded-md"
               style={{ height: '240px', objectFit: 'cover' }}
             />
-            {availableDevices.length > 1 && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="absolute top-2 right-2 bg-black/40 hover:bg-black/60"
-                onClick={switchCamera}
-              >
-                <SwitchCamera size={16} className="text-white" />
-              </Button>
-            )}
           </div>
           
           <div className="mt-4 flex justify-center gap-2">

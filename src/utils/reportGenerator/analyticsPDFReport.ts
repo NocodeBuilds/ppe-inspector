@@ -44,7 +44,7 @@ export const generateAnalyticsReport = (data: AnalyticsData) => {
   
   // Add title
   doc.setFontSize(18);
-  doc.text('PPE Analytics Report', 14, 22);
+  doc.text('PPE Report', 14, 22);
   
   // Add generation date
   doc.setFontSize(10);
@@ -183,5 +183,5 @@ export const generateAnalyticsReport = (data: AnalyticsData) => {
   }
   
   // Download the PDF
-  doc.save('ppe-analytics-report.pdf');
+  doc.save('ppe-report.pdf');
 };
