@@ -38,24 +38,24 @@ const Header = memo(({
 }) => {
   return (
     <header className="sticky top-0 z-50 flex justify-between items-center px-3 py-2 border-b bg-background/80 backdrop-blur-sm">
-      <div className="flex items-center">
+      <div className="flex items-center gap-2">
         {showBackButton ? (
           <Button 
             variant="ghost" 
             size="sm"
-            className="mr-2 h-8 w-8 p-0"
+            className="mr-2 h-9 w-9 p-0"
             onClick={handleBack}
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
           </Button>
         ) : (
-          <LogoIcon size="sm" className="mr-2" />
+          <LogoIcon size="sm" className="mr-1" />
         )}
         
-        {!showBackButton && <span className="text-base font-medium">PPE Inspector</span>}
+        {!showBackButton && <span className="text-base font-medium hidden sm:inline">PPE Inspector</span>}
       </div>
       
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <ThemeToggler />
         <NotificationCenter />
       </div>
@@ -137,7 +137,7 @@ const MainLayout = () => {
             />
           )}
           
-          <main className="flex-1 container mx-auto px-3 sm:px-4 py-3 sm:py-4 w-full max-w-6xl overflow-y-auto">
+          <main className="flex-1 container mx-auto px-4 py-4 sm:py-5 w-full max-w-6xl overflow-y-auto">
             <Suspense fallback={<LoadingSpinner fullScreen text="Loading..." />}>
               <ErrorBoundaryWithFallback>
                 <Outlet />

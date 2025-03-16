@@ -40,19 +40,20 @@ const DashboardCard = ({
         'border border-border/40 shadow-sm',
         'hover:border-primary/40 focus:outline-none focus:ring-1 focus:ring-ring',
         'bg-background/80 backdrop-blur-sm',
+        isMobile ? 'p-1' : '',
         className
       )}
       onClick={handleClick}
     >
-      <div className="flex items-center text-center p-3">
+      <div className="flex items-center p-3 sm:p-4">
         <div className={cn(
-          'w-10 h-10 rounded-full flex items-center justify-center mr-3',
+          'w-12 h-12 rounded-full flex items-center justify-center mr-3 shrink-0',
           iconBgColor
         )}>
           {icon}
         </div>
         <div className="text-left">
-          <h3 className="text-base font-medium leading-tight">{title}</h3>
+          <h3 className="text-base sm:text-lg font-medium leading-tight">{title}</h3>
           <p className="text-sm text-muted-foreground leading-tight">{description}</p>
         </div>
       </div>

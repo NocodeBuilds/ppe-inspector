@@ -76,11 +76,11 @@ const Login = () => {
       
       <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20 w-full">
         <div className="w-full max-w-md">
-          <div className="text-center mb-10">
-            <LogoIcon size="2xl" withText={true} className="transform drop-shadow-lg" />
+          <div className="text-center mb-12">
+            <LogoIcon size="xl" className="transform drop-shadow-lg" />
           </div>
           
-          <div className="glass-card rounded-lg p-6 shadow-lg border border-border/20">
+          <div className="glass-card rounded-lg p-6 sm:p-8 shadow-lg border border-border/20">
             {location.state?.registrationSuccess && <Alert className="mb-4 bg-success/10 text-success border-success/20">
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>Registration successful! Please login.</AlertDescription>
@@ -96,7 +96,7 @@ const Login = () => {
                 <FormField control={form.control} name="email" render={({
                 field
               }) => <FormItem>
-                      <FormLabel className="text-base">Email address</FormLabel>
+                      <FormLabel className="text-base sm:text-lg">Email address</FormLabel>
                       <FormControl>
                         <Input type="email" placeholder="Your email address" disabled={isSubmitting} className="bg-background text-base p-6" {...field} />
                       </FormControl>
@@ -106,7 +106,7 @@ const Login = () => {
                 <FormField control={form.control} name="password" render={({
                 field
               }) => <FormItem>
-                      <FormLabel className="text-base">Your Password</FormLabel>
+                      <FormLabel className="text-base sm:text-lg">Your Password</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="Your password" disabled={isSubmitting} className="bg-background text-base p-6" {...field} />
                       </FormControl>
