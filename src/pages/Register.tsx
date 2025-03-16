@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -69,21 +70,17 @@ const RegisterPage = () => {
   
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border h-14 backdrop-blur-sm bg-opacity-80">
-        <div className="flex items-center justify-between h-full px-4">
-          <LogoIcon size="sm" withText={true} />
-          <ThemeToggler />
-        </div>
-      </header>
+      <div className="absolute top-4 right-4">
+        <ThemeToggler />
+      </div>
       
-      <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20">
+      <div className="flex-1 flex flex-col justify-center items-center px-4 py-8 pt-20">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-primary mb-2">REGISTER</h1>
-            <p className="text-muted-foreground">Create your TESTR Inspector account</p>
+          <div className="text-center mb-6">
+            <LogoIcon size="lg" className="mx-auto" withText={true} />
           </div>
           
-          <div className="glass-card rounded-lg p-6 shadow-lg border border-border/20">
+          <div className="glass-card rounded-lg p-6 shadow-lg border border-border/20 mt-4">
             {error && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />

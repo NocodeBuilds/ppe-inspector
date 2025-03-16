@@ -56,15 +56,13 @@ const ForgotPasswordPage = () => {
         <ThemeToggler />
       </div>
       
-      <div className="flex-1 flex flex-col justify-center items-center px-4 py-12">
+      <div className="flex-1 flex flex-col justify-center items-center px-4 py-8">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <LogoIcon size="lg" className="mx-auto mb-2" />
-            <h1 className="text-2xl font-bold text-primary mt-4">RESET PASSWORD</h1>
-            <p className="text-muted-foreground">We'll send you a reset link</p>
+          <div className="text-center mb-6">
+            <LogoIcon size="lg" className="mx-auto" withText={true} />
           </div>
           
-          <div className="glass-card rounded-lg p-6 sm:p-8 shadow-lg border border-border/20">
+          <div className="glass-card rounded-lg p-6 sm:p-8 shadow-lg border border-border/20 mt-4">
             {error && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />

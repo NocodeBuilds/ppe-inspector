@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -67,13 +68,13 @@ const Login = () => {
         <ThemeToggler />
       </div>
       
-      <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 w-full">
+      <div className="flex-1 flex flex-col justify-center items-center px-4 py-8 w-full">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <LogoIcon size="lg" className="mx-auto" />
+          <div className="text-center mb-6">
+            <LogoIcon size="lg" className="mx-auto" withText={true} />
           </div>
           
-          <div className="glass-card rounded-lg p-6 sm:p-8 shadow-lg border border-border/20">
+          <div className="glass-card rounded-lg p-6 sm:p-8 shadow-lg border border-border/20 mt-4">
             {location.state?.registrationSuccess && <Alert className="mb-4 bg-success/10 text-success border-success/20">
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>Registration successful! Please login.</AlertDescription>
