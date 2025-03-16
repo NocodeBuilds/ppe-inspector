@@ -127,8 +127,7 @@ const Home = () => {
           
           {/* Quick Actions */}
           <div className="grid grid-cols-2 gap-2 max-w-6xl mx-auto">
-            {(isAdmin || isUser) && <Button variant="outline" className="h-auto flex items-center justify-start gap-2 p-2
-                border border-success/30 bg-gradient-to-br from-background to-success/5" onClick={() => setShowAddPPE(true)}>
+            {(isAdmin || isUser) && <Button variant="outline" onClick={() => setShowAddPPE(true)} className="h-auto flex items-center justify-start gap-2 p-2 border border-success/30 bg-gradient-to-br from-background to-success/5 font-normal text-base">
                 <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center shadow-sm">
                   <Plus size={iconSize} className="text-primary-foreground" />
                 </div>
@@ -177,8 +176,7 @@ const Home = () => {
               </div>
             </Button>
             
-            <Button variant="outline" className="h-auto flex items-center justify-start gap-2 p-2
-              border border-orange-200 dark:border-orange-900 bg-gradient-to-br from-background to-orange-50 dark:from-background dark:to-orange-950/20" onClick={() => navigate('/flagged')}>
+            <Button variant="outline" onClick={() => navigate('/flagged')} className="h-auto flex items-center justify-start gap-2 p-2 border border-orange-200 dark:border-orange-900 bg-gradient-to-br from-background to-orange-50 dark:from-background dark:to-orange-950/20 font-normal">
               <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center shadow-sm">
                 <AlertCircle size={iconSize} className="text-primary-foreground" />
               </div>
