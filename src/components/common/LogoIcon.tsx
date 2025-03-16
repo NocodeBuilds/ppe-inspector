@@ -11,11 +11,11 @@ interface LogoIconProps {
 }
 
 const LogoIcon: React.FC<LogoIconProps> = ({
-  size = 'md',
+  size = 'lg',
   className = '',
   animateOnHover = true,
   withText,
-  tagline = 'PPE Inspector'
+  tagline = 'PPE Inspect'
 }) => {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password';
