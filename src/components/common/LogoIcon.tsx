@@ -1,7 +1,5 @@
-
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-
 interface LogoIconProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
@@ -9,7 +7,6 @@ interface LogoIconProps {
   withText?: boolean;
   tagline?: string;
 }
-
 const LogoIcon: React.FC<LogoIconProps> = ({
   size = 'lg',
   className = '',
@@ -29,7 +26,7 @@ const LogoIcon: React.FC<LogoIconProps> = ({
     xl: 'h-24 w-24 sm:h-32 sm:w-32',
     '2xl': 'h-32 w-32 sm:h-40 sm:w-40'
   };
-  
+
   // Text size mappings that scale better on mobile
   const textSizeMap = {
     sm: 'text-lg sm:text-xl',
@@ -41,25 +38,15 @@ const LogoIcon: React.FC<LogoIconProps> = ({
 
   // Determine if we should show text
   const shouldShowText = withText !== undefined ? withText : isLoginPage || isTopNav;
-
-  return (
-    <div className={`flex ${isLoginPage ? 'flex-col' : 'flex-row'} items-center ${className}`}>
+  return <div className={`flex ${isLoginPage ? 'flex-col' : 'flex-row'} items-center ${className}`}>
       <div className={`${animateOnHover ? 'transition-transform duration-300 hover:scale-105' : ''}`}>
-        <img 
-          src="/lovable-uploads/logo.png" 
-          alt="PPE Inspector Logo" 
-          className={`${sizeMap[size]} object-contain`} 
-        />
+        <img src="/lovable-uploads/logo.png" alt="PPE Inspector Logo" className={`${sizeMap[size]} object-contain`} />
       </div>
-      {shouldShowText && (
-        <div className={`${isLoginPage ? 'mt-2' : 'ml-2'}`}>
-          <span className={`${textSizeMap[size]} font-medium text-primary`}>
+      {shouldShowText && <div className={`${isLoginPage ? 'mt-2' : 'ml-2'}`}>
+          <span className="">
             {tagline}
           </span>
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 };
-
 export default LogoIcon;
