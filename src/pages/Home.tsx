@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Shield, Calendar, AlertTriangle, Download, FileText, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
-import LogoIcon from '@/components/common/LogoIcon';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Home = () => {
@@ -114,14 +112,12 @@ const Home = () => {
     });
   };
 
-  // Adjusted icon size - larger on mobile
   const iconSize = isMobile ? 18 : 20;
 
   return (
     <div className="space-y-4">
       {profile && (
         <div className="flex items-center justify-center mb-3">
-          <LogoIcon size="sm" className="mr-2" />
           <div>
             <p className="text-base font-medium">
               Welcome, <span className="font-semibold">{profile.full_name || 'User'}</span>

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -28,7 +27,6 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Check for registration success message from location state
   useEffect(() => {
     if (location.state?.registrationSuccess) {
       toast({
@@ -37,32 +35,27 @@ const Login = () => {
         variant: 'default'
       });
 
-      // Clear the state to prevent showing the message again on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
-  // Handle authentication state
   useEffect(() => {
     console.log("Auth state in Login:", {
       user,
       isLoading
     });
 
-    // If authenticated, redirect to home
     if (user) {
       navigate('/');
       return;
     }
 
-    // Set a timeout to prevent the page loading indicator from flickering
     const timer = setTimeout(() => {
       setIsPageLoading(false);
     }, 500);
     return () => clearTimeout(timer);
   }, [user, navigate]);
 
-  // Show loading spinner while checking auth state
   if (isLoading || isPageLoading) {
     return <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -74,10 +67,10 @@ const Login = () => {
         <ThemeToggler />
       </div>
       
-      <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20 w-full">
+      <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 w-full">
         <div className="w-full max-w-md">
-          <div className="text-center mb-12">
-            <LogoIcon size="xl" className="transform drop-shadow-lg" />
+          <div className="text-center mb-8">
+            <LogoIcon size="lg" className="mx-auto" />
           </div>
           
           <div className="glass-card rounded-lg p-6 sm:p-8 shadow-lg border border-border/20">

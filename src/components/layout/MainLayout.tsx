@@ -38,7 +38,7 @@ const Header = memo(({
 }) => {
   return (
     <header className="sticky top-0 z-50 flex justify-between items-center px-3 py-2 border-b bg-background/80 backdrop-blur-sm">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center">
         {showBackButton ? (
           <Button 
             variant="ghost" 
@@ -49,10 +49,8 @@ const Header = memo(({
             <ArrowLeft size={20} />
           </Button>
         ) : (
-          <LogoIcon size="sm" className="mr-1" />
+          <LogoIcon size="sm" withText={true} className="flex-shrink-0" />
         )}
-        
-        {!showBackButton && <span className="text-base font-medium hidden sm:inline">PPE Inspector</span>}
       </div>
       
       <div className="flex items-center gap-3">

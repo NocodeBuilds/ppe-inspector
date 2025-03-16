@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -55,11 +56,11 @@ const ForgotPasswordPage = () => {
         <ThemeToggler />
       </div>
       
-      <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20">
+      <div className="flex-1 flex flex-col justify-center items-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <LogoIcon size="lg" className="transform drop-shadow-lg mb-6" />
-            <h1 className="text-3xl font-bold text-primary mb-2">RESET PASSWORD</h1>
+            <LogoIcon size="lg" className="mx-auto mb-2" />
+            <h1 className="text-2xl font-bold text-primary mt-4">RESET PASSWORD</h1>
             <p className="text-muted-foreground">We'll send you a reset link</p>
           </div>
           
