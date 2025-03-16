@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -7,13 +6,15 @@ interface LogoIconProps {
   className?: string;
   animateOnHover?: boolean;
   withText?: boolean;
+  tagline?: string; // Add this line
 }
 
 const LogoIcon: React.FC<LogoIconProps> = ({
   size = 'md',
   className = '',
   animateOnHover = true,
-  withText
+  withText,
+  tagline = 'PPE Inspector' // Add this line
 }) => {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password';
@@ -52,7 +53,7 @@ const LogoIcon: React.FC<LogoIconProps> = ({
       {shouldShowText && (
         <div className={`${isLoginPage ? 'mt-2' : 'ml-2'}`}>
           <span className={`${textSizeMap[size]} font-medium text-primary`}>
-            PPE Inspector
+            { PPE INSPECTOR} {/* Replace hardcoded text with tagline */}
           </span>
         </div>
       )}
