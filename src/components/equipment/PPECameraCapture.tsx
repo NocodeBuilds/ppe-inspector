@@ -19,12 +19,15 @@ const PPECameraCapture: React.FC<PPECameraCaptureProps> = ({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [cameraTimeout, setCameraTimeout] = useState<NodeJS.Timeout | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   // Cleanup function to stop camera stream
   const stopCamera = () => {
+    console.log("PPECameraCapture: Stopping camera");
+    
     if (stream) {
       stream.getTracks().forEach(track => {
         track.stop();
@@ -34,6 +37,15 @@ const PPECameraCapture: React.FC<PPECameraCaptureProps> = ({
     
     if (videoRef.current) {
       videoRef.current.srcObject = null;
+    }
+    
+    setIsCameraOpen(false);
+    setIsCapturing(false);
+    
+    // Clear any existing timeout
+    if (cameraTimeout) {
+      clearTimeout(cameraTimeout);
+      setCameraTimeout(null);
     }
   };
   
@@ -47,12 +59,19 @@ const PPECameraCapture: React.FC<PPECameraCaptureProps> = ({
   // Function to get available cameras with preference for back camera
   const getBackCamera = async () => {
     try {
+      console.log("PPECameraCapture: Getting available cameras");
+      
       // First, request general camera access to prompt permissions
       await navigator.mediaDevices.getUserMedia({ video: true });
       
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cameras = devices.filter(device => device.kind === 'videoinput');
       setAvailableCameras(cameras);
+      
+      console.log(`PPECameraCapture: Found ${cameras.length} cameras`);
+      cameras.forEach((camera, index) => {
+        console.log(`Camera ${index}: ${camera.label}`);
+      });
       
       // Try to find a back camera by label
       const backCamera = cameras.find(camera => 
@@ -75,38 +94,102 @@ const PPECameraCapture: React.FC<PPECameraCaptureProps> = ({
     setIsCapturing(true);
     setCameraError(null);
     
+    console.log("PPECameraCapture: Starting camera");
+    
+    // Set a timeout to prevent getting stuck in loading state
+    const timeout = setTimeout(() => {
+      console.log("PPECameraCapture: Camera initialization timed out");
+      if (isCapturing) {
+        setCameraError("Camera initialization timed out. Please try again.");
+        setIsCapturing(false);
+      }
+    }, 10000); // 10 second timeout
+    
+    setCameraTimeout(timeout);
+    
     try {
+      // Check if browser supports getUserMedia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Your browser does not support camera access');
+      }
+      
+      // Try to get camera ID for the back camera
       const backCameraId = await getBackCamera();
       
       if (!backCameraId) {
         throw new Error('No camera found on this device');
       }
       
-      // Request specific camera using deviceId
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          deviceId: { exact: backCameraId },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
+      console.log("PPECameraCapture: Using camera ID:", backCameraId);
       
+      // Try different approaches to get a camera stream
+      let mediaStream: MediaStream;
+      
+      try {
+        // First try with specific deviceId
+        console.log("PPECameraCapture: Trying with specific deviceId");
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            deviceId: { exact: backCameraId },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+      } catch (err) {
+        console.log("PPECameraCapture: Specific deviceId failed, trying environment facing", err);
+        // If that fails, try with environment-facing
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } }
+        });
+      }
+      
+      // Set the stream state
       setStream(mediaStream);
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play();
+        
+        videoRef.current.onloadedmetadata = async () => {
+          console.log("PPECameraCapture: Video metadata loaded");
+          if (videoRef.current) {
+            try {
+              await videoRef.current.play();
+              console.log("PPECameraCapture: Video playback started");
+              
+              // Clear the timeout since camera initialized successfully
+              if (cameraTimeout) {
+                clearTimeout(cameraTimeout);
+                setCameraTimeout(null);
+              }
+            } catch (error) {
+              console.error("Error playing video:", error);
+            }
+          }
+          setIsCapturing(false);
+        };
       }
     } catch (error: any) {
       console.error('Camera error:', error);
       setCameraError(error.message || 'Could not access camera');
+      
+      // Clear the timeout
+      if (cameraTimeout) {
+        clearTimeout(cameraTimeout);
+        setCameraTimeout(null);
+      }
+      
       toast({
         variant: 'destructive',
         title: 'Camera Error',
         description: error.message || 'Could not access camera'
       });
     } finally {
-      setIsCapturing(false);
+      // Ensure isCapturing is set to false if it hasn't been already
+      setTimeout(() => {
+        if (isCapturing) {
+          setIsCapturing(false);
+        }
+      }, 3000);
     }
   };
   

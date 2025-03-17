@@ -11,47 +11,6 @@ interface CameraCaptureProps {
   existingImage?: string | null;
 }
 
-// Function to compress and resize images for better performance
-const resizeAndCompressImage = (imageDataUrl: string, maxWidth = 800, quality = 0.8): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let width = img.width;
-      let height = img.height;
-      
-      // Calculate new dimensions if image is larger than maxWidth
-      if (width > maxWidth) {
-        height = (height * maxWidth) / width;
-        width = maxWidth;
-      }
-      
-      // Set canvas dimensions
-      canvas.width = width;
-      canvas.height = height;
-      
-      // Draw and compress image
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Could not get canvas context'));
-        return;
-      }
-      
-      ctx.drawImage(img, 0, 0, width, height);
-      
-      // Get compressed data URL
-      const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-      resolve(compressedDataUrl);
-    };
-    
-    img.onerror = () => {
-      reject(new Error('Failed to load image'));
-    };
-    
-    img.src = imageDataUrl;
-  });
-};
-
 const CameraCapture: React.FC<CameraCaptureProps> = ({ 
   onImageCapture, 
   existingImage 
@@ -61,6 +20,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
   const [capturedImage, setCapturedImage] = useState<string | null>(existingImage || null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cameraTimeout, setCameraTimeout] = useState<NodeJS.Timeout | null>(null);
   
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -71,11 +31,15 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
   useEffect(() => {
     return () => {
       stopCamera();
+      if (cameraTimeout) {
+        clearTimeout(cameraTimeout);
+      }
     };
-  }, []);
+  }, [cameraTimeout]);
 
   // Stop camera and release resources
   const stopCamera = () => {
+    console.log("CameraCapture: Stopping camera");
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => {
         track.stop();
@@ -88,41 +52,136 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     }
     
     setIsCameraActive(false);
+    setIsLoading(false);
   };
 
-  // Start camera with back camera
+  // Function to compress and resize images for better performance
+  const resizeAndCompressImage = async (imageDataUrl: string, maxWidth = 800, quality = 0.8): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Calculate new dimensions if image is larger than maxWidth
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        
+        // Set canvas dimensions
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw and compress image
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Get compressed data URL
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedDataUrl);
+      };
+      
+      img.onerror = () => {
+        reject(new Error('Failed to load image'));
+      };
+      
+      img.src = imageDataUrl;
+    });
+  };
+
+  // Start camera with simpler constraints focused on back camera first
   const startCamera = async () => {
     setIsLoading(true);
     setError(null);
+    console.log("CameraCapture: Starting camera initialization");
+    
+    // Set a timeout to prevent getting stuck in loading state
+    const timeout = setTimeout(() => {
+      console.log("CameraCapture: Camera initialization timed out");
+      if (isLoading) {
+        setError('Camera initialization timed out. Please try again.');
+        setIsLoading(false);
+        if (streamRef.current) {
+          stopCamera();
+        }
+      }
+    }, 10000); // 10 second timeout
+    
+    setCameraTimeout(timeout);
     
     try {
       if (streamRef.current) {
         stopCamera();
       }
       
-      // Always request back-facing camera for PPE photos
-      const constraints = {
-        video: { facingMode: 'environment' }
-      };
+      // Check if the browser supports getUserMedia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Your browser does not support camera access');
+      }
       
-      // Try to get media stream
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      // Simple constraints focused on getting any camera working first
+      console.log("CameraCapture: Requesting camera with basic constraints");
+      let stream: MediaStream;
+      
+      try {
+        // First try to get the environment-facing (back) camera
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
+        });
+        console.log("CameraCapture: Successfully got environment camera");
+      } catch (err) {
+        console.log("CameraCapture: Couldn't get environment camera, trying any camera", err);
+        // If that fails, try to get any camera
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+        console.log("CameraCapture: Successfully got any camera");
+      }
+      
+      // Check if we got a valid stream
+      if (!stream) {
+        throw new Error('Could not access any camera');
+      }
+      
+      streamRef.current = stream;
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        streamRef.current = stream;
         videoRef.current.onloadedmetadata = () => {
+          console.log("CameraCapture: Video metadata loaded");
           if (videoRef.current) {
             videoRef.current.play()
               .then(() => {
+                console.log("CameraCapture: Video playback started");
                 setIsCameraActive(true);
                 setIsLoading(false);
+                
+                // Clear the timeout since camera initialized successfully
+                if (cameraTimeout) {
+                  clearTimeout(cameraTimeout);
+                  setCameraTimeout(null);
+                }
               })
               .catch(err => {
                 console.error('Error playing video:', err);
                 setError('Could not start video playback');
                 setIsLoading(false);
                 stopCamera();
+                
+                // Clear the timeout
+                if (cameraTimeout) {
+                  clearTimeout(cameraTimeout);
+                  setCameraTimeout(null);
+                }
               });
           }
         };
@@ -144,6 +203,12 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       
       setError(errorMessage);
       setIsLoading(false);
+      
+      // Clear the timeout
+      if (cameraTimeout) {
+        clearTimeout(cameraTimeout);
+        setCameraTimeout(null);
+      }
       
       toast({
         title: "Camera Error",
@@ -174,8 +239,8 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       const canvas = canvasRef.current;
       
       // Set canvas dimensions to match video dimensions
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
       
       const context = canvas.getContext('2d');
       if (context) {
@@ -295,6 +360,8 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         <div className="flex flex-col items-center">
           <div 
             className="w-full h-[240px] rounded-md border border-dashed flex items-center justify-center bg-muted/30"
+            onClick={!isLoading && !error ? activateCamera : undefined}
+            style={{ cursor: !isLoading && !error ? 'pointer' : 'default' }}
           >
             <div className="flex flex-col items-center text-muted-foreground p-4">
               {isLoading ? (
@@ -329,7 +396,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
               ) : (
                 <>
                   <Camera className="mr-2 h-4 w-4" />
-                  Open Camera
+                  {error ? "Try Again" : "Open Camera"}
                 </>
               )}
             </Button>

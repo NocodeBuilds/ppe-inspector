@@ -21,6 +21,14 @@ const ScannerControls: React.FC<ScannerControlsProps> = ({
   isScanning,
   hasScanned
 }) => {
+  // Handle camera switch with logging for debugging
+  const handleSwitchCamera = () => {
+    console.log("ScannerControls: Switching camera");
+    if (onSwitchCamera) {
+      onSwitchCamera();
+    }
+  };
+
   return (
     <div className="mt-4 grid grid-cols-2 gap-3">
       <Button 
@@ -35,7 +43,7 @@ const ScannerControls: React.FC<ScannerControlsProps> = ({
       {hasMultipleCameras && onSwitchCamera && (
         <Button 
           variant="outline" 
-          onClick={onSwitchCamera}
+          onClick={handleSwitchCamera}
           disabled={!isScanning || hasScanned}
           className="flex items-center justify-center"
         >

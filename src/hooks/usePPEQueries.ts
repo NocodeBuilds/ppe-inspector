@@ -39,14 +39,29 @@ export function usePPEQueries() {
       // Normalize the serial number by trimming whitespace
       const normalizedSerial = serialNumber.trim();
       
-      // Search by similar serial number - using ilike for pattern matching
+      // First try exact match
+      const { data: exactMatch, error: exactError } = await supabase
+        .from('ppe_items')
+        .select('*')
+        .eq('serial_number', normalizedSerial)
+        .maybeSingle();
+      
+      if (exactError) {
+        console.error('Database error when searching by exact serial number:', exactError);
+      } else if (exactMatch) {
+        console.log('Found exact match for serial number:', exactMatch);
+        return [exactMatch] as PPEItem[];
+      }
+      
+      // If exact match didn't yield results, try pattern matching
+      console.log('No exact match found, trying pattern match');
       const { data, error } = await supabase
         .from('ppe_items')
         .select('*')
         .ilike('serial_number', `%${normalizedSerial}%`);
       
       if (error) {
-        console.error('Database error when searching by serial number:', error);
+        console.error('Database error when searching by serial number pattern:', error);
         throw error;
       }
       
