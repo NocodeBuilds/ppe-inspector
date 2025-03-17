@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -24,25 +24,43 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [qrScanner, setQrScanner] = useState<Html5Qrcode | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
   
-  const scanAttempts = React.useRef<number>(0);
+  const scanAttempts = useRef<number>(0);
   const scannerContainerId = 'qr-reader';
   const { toast } = useToast();
   const { showNotification } = useNotifications();
+  const isMountedRef = useRef(true);
+  
+  // Set up isMounted ref for cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   
   // Fetch available camera devices
   useEffect(() => {
     const fetchAvailableDevices = async () => {
+      if (!isMountedRef.current || isInitializing) return;
+      
+      setIsInitializing(true);
+      
       try {
         console.log('Fetching available camera devices...');
         
         // Request camera permission first
         await navigator.mediaDevices.getUserMedia({ video: true });
         
+        if (!isMountedRef.current) return;
+        
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
         
         console.log('Available camera devices:', videoDevices);
+        
+        if (!isMountedRef.current) return;
         setAvailableDevices(videoDevices);
         
         // Prefer environment (back) camera if available
@@ -60,7 +78,13 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
         }
       } catch (error) {
         console.error('Error fetching camera devices:', error);
-        handleScannerStartError(error);
+        if (isMountedRef.current) {
+          handleScannerStartError(error);
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setIsInitializing(false);
+        }
       }
     };
     
@@ -71,12 +95,15 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
     console.log("QR code scanned:", decodedText);
     
     // Prevent multiple scans
-    if (hasScanned) return;
+    if (hasScanned || !isMountedRef.current) return;
+    
     setHasScanned(true);
     
     try {
       if (qrScanner && isScanning) {
         await qrScanner.stop();
+        if (!isMountedRef.current) return;
+        
         setIsScanning(false);
         
         showNotification('QR Code Scanned', 'success', {
@@ -88,9 +115,11 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
       }
     } catch (err) {
       console.error('Error stopping QR scanner after successful scan:', err);
-      setIsScanning(false);
-      // Still pass the result even if stopping the scanner failed
-      onResult(decodedText);
+      if (isMountedRef.current) {
+        setIsScanning(false);
+        // Still pass the result even if stopping the scanner failed
+        onResult(decodedText);
+      }
     }
   };
   
@@ -100,12 +129,16 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   };
   
   const handleScannerStart = (scanner: Html5Qrcode) => {
+    if (!isMountedRef.current) return;
+    
     setQrScanner(scanner);
     setIsScanning(true);
     setError(null);
   };
   
   const handleScannerStartError = async (err: any) => {
+    if (!isMountedRef.current) return;
+    
     // If we failed with the selected device, try with a different camera option
     if (scanAttempts.current < 2) {
       scanAttempts.current++;
@@ -162,12 +195,16 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   };
   
   const stopScanner = async () => {
+    if (!isMountedRef.current) return true;
+    
     if (qrScanner && isScanning) {
       try {
         console.log('Stopping QR scanner...');
         await qrScanner.stop();
         console.log('QR scanner stopped');
-        setIsScanning(false);
+        if (isMountedRef.current) {
+          setIsScanning(false);
+        }
         return true;
       } catch (err) {
         console.error('Error stopping QR scanner:', err);
@@ -178,6 +215,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   };
   
   const handleRetry = async () => {
+    if (!isMountedRef.current) return;
+    
     setPermissionDenied(false);
     setError(null);
     setHasScanned(false);
@@ -188,6 +227,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   };
   
   const switchCamera = async () => {
+    if (!isMountedRef.current) return;
+    
     if (availableDevices.length <= 1) {
       toast({
         title: 'Camera Switch',
@@ -204,14 +245,23 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
     console.log(`Switching camera from ${currentIndex} to ${nextIndex}`);
     
     await stopScanner();
+    
     // Reset scan attempts when manually switching
     scanAttempts.current = 0;
     setSelectedDeviceId(nextDeviceId);
   };
 
   const handleCancel = () => {
+    stopScanner();
     onError('Scanning cancelled');
   };
+  
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      stopScanner();
+    };
+  }, []);
   
   return (
     <EnhancedErrorBoundary component="QRCodeScanner">
@@ -229,7 +279,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
               className="w-full h-full"
             />
             
-            {!error && (
+            {!error && !hasScanned && (
               <ScannerInitializer 
                 scannerContainerId={scannerContainerId}
                 onScanSuccess={onQRCodeSuccess}

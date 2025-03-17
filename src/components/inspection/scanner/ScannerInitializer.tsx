@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useCallback } from 'react';
 import { Html5Qrcode, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -25,9 +24,12 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
 }) => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const { showNotification } = useNotifications();
+  const isMountedRef = useRef(true);
 
   // Handle successful scan with proper data extraction
   const handleScanSuccess = useCallback((decodedText: string) => {
+    if (!isMountedRef.current) return;
+    
     console.log('QR code scan successful, raw text:', decodedText);
     
     // Try to extract a serial number from the QR code
@@ -67,10 +69,19 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
   }, [onScanSuccess]);
 
   const startScanner = useCallback(async () => {
+    if (!isMountedRef.current) return;
+    
     try {
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode(scannerContainerId);
+      // Ensure we don't have an active scanner
+      if (scannerRef.current) {
+        await scannerRef.current.stop().catch(() => {
+          // Ignore stop errors
+        });
+        scannerRef.current = null;
       }
+
+      // Create a new scanner
+      scannerRef.current = new Html5Qrcode(scannerContainerId);
 
       const config = {
         fps: 10,
@@ -84,17 +95,22 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
       
       console.log('Starting scanner with configuration:', config);
       
-      // Camera constraints logic
-      let cameraConstraints: { facingMode?: string, deviceId?: { exact: string } } = { 
-        facingMode: 'environment' 
-      };
+      // Camera constraints logic - first define type to avoid TypeScript errors
+      let cameraConstraints: { facingMode?: string; deviceId?: { exact: string } };
       
       // If a specific device ID is provided, use it
       if (selectedDeviceId) {
         cameraConstraints = {
           deviceId: { exact: selectedDeviceId }
         };
+      } else {
+        // Otherwise use environment (back) camera
+        cameraConstraints = { 
+          facingMode: 'environment' 
+        };
       }
+      
+      if (!isMountedRef.current) return;
       
       await scannerRef.current.start(
         cameraConstraints,
@@ -103,31 +119,43 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
         onScanError
       );
       
-      showNotification('Camera activated', 'info', {
-        description: 'Point camera at a QR code to scan'
-      });
-      
-      onScannerStart(scannerRef.current);
-      console.log('QR scanner started successfully');
+      if (isMountedRef.current) {
+        showNotification('Camera activated', 'info', {
+          description: 'Point camera at a QR code to scan'
+        });
+        
+        onScannerStart(scannerRef.current);
+        console.log('QR scanner started successfully');
+      }
     } catch (err) {
       console.error('Error starting QR scanner:', err);
-      onScannerError(err);
+      if (isMountedRef.current) {
+        onScannerError(err);
+      }
     }
   }, [scannerContainerId, handleScanSuccess, onScanError, onScannerStart, onScannerError, selectedDeviceId, showNotification]);
 
   // Initialize scanner on mount or when deviceId changes
   useEffect(() => {
+    isMountedRef.current = true;
+    
+    // Use timeout to ensure DOM is ready
     const timer = setTimeout(() => {
-      startScanner();
+      if (isMountedRef.current) {
+        startScanner();
+      }
     }, 500);
     
     return () => {
+      isMountedRef.current = false;
       clearTimeout(timer);
       
+      // Clean up scanner
       if (scannerRef.current) {
         scannerRef.current.stop().catch(error => {
           console.error('Error stopping QR scanner:', error);
         });
+        scannerRef.current = null;
       }
     };
   }, [startScanner, selectedDeviceId]);
