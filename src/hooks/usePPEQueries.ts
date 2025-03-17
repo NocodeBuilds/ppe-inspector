@@ -31,16 +31,19 @@ export function usePPEQueries() {
     }
   );
 
-  // Function to get PPE by serial number
+  // Function to get PPE by serial number - improved to handle number-only serial numbers
   const getPPEBySerialNumber = useCallback(async (serialNumber: string) => {
     try {
       console.log(`Searching for PPE with serial number pattern: ${serialNumber}`);
+      
+      // Normalize the serial number by trimming whitespace
+      const normalizedSerial = serialNumber.trim();
       
       // Search by similar serial number - using ilike for pattern matching
       const { data, error } = await supabase
         .from('ppe_items')
         .select('*')
-        .ilike('serial_number', `%${serialNumber}%`);
+        .ilike('serial_number', `%${normalizedSerial}%`);
       
       if (error) {
         console.error('Database error when searching by serial number:', error);
@@ -58,42 +61,66 @@ export function usePPEQueries() {
     }
   }, [showNotification]);
 
-  // Function to get PPE by ID - with better error handling for different ID formats
+  // Function to get PPE by ID - improved error handling with better fallback
   const getPPEById = useCallback(async (id: string) => {
     try {
       console.log(`Trying to fetch PPE with ID/serial: ${id}`);
       let result = null;
       
-      // First try getting by ID if it looks like a UUID
-      if (id.includes('-') && id.length > 30) {
-        console.log('Treating as UUID and searching by id');
-        const { data, error } = await supabase
-          .from('ppe_items')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
-        
-        if (error) {
-          console.error('Error fetching by ID:', error);
-        } else if (data) {
-          result = data;
+      // First try direct string match on serial_number
+      console.log('Searching by exact serial number match first');
+      const { data: serialData, error: serialError } = await supabase
+        .from('ppe_items')
+        .select('*')
+        .eq('serial_number', id)
+        .maybeSingle();
+      
+      if (serialError) {
+        console.error('Error fetching by serial number:', serialError);
+      } else if (serialData) {
+        result = serialData;
+        console.log('Found by exact serial match:', result);
+        return result as PPEItem;
+      }
+      
+      // If that didn't work, try UUID match if it looks like a UUID
+      if (!result && id.includes('-') && id.length > 30) {
+        console.log('Trying as UUID');
+        try {
+          const { data: uuidData, error: uuidError } = await supabase
+            .from('ppe_items')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+          
+          if (uuidError) {
+            console.error('Error fetching by ID:', uuidError);
+          } else if (uuidData) {
+            result = uuidData;
+            console.log('Found by UUID match:', result);
+            return result as PPEItem;
+          }
+        } catch (e) {
+          console.log('UUID lookup failed, continuing with pattern search');
         }
       }
       
-      // If not found by ID, try getting by serial number
+      // Last resort: fuzzy search on serial number
       if (!result) {
-        console.log('Searching by serial number as fallback');
-        const { data, error } = await supabase
+        console.log('Trying pattern match on serial number');
+        const { data: patternData, error: patternError } = await supabase
           .from('ppe_items')
           .select('*')
-          .eq('serial_number', id)
+          .ilike('serial_number', `%${id}%`)
+          .limit(1)
           .maybeSingle();
         
-        if (error) {
-          console.error('Error fetching by serial number:', error);
-          // Don't throw here, we'll throw a combined error below if needed
-        } else if (data) {
-          result = data;
+        if (patternError) {
+          console.error('Error fetching by pattern:', patternError);
+        } else if (patternData) {
+          result = patternData;
+          console.log('Found by pattern match:', result);
+          return result as PPEItem;
         }
       }
       

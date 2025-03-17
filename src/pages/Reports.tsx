@@ -1,31 +1,25 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Download, 
   FileText, 
-  BarChart3, 
   Calendar,
-  FileSpreadsheet,
-  TrendingUp
+  FileSpreadsheet
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRoleAccess } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '@/hooks/useNotifications';
 import ReportCard from '@/components/reports/ReportCard';
-import AnalyticsSummary from '@/components/reports/AnalyticsSummary';
-import AnalyticsDashboard from '@/components/reports/AnalyticsDashboard';
 import ReportSkeleton from '@/components/reports/ReportSkeleton';
 import { 
   generatePPEItemReport, 
-  generateInspectionsDateReport, 
-  generateAnalyticsDataReport 
+  generateInspectionsDateReport
 } from '@/utils/reportGeneratorService';
 import {
   exportPPEItemsToExcel,
-  exportInspectionsToExcel,
-  exportAnalyticsToExcel
+  exportInspectionsToExcel
 } from '@/utils/exportUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import EquipmentLifecycleTracker from '@/components/reports/EquipmentLifecycleTracker';
@@ -38,7 +32,6 @@ const ReportsPage = () => {
   const [flaggedCount, setFlaggedCount] = useState(0);
   const [recentItems, setRecentItems] = useState<any[]>([]);
   const [timeframe, setTimeframe] = useState('month');
-  const [inspectionTrend, setInspectionTrend] = useState(5); // Simulating a 5% increase
   const { isAdmin, isUser } = useRoleAccess();
   const navigate = useNavigate();
   const { showNotification } = useNotifications();
@@ -106,7 +99,7 @@ const ReportsPage = () => {
     }
   };
 
-  const handleGenerateReport = async (type: 'ppe' | 'inspections' | 'analytics') => {
+  const handleGenerateReport = async (type: 'ppe' | 'inspections') => {
     try {
       setIsGenerating(true);
       
@@ -118,8 +111,6 @@ const ReportsPage = () => {
         startDate.setDate(startDate.getDate() - 30);
         
         await generateInspectionsDateReport(startDate, endDate);
-      } else if (type === 'analytics') {
-        await generateAnalyticsDataReport();
       }
       
       showNotification('Success', 'success', {
@@ -136,7 +127,7 @@ const ReportsPage = () => {
     }
   };
 
-  const handleExportExcel = async (type: 'ppe' | 'inspections' | 'analytics') => {
+  const handleExportExcel = async (type: 'ppe' | 'inspections') => {
     try {
       setIsGenerating(true);
       let success = false;
@@ -145,8 +136,6 @@ const ReportsPage = () => {
         success = await exportPPEItemsToExcel();
       } else if (type === 'inspections') {
         success = await exportInspectionsToExcel();
-      } else if (type === 'analytics') {
-        success = await exportAnalyticsToExcel();
       }
       
       if (success) {
@@ -193,10 +182,9 @@ const ReportsPage = () => {
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-3 mb-6">
+        <TabsList className="grid grid-cols-2 mb-6">
           <TabsTrigger value="ppe">PPE Inventory</TabsTrigger>
           <TabsTrigger value="inspections">Inspections</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
         
         {isLoading ? (
@@ -242,29 +230,6 @@ const ReportsPage = () => {
                 onGenerateExcel={() => handleExportExcel('inspections')}
                 isGenerating={isGenerating}
               />
-            </TabsContent>
-            
-            <TabsContent value="analytics">
-              <ReportCard
-                title={<>
-                  <BarChart3 className="mr-2 h-5 w-5" />
-                  Analytics Report
-                </>}
-                description="Generate a summary report with key statistics and analytics data."
-                onGenerate={() => handleGenerateReport('analytics')}
-                onGenerateExcel={() => handleExportExcel('analytics')}
-                isGenerating={isGenerating}
-              >
-                <AnalyticsSummary
-                  ppeCount={ppeCount}
-                  inspectionCount={inspectionCount}
-                  flaggedCount={flaggedCount}
-                  inspectionTrend={inspectionTrend}
-                />
-                <div className="mt-6">
-                  <AnalyticsDashboard timeframe={timeframe as 'week' | 'month' | 'year'} />
-                </div>
-              </ReportCard>
             </TabsContent>
           </>
         )}

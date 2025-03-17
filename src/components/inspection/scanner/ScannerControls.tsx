@@ -1,29 +1,23 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, X, RefreshCw, FlashlightIcon } from 'lucide-react';
+import { Camera, X, RefreshCw } from 'lucide-react';
 
 interface ScannerControlsProps {
   onCancel: () => void;
-  onSwitchCamera: () => void;
-  onToggleFlash?: () => void;
+  onSwitchCamera?: () => void;
   hasMultipleCameras: boolean;
-  hasFlash?: boolean;
-  isFlashOn?: boolean;
   isScanning: boolean;
   hasScanned: boolean;
 }
 
 /**
- * Enhanced controls for the QR code scanner with flash support
+ * Simplified controls for the QR code scanner with better error handling
  */
 const ScannerControls: React.FC<ScannerControlsProps> = ({
   onCancel,
   onSwitchCamera,
-  onToggleFlash,
   hasMultipleCameras,
-  hasFlash = false,
-  isFlashOn = false,
   isScanning,
   hasScanned
 }) => {
@@ -38,7 +32,7 @@ const ScannerControls: React.FC<ScannerControlsProps> = ({
         Cancel
       </Button>
       
-      {hasMultipleCameras && (
+      {hasMultipleCameras && onSwitchCamera && (
         <Button 
           variant="outline" 
           onClick={onSwitchCamera}
@@ -47,18 +41,6 @@ const ScannerControls: React.FC<ScannerControlsProps> = ({
         >
           <RefreshCw size={16} className="mr-2" />
           Switch Camera
-        </Button>
-      )}
-      
-      {hasFlash && onToggleFlash && (
-        <Button 
-          variant={isFlashOn ? "default" : "outline"} 
-          onClick={onToggleFlash}
-          disabled={!isScanning || hasScanned}
-          className={`flex items-center justify-center ${isFlashOn ? "bg-amber-500 hover:bg-amber-600" : ""}`}
-        >
-          <FlashlightIcon size={16} className="mr-2" />
-          {isFlashOn ? "Flash On" : "Flash Off"}
         </Button>
       )}
     </div>
