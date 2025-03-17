@@ -1,3 +1,4 @@
+
 // Inside ManualInspection.tsx
 
 const onSubmit = async (data: any) => {
@@ -17,11 +18,19 @@ const onSubmit = async (data: any) => {
 
     console.log("Form data:", data);
 
-    // Check if the PPE exists
+    // Check if the PPE exists - improved query with error handling
+    const serialNumberQuery = data.serialNumber ? data.serialNumber.trim() : '';
+    
+    if (!serialNumberQuery) {
+      throw new Error('Serial number is required');
+    }
+    
+    console.log("Searching for PPE with serial number:", serialNumberQuery);
+    
     const { data: ppeData, error: ppeError } = await supabase
       .from('ppe_items')
       .select('*')
-      .or(`serial_number.eq.${data.serialNumber},id.eq.${data.serialNumber}`);
+      .or(`serial_number.eq.${serialNumberQuery},id.eq.${serialNumberQuery}`);
 
     if (ppeError) {
       console.error("Error checking PPE existence:", ppeError);
@@ -31,6 +40,7 @@ const onSubmit = async (data: any) => {
     if (ppeData && ppeData.length > 0) {
       // PPE exists, redirect to inspection form
       const ppeItem = ppeData[0];
+      console.log("PPE found:", ppeItem);
       navigate(`/inspect/${ppeItem.id}`);
       return;
     }
@@ -69,7 +79,7 @@ const onSubmit = async (data: any) => {
       created_by: user.id,
     });
 
-    // Insert new PPE
+    // Insert new PPE with improved error handling
     const { data: newPpeData, error: insertError } = await supabase
       .from('ppe_items')
       .insert({

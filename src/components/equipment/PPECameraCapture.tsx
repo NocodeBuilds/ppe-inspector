@@ -18,7 +18,6 @@ const PPECameraCapture: React.FC<PPECameraCaptureProps> = ({
   const [isCapturing, setIsCapturing] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [cameraTimeout, setCameraTimeout] = useState<NodeJS.Timeout | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -56,38 +55,6 @@ const PPECameraCapture: React.FC<PPECameraCaptureProps> = ({
     };
   }, []);
   
-  // Function to get available cameras with preference for back camera
-  const getBackCamera = async () => {
-    try {
-      console.log("PPECameraCapture: Getting available cameras");
-      
-      // First, request general camera access to prompt permissions
-      await navigator.mediaDevices.getUserMedia({ video: true });
-      
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const cameras = devices.filter(device => device.kind === 'videoinput');
-      setAvailableCameras(cameras);
-      
-      console.log(`PPECameraCapture: Found ${cameras.length} cameras`);
-      cameras.forEach((camera, index) => {
-        console.log(`Camera ${index}: ${camera.label}`);
-      });
-      
-      // Try to find a back camera by label
-      const backCamera = cameras.find(camera => 
-        camera.label.toLowerCase().includes('back') || 
-        camera.label.toLowerCase().includes('rear') || 
-        camera.label.toLowerCase().includes('environment')
-      );
-      
-      // Return back camera ID or first camera ID as fallback
-      return backCamera ? backCamera.deviceId : (cameras.length > 0 ? cameras[0].deviceId : null);
-    } catch (error) {
-      console.error('Error getting cameras:', error);
-      return null;
-    }
-  };
-  
   // Start camera stream
   const startCamera = async () => {
     setIsCameraOpen(true);
@@ -113,33 +80,24 @@ const PPECameraCapture: React.FC<PPECameraCaptureProps> = ({
         throw new Error('Your browser does not support camera access');
       }
       
-      // Try to get camera ID for the back camera
-      const backCameraId = await getBackCamera();
-      
-      if (!backCameraId) {
-        throw new Error('No camera found on this device');
-      }
-      
-      console.log("PPECameraCapture: Using camera ID:", backCameraId);
-      
       // Try different approaches to get a camera stream
       let mediaStream: MediaStream;
       
       try {
-        // First try with specific deviceId
-        console.log("PPECameraCapture: Trying with specific deviceId");
+        // First try with environment-facing
+        console.log("PPECameraCapture: Trying with environment facing mode");
         mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            deviceId: { exact: backCameraId },
+          video: { 
+            facingMode: { ideal: 'environment' },
             width: { ideal: 1280 },
             height: { ideal: 720 }
           }
         });
       } catch (err) {
-        console.log("PPECameraCapture: Specific deviceId failed, trying environment facing", err);
-        // If that fails, try with environment-facing
+        console.log("PPECameraCapture: Environment facing failed, trying default camera", err);
+        // If that fails, try with default camera
         mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } }
+          video: true
         });
       }
       
@@ -163,14 +121,30 @@ const PPECameraCapture: React.FC<PPECameraCaptureProps> = ({
               }
             } catch (error) {
               console.error("Error playing video:", error);
+              setCameraError("Could not start video playback");
+              stopCamera();
+            } finally {
+              setIsCapturing(false);
             }
           }
-          setIsCapturing(false);
         };
       }
     } catch (error: any) {
       console.error('Camera error:', error);
-      setCameraError(error.message || 'Could not access camera');
+      
+      let errorMessage = 'Could not access camera.';
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorMessage = 'Camera access denied. Please grant camera permissions.';
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        errorMessage = 'No camera found on this device.';
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        errorMessage = 'Camera is in use by another application.';
+      } else if (error.name === 'OverconstrainedError') {
+        errorMessage = 'Camera does not meet the required constraints.';
+      }
+      
+      setCameraError(errorMessage);
       
       // Clear the timeout
       if (cameraTimeout) {
@@ -181,7 +155,7 @@ const PPECameraCapture: React.FC<PPECameraCaptureProps> = ({
       toast({
         variant: 'destructive',
         title: 'Camera Error',
-        description: error.message || 'Could not access camera'
+        description: errorMessage
       });
     } finally {
       // Ensure isCapturing is set to false if it hasn't been already
@@ -229,6 +203,8 @@ const PPECameraCapture: React.FC<PPECameraCaptureProps> = ({
       });
     } catch (error: any) {
       console.error('Error capturing photo:', error);
+      setCameraError(error.message || 'Failed to capture image');
+      
       toast({
         variant: 'destructive',
         title: 'Capture Error',
