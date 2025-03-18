@@ -2,8 +2,7 @@
 import { ExtendedJsPDF, createPDFDocument, addPDFHeader, addPDFFooter, addSectionTitle, addDataTable, formatDateOrNA, addSignatureToPDF } from '../pdfUtils';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import type { FontStyle } from 'jspdf-autotable';
+import autoTable, { FontStyle, HAlignType, CellInput, RowInput, Color } from 'jspdf-autotable';
 
 // Interface for the inspection data structure
 interface InspectionDetail {
@@ -39,6 +38,29 @@ const getFontStyle = (style: string): FontStyle => {
     default:
       return 'normal';
   }
+};
+
+// Helper function to convert string to HAlignType
+const getHAlign = (align: string): HAlignType => {
+  switch (align) {
+    case 'center':
+      return 'center';
+    case 'right':
+      return 'right';
+    case 'justify':
+      return 'justify';
+    default:
+      return 'left';
+  }
+};
+
+// Helper function to convert number array to Color type
+const getColor = (color: number[]): Color => {
+  if (color.length === 3) {
+    return [color[0], color[1], color[2]] as [number, number, number];
+  }
+  // Default black color
+  return [0, 0, 0];
 };
 
 export const generateInspectionDetailPDF = async (inspection: InspectionDetail): Promise<void> => {
@@ -113,14 +135,14 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     doc.setFontSize(12);
     doc.text("INSPECTION CHECKPOINTS", 14, finalY + 5);
     
-    // Format checkpoint data for table with properly typed fontStyle values
+    // Format checkpoint data for table with properly typed values
     const checkpointHeaders = [
       [
-        { content: 'S.No.', styles: { fontStyle: getFontStyle('bold'), halign: 'center' } },
-        { content: 'Checkpoint Description', styles: { fontStyle: getFontStyle('bold'), halign: 'left' } },
-        { content: 'Result', styles: { fontStyle: getFontStyle('bold'), halign: 'center' } },
-        { content: 'Photo Evidence', styles: { fontStyle: getFontStyle('bold'), halign: 'center' } },
-        { content: 'Remarks', styles: { fontStyle: getFontStyle('bold'), halign: 'left' } }
+        { content: 'S.No.', styles: { fontStyle: getFontStyle('bold'), halign: getHAlign('center') } },
+        { content: 'Checkpoint Description', styles: { fontStyle: getFontStyle('bold'), halign: getHAlign('left') } },
+        { content: 'Result', styles: { fontStyle: getFontStyle('bold'), halign: getHAlign('center') } },
+        { content: 'Photo Evidence', styles: { fontStyle: getFontStyle('bold'), halign: getHAlign('center') } },
+        { content: 'Remarks', styles: { fontStyle: getFontStyle('bold'), halign: getHAlign('left') } }
       ]
     ];
     
@@ -137,16 +159,16 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
         // Leave cell empty for now, we'll add images after table creation
         photoCell = { content: '', styles: { minCellHeight: 30 } };
       } else {
-        photoCell = { content: 'No photo', styles: { halign: 'center', fontStyle: getFontStyle('italic'), textColor: [150, 150, 150] } };
+        photoCell = { content: 'No photo', styles: { halign: getHAlign('center'), fontStyle: getFontStyle('italic'), textColor: getColor([150, 150, 150]) } };
       }
       
       let resultText = cp.passed === null ? 'NA' : cp.passed ? 'PASS' : 'FAIL';
-      let resultColor = cp.passed === null ? [100, 100, 100] : cp.passed ? [0, 128, 0] : [255, 0, 0];
+      let resultColor = cp.passed === null ? getColor([100, 100, 100]) : cp.passed ? getColor([0, 128, 0]) : getColor([255, 0, 0]);
       
       checkpointRows.push([
-        { content: (i + 1).toString(), styles: { halign: 'center' } },
+        { content: (i + 1).toString(), styles: { halign: getHAlign('center') } },
         { content: cp.description },
-        { content: resultText, styles: { fontStyle: getFontStyle('bold'), halign: 'center', textColor: resultColor } },
+        { content: resultText, styles: { fontStyle: getFontStyle('bold'), halign: getHAlign('center'), textColor: resultColor } },
         photoCell,
         { content: cp.notes || '' }
       ]);
@@ -232,14 +254,14 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   
   // Format result based on pass/fail
   const resultText = inspection.overall_result || 'N/A';
-  const resultColor = !inspection.overall_result ? [100, 100, 100] : 
-                      inspection.overall_result.toLowerCase() === 'pass' ? [0, 128, 0] : [255, 0, 0];
+  const resultColor = !inspection.overall_result ? getColor([100, 100, 100]) : 
+                      inspection.overall_result.toLowerCase() === 'pass' ? getColor([0, 128, 0]) : getColor([255, 0, 0]);
   
-  // Create final result and signature table with properly typed fontStyle values
+  // Create final result and signature table with properly typed values
   const finalResultData = [
     [
       { content: "OVERALL RESULT:", styles: { fontStyle: getFontStyle('bold') } },
-      { content: resultText.toUpperCase(), styles: { fontStyle: getFontStyle('bold'), halign: 'center', textColor: resultColor } },
+      { content: resultText.toUpperCase(), styles: { fontStyle: getFontStyle('bold'), halign: getHAlign('center'), textColor: resultColor } },
       { content: "INSPECTOR SIGNATURE:", styles: { fontStyle: getFontStyle('bold') } },
       { content: ' ', styles: { minCellHeight: 30 } }
     ]
