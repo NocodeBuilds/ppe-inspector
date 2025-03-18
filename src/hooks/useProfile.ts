@@ -41,12 +41,7 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
 
         if (data) {
           console.log("Profile data:", data);
-          return {
-            id: data.id,
-            full_name: data.full_name,
-            role: data.role || 'user',
-            avatar_url: data.avatar_url
-          };
+          return data as Profile; // Return the complete data object as Profile
         }
         return null;
       } catch (error) {
