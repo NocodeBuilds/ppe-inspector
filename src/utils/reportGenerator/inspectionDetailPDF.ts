@@ -3,6 +3,7 @@ import { ExtendedJsPDF, createPDFDocument, addPDFHeader, addPDFFooter, addSectio
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import type { FontStyle } from 'jspdf-autotable';
 
 // Interface for the inspection data structure
 interface InspectionDetail {
@@ -25,6 +26,20 @@ interface InspectionDetail {
     photo_url: string | null;
   }[];
 }
+
+// Helper function to convert string to FontStyle type
+const getFontStyle = (style: string): FontStyle => {
+  switch (style) {
+    case 'bold':
+      return 'bold';
+    case 'italic':
+      return 'italic';
+    case 'bolditalic':
+      return 'bolditalic';
+    default:
+      return 'normal';
+  }
+};
 
 export const generateInspectionDetailPDF = async (inspection: InspectionDetail): Promise<void> => {
   if (!inspection) {
@@ -83,9 +98,9 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
       lineWidth: 0.1
     },
     columnStyles: {
-      0: { cellWidth: 35, fontStyle: 'bold' },
+      0: { cellWidth: 35, fontStyle: getFontStyle('bold') },
       1: { cellWidth: 45 },
-      2: { cellWidth: 30, fontStyle: 'bold' },
+      2: { cellWidth: 30, fontStyle: getFontStyle('bold') },
       3: { cellWidth: 45 }
     },
     margin: { left: 14, right: 14 }
@@ -101,11 +116,11 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     // Format checkpoint data for table with properly typed fontStyle values
     const checkpointHeaders = [
       [
-        { content: 'S.No.', styles: { fontStyle: 'bold', halign: 'center' } },
-        { content: 'Checkpoint Description', styles: { fontStyle: 'bold', halign: 'left' } },
-        { content: 'Result', styles: { fontStyle: 'bold', halign: 'center' } },
-        { content: 'Photo Evidence', styles: { fontStyle: 'bold', halign: 'center' } },
-        { content: 'Remarks', styles: { fontStyle: 'bold', halign: 'left' } }
+        { content: 'S.No.', styles: { fontStyle: getFontStyle('bold'), halign: 'center' } },
+        { content: 'Checkpoint Description', styles: { fontStyle: getFontStyle('bold'), halign: 'left' } },
+        { content: 'Result', styles: { fontStyle: getFontStyle('bold'), halign: 'center' } },
+        { content: 'Photo Evidence', styles: { fontStyle: getFontStyle('bold'), halign: 'center' } },
+        { content: 'Remarks', styles: { fontStyle: getFontStyle('bold'), halign: 'left' } }
       ]
     ];
     
@@ -122,7 +137,7 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
         // Leave cell empty for now, we'll add images after table creation
         photoCell = { content: '', styles: { minCellHeight: 30 } };
       } else {
-        photoCell = { content: 'No photo', styles: { halign: 'center', fontStyle: 'italic', textColor: [150, 150, 150] } };
+        photoCell = { content: 'No photo', styles: { halign: 'center', fontStyle: getFontStyle('italic'), textColor: [150, 150, 150] } };
       }
       
       let resultText = cp.passed === null ? 'NA' : cp.passed ? 'PASS' : 'FAIL';
@@ -131,7 +146,7 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
       checkpointRows.push([
         { content: (i + 1).toString(), styles: { halign: 'center' } },
         { content: cp.description },
-        { content: resultText, styles: { fontStyle: 'bold', halign: 'center', textColor: resultColor } },
+        { content: resultText, styles: { fontStyle: getFontStyle('bold'), halign: 'center', textColor: resultColor } },
         photoCell,
         { content: cp.notes || '' }
       ]);
@@ -201,9 +216,9 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
       lineWidth: 0.1
     },
     columnStyles: {
-      0: { cellWidth: 35, fontStyle: 'bold' },
+      0: { cellWidth: 35, fontStyle: getFontStyle('bold') },
       1: { cellWidth: 45 },
-      2: { cellWidth: 30, fontStyle: 'bold' },
+      2: { cellWidth: 30, fontStyle: getFontStyle('bold') },
       3: { cellWidth: 45 }
     },
     margin: { left: 14, right: 14 }
@@ -223,9 +238,9 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   // Create final result and signature table with properly typed fontStyle values
   const finalResultData = [
     [
-      { content: "OVERALL RESULT:", styles: { fontStyle: 'bold' } },
-      { content: resultText.toUpperCase(), styles: { fontStyle: 'bold', halign: 'center', textColor: resultColor } },
-      { content: "INSPECTOR SIGNATURE:", styles: { fontStyle: 'bold' } },
+      { content: "OVERALL RESULT:", styles: { fontStyle: getFontStyle('bold') } },
+      { content: resultText.toUpperCase(), styles: { fontStyle: getFontStyle('bold'), halign: 'center', textColor: resultColor } },
+      { content: "INSPECTOR SIGNATURE:", styles: { fontStyle: getFontStyle('bold') } },
       { content: ' ', styles: { minCellHeight: 30 } }
     ]
   ];
