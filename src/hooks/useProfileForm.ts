@@ -116,7 +116,7 @@ export const useProfileForm = () => {
         avatarUrl = await uploadAvatar();
       }
       
-      // Update both profile and extended profile fields in a single query
+      // Update profile fields in a single query
       if (profile) {
         const { error: profileError } = await supabase
           .from('profiles')

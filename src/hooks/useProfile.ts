@@ -48,7 +48,7 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
             role: data.role,
             created_at: data.created_at,
             updated_at: data.updated_at,
-            // Extended profile fields
+            // Extended profile fields now directly in profiles table
             employee_id: data.employee_id || null,
             location: data.location || null,
             department: data.department || null,
