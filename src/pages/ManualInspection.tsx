@@ -5,8 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -19,6 +18,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePPE } from '@/hooks/usePPE';
+import { standardPPETypes } from '@/components/equipment/ConsolidatedPPETypeFilter';
 
 // Define form schema using zod
 const formSchema = z.object({
@@ -35,6 +36,8 @@ type FormValues = z.infer<typeof formSchema>;
 const ManualInspection: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const { getPPEBySerialNumber } = usePPE();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedSerialNumber, setSubmittedSerialNumber] = useState<string>('');
@@ -69,7 +72,7 @@ const ManualInspection: React.FC = () => {
 
       console.log("Form data:", data);
 
-      // Check if the PPE exists - improved query with error handling
+      // Check if the PPE exists
       const serialNumberQuery = data.serialNumber ? data.serialNumber.trim() : '';
       
       if (!serialNumberQuery) {
@@ -78,19 +81,12 @@ const ManualInspection: React.FC = () => {
       
       console.log("Searching for PPE with serial number:", serialNumberQuery);
       
-      const { data: ppeData, error: ppeError } = await supabase
-        .from('ppe_items')
-        .select('*')
-        .or(`serial_number.eq.${serialNumberQuery},id.eq.${serialNumberQuery}`);
+      // Use our new consolidated hook function
+      const ppeItems = await getPPEBySerialNumber(serialNumberQuery);
 
-      if (ppeError) {
-        console.error("Error checking PPE existence:", ppeError);
-        throw ppeError;
-      }
-
-      if (ppeData && ppeData.length > 0) {
+      if (ppeItems && ppeItems.length > 0) {
         // PPE exists, redirect to inspection form
-        const ppeItem = ppeData[0];
+        const ppeItem = ppeItems[0];
         console.log("PPE found:", ppeItem);
         navigate(`/inspect/${ppeItem.id}`);
         return;
@@ -130,27 +126,17 @@ const ManualInspection: React.FC = () => {
         created_by: user.id,
       });
 
-      // Insert new PPE with improved error handling
-      const { data: newPpeData, error: insertError } = await supabase
-        .from('ppe_items')
-        .insert({
-          serial_number: data.serialNumber,
-          type: data.type,
-          brand: data.brand || 'Unknown',
-          model_number: data.modelNumber || 'Unknown',
-          manufacturing_date: manufacturingDate,
-          expiry_date: expiryDate,
-          status: 'active',
-          next_inspection: nextInspection.toISOString(),
-          created_by: user.id,
-        })
-        .select('id')
-        .single();
-
-      if (insertError) {
-        console.error("Error inserting new PPE:", insertError);
-        throw insertError;
-      }
+      // Use our consolidated hook for PPE creation
+      const { createPPE } = usePPE();
+      
+      const newPpeData = await createPPE({
+        serial_number: data.serialNumber,
+        type: data.type,
+        brand: data.brand || 'Unknown',
+        model_number: data.modelNumber || 'Unknown',
+        manufacturing_date: manufacturingDate,
+        expiry_date: expiryDate,
+      });
 
       if (!newPpeData || !newPpeData.id) {
         throw new Error('Failed to create new PPE item');
@@ -171,20 +157,6 @@ const ManualInspection: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-  const ppeTypes: PPEType[] = [
-    'Full Body Harness',
-    'Fall Arrester',
-    'Double Lanyard',
-    'Safety Helmet',
-    'Safety Boots',
-    'Safety Gloves',
-    'Safety Goggles',
-    'Ear Protection',
-    'Respirator',
-    'Safety Vest',
-    'Face Shield'
-  ];
 
   return (
     <div className="container max-w-3xl mx-auto py-6 space-y-6">
@@ -231,7 +203,7 @@ const ManualInspection: React.FC = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {ppeTypes.map((type) => (
+                            {standardPPETypes.map((type) => (
                               <SelectItem key={type} value={type}>
                                 {type}
                               </SelectItem>
