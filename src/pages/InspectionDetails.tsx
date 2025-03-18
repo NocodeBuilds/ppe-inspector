@@ -17,7 +17,9 @@ import {
   Camera,
   Download,
   MessageSquare,
-  Mail
+  Mail,
+  FilePdf,
+  FileSpreadsheet
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
@@ -26,9 +28,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
+import { useNetwork } from '@/hooks/useNetwork';
 
 interface InspectionCheckpoint {
   id: string;
@@ -60,6 +68,8 @@ const InspectionDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [shareFormat, setShareFormat] = useState<'pdf' | 'excel'>('pdf');
+  const { isOnline } = useNetwork();
   
   useEffect(() => {
     if (id) {
@@ -72,7 +82,6 @@ const InspectionDetails = () => {
       setIsLoading(true);
       setError(null);
       
-      // Fetch inspection details
       const { data: inspectionData, error: inspectionError } = await supabase
         .from('inspections')
         .select(`
@@ -94,7 +103,6 @@ const InspectionDetails = () => {
         throw new Error('Inspection not found');
       }
       
-      // Fetch inspection results/checkpoints
       const { data: checkpointsData, error: checkpointsError } = await supabase
         .from('inspection_results')
         .select(`
@@ -108,7 +116,6 @@ const InspectionDetails = () => {
       
       if (checkpointsError) throw checkpointsError;
       
-      // Format the data
       const formattedCheckpoints: InspectionCheckpoint[] = checkpointsData?.map(result => ({
         id: result.id,
         description: result.inspection_checkpoints?.description || 'Unknown checkpoint',
@@ -117,7 +124,6 @@ const InspectionDetails = () => {
         photo_url: result.photo_url,
       })) || [];
       
-      // Combine all data
       const detailedInspection: InspectionDetails = {
         id: inspectionData.id,
         date: inspectionData.date,
@@ -191,25 +197,33 @@ const InspectionDetails = () => {
     }
   };
   
-  const handleShareWhatsApp = () => {
-    if (!inspection) return;
+  const handleShareWhatsApp = async () => {
+    if (!inspection || !isOnline) return;
     
     try {
+      setIsExporting(true);
+      
+      if (shareFormat === 'pdf') {
+        await handleExportPDF();
+      } else {
+        await handleExportExcel();
+      }
+      
       const message = 
-        `Inspection Report\n` +
+        `Inspection Report (${shareFormat.toUpperCase()})\n` +
         `PPE: ${inspection.ppe_type} (${inspection.ppe_serial})\n` +
         `Date: ${format(new Date(inspection.date), 'MMM d, yyyy')}\n` +
         `Result: ${inspection.overall_result.toUpperCase() || 'UNKNOWN'}\n` +
-        `Inspector: ${inspection.inspector_name}\n`;
+        `Inspector: ${inspection.inspector_name}\n` +
+        `\nPlease check the attached ${shareFormat.toUpperCase()} file for details.`;
       
       const encodedMessage = encodeURIComponent(message);
       
-      // Open WhatsApp
       window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
       
       toast({
         title: 'Share via WhatsApp',
-        description: 'WhatsApp opened with inspection details',
+        description: `WhatsApp opened with ${shareFormat.toUpperCase()} report details`,
       });
     } catch (error) {
       console.error('WhatsApp share error:', error);
@@ -218,21 +232,32 @@ const InspectionDetails = () => {
         description: 'Could not share via WhatsApp',
         variant: 'destructive',
       });
+    } finally {
+      setIsExporting(false);
     }
   };
   
-  const handleShareEmail = () => {
-    if (!inspection) return;
+  const handleShareEmail = async () => {
+    if (!inspection || !isOnline) return;
     
     try {
+      setIsExporting(true);
+      
+      if (shareFormat === 'pdf') {
+        await handleExportPDF();
+      } else {
+        await handleExportExcel();
+      }
+      
       const subject = `Inspection Report - ${inspection.ppe_type} (${inspection.ppe_serial})`;
       
       const body = 
-        `Inspection Report\n\n` +
+        `Inspection Report (${shareFormat.toUpperCase()})\n\n` +
         `PPE: ${inspection.ppe_type} (${inspection.ppe_serial})\n` +
         `Date: ${format(new Date(inspection.date), 'MMM d, yyyy')}\n` +
         `Result: ${inspection.overall_result.toUpperCase() || 'UNKNOWN'}\n` +
-        `Inspector: ${inspection.inspector_name}\n`;
+        `Inspector: ${inspection.inspector_name}\n\n` +
+        `Please check the attached ${shareFormat.toUpperCase()} file for details.`;
       
       const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       
@@ -240,7 +265,7 @@ const InspectionDetails = () => {
       
       toast({
         title: 'Share via Email',
-        description: 'Email client opened with inspection details',
+        description: `Email client opened with ${shareFormat.toUpperCase()} report details`,
       });
     } catch (error) {
       console.error('Email share error:', error);
@@ -249,6 +274,8 @@ const InspectionDetails = () => {
         description: 'Could not share via email',
         variant: 'destructive',
       });
+    } finally {
+      setIsExporting(false);
     }
   };
   
@@ -290,7 +317,7 @@ const InspectionDetails = () => {
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" disabled={isExporting}>
+            <Button variant="outline" size="sm" disabled={isExporting || !isOnline}>
               {isExporting ? (
                 <>
                   <Loader2 size={16} className="mr-2 animate-spin" />
@@ -305,27 +332,74 @@ const InspectionDetails = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleExportPDF}>
-              <FileText size={16} className="mr-2" />
-              Export as PDF
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleExportExcel}>
-              <Download size={16} className="mr-2" />
-              Export as Excel
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleShareWhatsApp}>
-              <MessageSquare size={16} className="mr-2" />
-              Share via WhatsApp
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleShareEmail}>
-              <Mail size={16} className="mr-2" />
-              Share via Email
-            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <FilePdf className="mr-2 h-4 w-4" />
+                <span>Export Report</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FilePdf className="mr-2 h-4 w-4" />
+                  Download as PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Download as Excel
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <MessageSquare className="mr-2 h-4 w-4" />
+                <span>Share via WhatsApp</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value={shareFormat} onValueChange={(value) => setShareFormat(value as 'pdf' | 'excel')}>
+                  <DropdownMenuRadioItem value="pdf">
+                    <FilePdf className="mr-2 h-4 w-4" />
+                    Share as PDF
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="excel">
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Share as Excel
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <Separator className="my-1" />
+                <DropdownMenuItem onClick={handleShareWhatsApp}>
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Share Now
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Mail className="mr-2 h-4 w-4" />
+                <span>Share via Email</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value={shareFormat} onValueChange={(value) => setShareFormat(value as 'pdf' | 'excel')}>
+                  <DropdownMenuRadioItem value="pdf">
+                    <FilePdf className="mr-2 h-4 w-4" />
+                    Share as PDF
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="excel">
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Share as Excel
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <Separator className="my-1" />
+                <DropdownMenuItem onClick={handleShareEmail}>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Share Now
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
       
-      {/* Header with status */}
       <div className="mb-6 flex flex-col sm:flex-row justify-between sm:items-center">
         <div>
           <div className="flex items-center mb-1">
@@ -354,7 +428,6 @@ const InspectionDetails = () => {
         </div>
       </div>
       
-      {/* Equipment details */}
       <Card className="mb-6">
         <CardContent className="p-4">
           <h3 className="font-medium mb-3">Equipment Details</h3>
@@ -379,7 +452,6 @@ const InspectionDetails = () => {
         </CardContent>
       </Card>
       
-      {/* Failed Checkpoints */}
       <div className="mb-6">
         <h3 className="font-medium mb-3">Inspection Results</h3>
         <div className="space-y-3">
@@ -417,7 +489,6 @@ const InspectionDetails = () => {
                             const target = e.target as HTMLImageElement;
                             target.src = ''; // Clear the broken image
                             target.className = 'hidden';
-                            // Show camera icon if image fails to load
                             const parent = target.parentElement;
                             if (parent) {
                               const icon = document.createElement('div');
@@ -436,7 +507,6 @@ const InspectionDetails = () => {
         </div>
       </div>
       
-      {/* Notes & Signature */}
       <div className="mb-6">
         <h3 className="font-medium mb-3">Additional Information</h3>
         <Card>
@@ -474,7 +544,6 @@ const InspectionDetails = () => {
         </Card>
       </div>
       
-      {/* Action buttons */}
       <div className="flex flex-col sm:flex-row gap-3">
         <Button 
           onClick={() => navigate(`/inspect/${inspection.ppe_serial}`)}

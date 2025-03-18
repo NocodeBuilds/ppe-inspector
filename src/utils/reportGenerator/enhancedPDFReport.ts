@@ -8,7 +8,7 @@ import { PPEItem, InspectionData } from '@/types';
  * Generate a comprehensive PDF report for a single PPE item
  */
 export const generateSinglePPEReport = async (ppeItem: PPEItem, inspectionData?: any) => {
-  // Create PDF document
+  // Create PDF document - A4 size
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -16,145 +16,239 @@ export const generateSinglePPEReport = async (ppeItem: PPEItem, inspectionData?:
     compress: true
   });
   
-  // Add header with logo and title
-  doc.setFontSize(20);
-  doc.setTextColor(41, 128, 185);
-  doc.text('SAFETY INSPECTION REPORT', doc.internal.pageSize.width / 2, 20, { align: 'center' });
+  // Add header with logo, title and document info
+  // Logo on left
+  try {
+    doc.addImage("/lovable-uploads/logo.png", "PNG", 14, 10, 30, 20);
+  } catch (error) {
+    console.error("Error adding logo to PDF:", error);
+  }
   
-  // Add report details
-  doc.setFontSize(10);
+  // PPE Type in center
+  doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
-  doc.text(`Report Date: ${format(new Date(), 'dd MMM yyyy')}`, 14, 30);
-  doc.text(`Report ID: PPE-${ppeItem.id?.substring(0, 8)}`, 14, 35);
-
+  doc.text(`${ppeItem.type || 'PPE'} INSPECTION CHECKLIST`, doc.internal.pageSize.width / 2, 20, { align: 'center' });
+  
+  // Document number and approval date on right
+  doc.setFontSize(8);
+  doc.text("Doc. No: ABCD", 170, 15);
+  doc.text(`Approval Date: ${format(new Date(), 'dd.MM.yyyy')}`, 170, 20);
+  
   // Draw divider
-  doc.setDrawColor(200, 200, 200);
-  doc.line(14, 38, doc.internal.pageSize.width - 14, 38);
+  doc.setDrawColor(0, 0, 0);
+  doc.line(14, 33, doc.internal.pageSize.width - 14, 33);
   
-  // Add PPE information section
-  doc.setFontSize(14);
-  doc.setTextColor(41, 128, 185);
-  doc.text('PPE Information', 14, 45);
+  // Equipment details table in 2-column layout
+  doc.setFontSize(12);
+  doc.text("EQUIPMENT DETAILS", 14, 40);
   
-  // PPE details table
-  const ppeDetails = [
-    ['Serial Number', ppeItem.serialNumber || 'N/A'],
-    ['Type', ppeItem.type || 'N/A'],
-    ['Brand', ppeItem.brand || 'N/A'],
-    ['Model Number', ppeItem.modelNumber || 'N/A'],
-    ['Manufacturing Date', ppeItem.manufacturingDate ? format(new Date(ppeItem.manufacturingDate), 'dd MMM yyyy') : 'N/A'],
-    ['Expiry Date', ppeItem.expiryDate ? format(new Date(ppeItem.expiryDate), 'dd MMM yyyy') : 'N/A'],
-    ['Status', ppeItem.status || 'N/A'],
-    ['Next Inspection', ppeItem.nextInspection ? format(new Date(ppeItem.nextInspection), 'dd MMM yyyy') : 'N/A']
+  // Create 2-column equipment details table
+  const equipmentData = [
+    ["SITE:", "Example Site", "PPE TYPE:", ppeItem.type || 'N/A'],
+    ["SERIAL NUMBER:", ppeItem.serialNumber || 'N/A', "MAKE:", ppeItem.brand || 'N/A'],
+    ["MODEL NUMBER:", ppeItem.modelNumber || 'N/A', "MFG DATE:", ppeItem.manufacturingDate ? format(new Date(ppeItem.manufacturingDate), 'dd.MM.yyyy') : 'N/A'],
+    ["EXPIRY DATE:", ppeItem.expiryDate ? format(new Date(ppeItem.expiryDate), 'dd.MM.yyyy') : 'N/A', "STATUS:", ppeItem.status || 'N/A']
   ];
   
   (doc as any).autoTable({
-    startY: 50,
-    head: [['Property', 'Value']],
-    body: ppeDetails,
-    theme: 'striped',
-    headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] },
+    startY: 45,
+    body: equipmentData,
+    theme: 'grid',
+    headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold' },
+    styles: { 
+      cellPadding: 3,
+      fontSize: 9,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.1
+    },
     columnStyles: {
-      0: { cellWidth: 50 },
-      1: { cellWidth: 100 }
+      0: { cellWidth: 35, fontStyle: 'bold' },
+      1: { cellWidth: 45 },
+      2: { cellWidth: 30, fontStyle: 'bold' },
+      3: { cellWidth: 45 }
     },
     margin: { left: 14, right: 14 }
   });
   
-  let finalY = (doc as any).lastAutoTable.finalY;
+  let finalY = (doc as any).lastAutoTable.finalY + 5;
   
-  // Add inspection data if provided
-  if (inspectionData) {
-    // Add inspection details section
-    doc.setFontSize(14);
-    doc.setTextColor(41, 128, 185);
-    doc.text('Latest Inspection Details', 14, finalY + 10);
+  // Add inspection checkpoints if available
+  if (inspectionData && inspectionData.checkpoints && inspectionData.checkpoints.length > 0) {
+    doc.setFontSize(12);
+    doc.text("INSPECTION CHECKPOINTS", 14, finalY + 5);
     
-    // Inspection summary table
-    const inspectionSummary = [
-      ['Date', inspectionData.date ? format(new Date(inspectionData.date), 'dd MMM yyyy') : 'N/A'],
-      ['Inspector', inspectionData.inspector_name || 'N/A'],
-      ['Inspection Type', inspectionData.type || 'N/A'],
-      ['Overall Result', inspectionData.result || 'N/A'],
-      ['Notes', inspectionData.notes || 'N/A']
+    // Format checkpoint data for table - with photos if available
+    const checkpointHeaders = [
+      [{ content: 'S.No.', styles: { fontStyle: 'bold', halign: 'center' } },
+       { content: 'Checkpoint Description', styles: { fontStyle: 'bold', halign: 'left' } },
+       { content: 'Result', styles: { fontStyle: 'bold', halign: 'center' } },
+       { content: 'Photo Evidence', styles: { fontStyle: 'bold', halign: 'center' } },
+       { content: 'Remarks', styles: { fontStyle: 'bold', halign: 'left' } }]
     ];
     
+    let checkpointRows = [];
+    
+    // Process each checkpoint and prepare table rows
+    for (let i = 0; i < inspectionData.checkpoints.length; i++) {
+      const cp = inspectionData.checkpoints[i];
+      
+      let hasPhoto = !!cp.photoUrl;
+      let photoCell = {};
+      
+      if (hasPhoto) {
+        // Leave cell empty for now, we'll add images after table creation
+        photoCell = { content: '', styles: { minCellHeight: 30 } };
+      } else {
+        photoCell = { content: 'No photo', styles: { halign: 'center', fontStyle: 'italic', textColor: [150, 150, 150] } };
+      }
+      
+      let resultText = cp.passed === null ? 'NA' : cp.passed ? 'PASS' : 'FAIL';
+      let resultColor = cp.passed === null ? [100, 100, 100] : cp.passed ? [0, 128, 0] : [255, 0, 0];
+      
+      checkpointRows.push([
+        { content: (i + 1).toString(), styles: { halign: 'center' } },
+        { content: cp.description },
+        { content: resultText, styles: { fontStyle: 'bold', halign: 'center', textColor: resultColor } },
+        photoCell,
+        { content: cp.notes || '' }
+      ]);
+    }
+    
+    // Generate checkpoint table
     (doc as any).autoTable({
-      startY: finalY + 15,
-      body: inspectionSummary,
-      theme: 'striped',
-      headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] },
+      startY: finalY + 10,
+      head: checkpointHeaders,
+      body: checkpointRows,
+      theme: 'grid',
+      headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0] },
+      styles: { 
+        cellPadding: 3, 
+        fontSize: 8,
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1
+      },
       columnStyles: {
-        0: { cellWidth: 40, fontStyle: 'bold' },
-        1: { cellWidth: 110 }
+        0: { cellWidth: 15 },
+        1: { cellWidth: 55 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 40 },
+        4: { cellWidth: 45 }
       },
       margin: { left: 14, right: 14 }
     });
     
-    finalY = (doc as any).lastAutoTable.finalY;
+    finalY = (doc as any).lastAutoTable.finalY + 5;
     
-    // Add checkpoints section if available
-    if (inspectionData.checkpoints && inspectionData.checkpoints.length > 0) {
-      doc.setFontSize(14);
-      doc.setTextColor(41, 128, 185);
-      doc.text('Inspection Checkpoints', 14, finalY + 10);
-      
-      // Format checkpoint data for table
-      const checkpointData = inspectionData.checkpoints.map((cp: any) => [
-        cp.description,
-        cp.passed ? 'PASS' : 'FAIL',
-        cp.notes || 'No notes'
-      ]);
-      
-      (doc as any).autoTable({
-        startY: finalY + 15,
-        head: [['Checkpoint', 'Result', 'Notes']],
-        body: checkpointData,
-        theme: 'striped',
-        headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] },
-        columnStyles: {
-          0: { cellWidth: 80 },
-          1: { cellWidth: 20 },
-          2: { cellWidth: 50 }
-        },
-        margin: { left: 14, right: 14 },
-        bodyStyles: { 
-          textColor: (data: any) => {
-            return data.cell.section === 'body' && data.column.index === 1 
-              ? (data.cell.raw === 'PASS' ? [46, 125, 50] : [217, 83, 79]) 
-              : [0, 0, 0];
-          }
+    // Add photos to the cells where applicable
+    // This is a second pass since jsPDF-autotable doesn't directly support images in cells
+    try {
+      for (let i = 0; i < inspectionData.checkpoints.length; i++) {
+        const cp = inspectionData.checkpoints[i];
+        if (cp.photoUrl) {
+          // Position calculation is approximate based on table layout
+          // You may need to adjust these values based on actual table rendering
+          const rowHeight = 30; // approximate height per row
+          const tableStart = finalY - (inspectionData.checkpoints.length * rowHeight);
+          const imgY = tableStart + (i * rowHeight) - 15;
+          
+          // Add image to the photo evidence cell
+          doc.addImage(cp.photoUrl, 'JPEG', 110, imgY, 30, 20);
         }
-      });
-      
-      finalY = (doc as any).lastAutoTable.finalY;
-    }
-    
-    // Add signature if available
-    if (inspectionData.signatureUrl) {
-      doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      doc.text('Inspector Signature:', 14, finalY + 10);
-      
-      try {
-        // Add placeholder for signature image
-        doc.rect(14, finalY + 15, 80, 30);
-        doc.setFontSize(8);
-        doc.text('Signature available in digital format', 54, finalY + 30, { align: 'center' });
-      } catch (error) {
-        console.error('Error adding signature to PDF:', error);
       }
-      
-      finalY += 50;
+    } catch (error) {
+      console.error("Error adding checkpoint photos:", error);
     }
   }
+  
+  // Add inspector details table
+  doc.setFontSize(12);
+  doc.text("INSPECTOR DETAILS", 14, finalY + 5);
+  
+  // Inspector data in 2-column layout
+  const inspectorData = [
+    ["EMPLOYEE NAME:", inspectionData?.inspector_name || 'N/A', "EMPLOYEE ID:", "___________"],
+    ["ROLE:", "Inspector", "DEPARTMENT:", "Safety"]
+  ];
+  
+  (doc as any).autoTable({
+    startY: finalY + 10,
+    body: inspectorData,
+    theme: 'grid',
+    styles: { 
+      cellPadding: 3,
+      fontSize: 9,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.1
+    },
+    columnStyles: {
+      0: { cellWidth: 35, fontStyle: 'bold' },
+      1: { cellWidth: 45 },
+      2: { cellWidth: 30, fontStyle: 'bold' },
+      3: { cellWidth: 45 }
+    },
+    margin: { left: 14, right: 14 }
+  });
+  
+  finalY = (doc as any).lastAutoTable.finalY + 5;
+  
+  // Add overall result and signature
+  doc.setFontSize(12);
+  doc.text("FINAL INSPECTION RESULT", 14, finalY + 5);
+  
+  // Create a table for final result and signature
+  const resultText = inspectionData?.result || 'N/A';
+  const resultColor = !inspectionData?.result ? [100, 100, 100] : 
+                       inspectionData.result.toLowerCase() === 'pass' ? [0, 128, 0] : [255, 0, 0];
+  
+  const finalResultData = [
+    [
+      { content: "OVERALL RESULT:", styles: { fontStyle: 'bold' } },
+      { content: resultText.toUpperCase(), styles: { fontStyle: 'bold', textColor: resultColor, halign: 'center' } },
+      { content: "INSPECTOR SIGNATURE:", styles: { fontStyle: 'bold' } },
+      { content: ' ', styles: { minCellHeight: 30 } }
+    ]
+  ];
+  
+  (doc as any).autoTable({
+    startY: finalY + 10,
+    body: finalResultData,
+    theme: 'grid',
+    styles: { 
+      cellPadding: 3,
+      fontSize: 9,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.1
+    },
+    columnStyles: {
+      0: { cellWidth: 35 },
+      1: { cellWidth: 45 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 45 }
+    },
+    margin: { left: 14, right: 14 }
+  });
+  
+  // Add signature if available
+  if (inspectionData?.signatureUrl) {
+    try {
+      // Position signature in the last cell
+      doc.addImage(inspectionData.signatureUrl, 'PNG', 150, finalY + 12, 30, 20);
+    } catch (error) {
+      console.error("Error adding signature:", error);
+    }
+  }
+  
+  // Add inspection date below signature
+  finalY = (doc as any).lastAutoTable.finalY + 5;
+  doc.setFontSize(9);
+  doc.text(`DATE: ${inspectionData?.date ? format(new Date(inspectionData.date), 'dd.MM.yyyy') : format(new Date(), 'dd.MM.yyyy')}`, 170, finalY, { align: 'right' });
   
   // Add footer with page numbers
   const pageCount = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
+    doc.setTextColor(100, 100, 100);
     doc.text(
       `Page ${i} of ${pageCount}`, 
       doc.internal.pageSize.width / 2, 
@@ -170,8 +264,10 @@ export const generateSinglePPEReport = async (ppeItem: PPEItem, inspectionData?:
   }
   
   // Save the PDF
-  const filename = `PPE_Report_${ppeItem.serialNumber || ppeItem.id}.pdf`;
+  const filename = `${ppeItem.type || 'PPE'}_Inspection_${ppeItem.serialNumber || ''}_${format(new Date(), 'yyyyMMdd')}.pdf`;
   doc.save(filename);
+  
+  return filename;
 };
 
 /**
@@ -186,20 +282,30 @@ export const generateBatchPPEReport = async (ppeItems: PPEItem[]) => {
     compress: true
   });
   
-  // Add header with title
-  doc.setFontSize(20);
-  doc.setTextColor(41, 128, 185);
+  // Add header with logo, title and document info
+  try {
+    doc.addImage("/lovable-uploads/logo.png", "PNG", 14, 10, 30, 20);
+  } catch (error) {
+    console.error("Error adding logo to PDF:", error);
+  }
+  
+  // Title in center
+  doc.setFontSize(16);
+  doc.setTextColor(0, 0, 0);
   doc.text('PPE INVENTORY REPORT', doc.internal.pageSize.width / 2, 20, { align: 'center' });
   
-  // Add report details
-  doc.setFontSize(10);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`Report Date: ${format(new Date(), 'dd MMM yyyy')}`, 14, 30);
-  doc.text(`Total Items: ${ppeItems.length}`, 14, 35);
+  // Document number and date on right
+  doc.setFontSize(8);
+  doc.text("Doc. No: ABCD", 270, 15);
+  doc.text(`Report Date: ${format(new Date(), 'dd.MM.yyyy')}`, 270, 20);
   
   // Draw divider
-  doc.setDrawColor(200, 200, 200);
-  doc.line(14, 38, doc.internal.pageSize.width - 14, 38);
+  doc.setDrawColor(0, 0, 0);
+  doc.line(14, 33, doc.internal.pageSize.width - 14, 33);
+  
+  // Add report summary
+  doc.setFontSize(12);
+  doc.text("INVENTORY SUMMARY", 14, 40);
   
   // Calculate status counts
   const statusCounts = {
@@ -209,114 +315,113 @@ export const generateBatchPPEReport = async (ppeItems: PPEItem[]) => {
     flagged: ppeItems.filter(item => item.status === 'flagged').length
   };
   
-  // Add summary table
+  // Summary table in 2-column layout
   const summaryData = [
-    ['Active', statusCounts.active.toString()],
-    ['Expired', statusCounts.expired.toString()],
-    ['Maintenance', statusCounts.maintenance.toString()],
-    ['Flagged', statusCounts.flagged.toString()],
-    ['Total', ppeItems.length.toString()]
+    ["TOTAL ITEMS:", ppeItems.length.toString(), "SITE:", "Example Site"],
+    ["ACTIVE:", statusCounts.active.toString(), "EXPIRED:", statusCounts.expired.toString()],
+    ["MAINTENANCE:", statusCounts.maintenance.toString(), "FLAGGED:", statusCounts.flagged.toString()]
   ];
   
   (doc as any).autoTable({
     startY: 45,
-    head: [['Status', 'Count']],
     body: summaryData,
-    theme: 'striped',
-    headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] },
-    margin: { left: 14, right: 14 },
-    tableWidth: 80
+    theme: 'grid',
+    styles: { 
+      cellPadding: 3,
+      fontSize: 9,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.1
+    },
+    columnStyles: {
+      0: { cellWidth: 35, fontStyle: 'bold' },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 35, fontStyle: 'bold' },
+      3: { cellWidth: 35 }
+    },
+    margin: { left: 14, right: 14 }
   });
   
-  // Format PPE data for main table
+  let finalY = (doc as any).lastAutoTable.finalY + 5;
+  
+  // Add main inventory table
+  doc.setFontSize(12);
+  doc.text("PPE INVENTORY DETAILS", 14, finalY + 5);
+  
+  // Format data for main table
   const now = new Date();
-  const ppeData = ppeItems.map(item => {
-    let nextInspStatus = 'N/A';
+  const tableHeaders = [
+    [{ content: 'S.No.', styles: { fontStyle: 'bold', halign: 'center' } },
+     { content: 'Serial Number', styles: { fontStyle: 'bold' } },
+     { content: 'PPE Type', styles: { fontStyle: 'bold' } },
+     { content: 'Brand', styles: { fontStyle: 'bold' } },
+     { content: 'Model', styles: { fontStyle: 'bold' } },
+     { content: 'Mfg. Date', styles: { fontStyle: 'bold', halign: 'center' } },
+     { content: 'Expiry Date', styles: { fontStyle: 'bold', halign: 'center' } },
+     { content: 'Status', styles: { fontStyle: 'bold', halign: 'center' } },
+     { content: 'Next Inspection', styles: { fontStyle: 'bold', halign: 'center' } }]
+  ];
+  
+  const tableRows = ppeItems.map((item, index) => {
     let expiryStatus = 'N/A';
+    let statusColor = [0, 0, 0];
     
-    if (item.nextInspection) {
-      const nextInsp = new Date(item.nextInspection);
-      const diffDays = Math.ceil((nextInsp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (diffDays < 0) {
-        nextInspStatus = 'Overdue';
-      } else if (diffDays <= 7) {
-        nextInspStatus = 'Critical';
-      } else if (diffDays <= 30) {
-        nextInspStatus = 'Soon';
-      } else {
-        nextInspStatus = 'OK';
-      }
-    }
-    
-    if (item.expiryDate) {
-      const expiryDate = new Date(item.expiryDate);
-      const diffDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (diffDays < 0) {
-        expiryStatus = 'Expired';
-      } else if (diffDays <= 30) {
-        expiryStatus = 'Critical';
-      } else if (diffDays <= 90) {
-        expiryStatus = 'Soon';
-      } else {
-        expiryStatus = 'OK';
+    if (item.status) {
+      switch(item.status) {
+        case 'active':
+          statusColor = [0, 128, 0]; // Green
+          break;
+        case 'expired':
+          statusColor = [255, 0, 0]; // Red
+          break;
+        case 'maintenance':
+          statusColor = [255, 165, 0]; // Orange
+          break;
+        case 'flagged':
+          statusColor = [255, 0, 0]; // Red
+          break;
+        default:
+          statusColor = [0, 0, 0]; // Black
       }
     }
     
     return [
-      item.serialNumber || 'N/A',
-      item.type || 'N/A',
-      item.brand || 'N/A',
-      item.status || 'N/A',
-      item.manufacturingDate ? format(new Date(item.manufacturingDate), 'dd/MM/yyyy') : 'N/A',
-      item.expiryDate ? format(new Date(item.expiryDate), 'dd/MM/yyyy') : 'N/A',
-      expiryStatus,
-      item.nextInspection ? format(new Date(item.nextInspection), 'dd/MM/yyyy') : 'N/A',
-      nextInspStatus
+      { content: (index + 1).toString(), styles: { halign: 'center' } },
+      { content: item.serialNumber || 'N/A' },
+      { content: item.type || 'N/A' },
+      { content: item.brand || 'N/A' },
+      { content: item.modelNumber || 'N/A' },
+      { content: item.manufacturingDate ? format(new Date(item.manufacturingDate), 'dd.MM.yyyy') : 'N/A', styles: { halign: 'center' } },
+      { content: item.expiryDate ? format(new Date(item.expiryDate), 'dd.MM.yyyy') : 'N/A', styles: { halign: 'center' } },
+      { content: item.status ? item.status.toUpperCase() : 'N/A', styles: { halign: 'center', fontStyle: 'bold', textColor: statusColor } },
+      { content: item.nextInspection ? format(new Date(item.nextInspection), 'dd.MM.yyyy') : 'N/A', styles: { halign: 'center' } }
     ];
   });
   
-  // Add main PPE table
+  // Generate the inventory table
   (doc as any).autoTable({
-    startY: 80,
-    head: [['Serial #', 'Type', 'Brand', 'Status', 'Mfg Date', 'Exp Date', 'Exp Status', 'Next Insp', 'Insp Status']],
-    body: ppeData,
-    theme: 'striped',
-    headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] },
-    margin: { left: 14, right: 14 },
-    columnStyles: {
-      0: { cellWidth: 35 },
-      1: { cellWidth: 30 },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 20 },
-      4: { cellWidth: 20 },
-      5: { cellWidth: 20 },
-      6: { cellWidth: 20 },
-      7: { cellWidth: 20 },
-      8: { cellWidth: 20 }
+    startY: finalY + 10,
+    head: tableHeaders,
+    body: tableRows,
+    theme: 'grid',
+    headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0] },
+    styles: { 
+      cellPadding: 3,
+      fontSize: 8,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.1
     },
-    bodyStyles: {
-      textColor: (data: any) => {
-        if (data.cell.section !== 'body') return [0, 0, 0];
-        
-        if (data.column.index === 6) { // Expiry Status column
-          if (data.cell.raw === 'Expired') return [217, 83, 79];
-          if (data.cell.raw === 'Critical') return [240, 173, 78];
-          if (data.cell.raw === 'Soon') return [91, 192, 222];
-          return [46, 125, 50]; // 'OK'
-        }
-        
-        if (data.column.index === 8) { // Inspection Status column
-          if (data.cell.raw === 'Overdue') return [217, 83, 79];
-          if (data.cell.raw === 'Critical') return [240, 173, 78];
-          if (data.cell.raw === 'Soon') return [91, 192, 222];
-          return [46, 125, 50]; // 'OK'
-        }
-        
-        return [0, 0, 0];
-      }
-    }
+    columnStyles: {
+      0: { cellWidth: 15 },  // S.No.
+      1: { cellWidth: 30 },  // Serial Number
+      2: { cellWidth: 30 },  // Type
+      3: { cellWidth: 30 },  // Brand
+      4: { cellWidth: 25 },  // Model
+      5: { cellWidth: 22 },  // Mfg Date
+      6: { cellWidth: 22 },  // Expiry
+      7: { cellWidth: 25 },  // Status
+      8: { cellWidth: 25 }   // Next Inspection
+    },
+    margin: { left: 14, right: 14 }
   });
   
   // Add footer with page numbers
@@ -324,7 +429,7 @@ export const generateBatchPPEReport = async (ppeItems: PPEItem[]) => {
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
+    doc.setTextColor(100, 100, 100);
     doc.text(
       `Page ${i} of ${pageCount}`, 
       doc.internal.pageSize.width / 2, 
@@ -340,7 +445,9 @@ export const generateBatchPPEReport = async (ppeItems: PPEItem[]) => {
   }
   
   // Save the PDF
-  const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+  const timestamp = format(new Date(), 'yyyyMMdd');
   const filename = `PPE_Inventory_Report_${timestamp}.pdf`;
   doc.save(filename);
+  
+  return filename;
 };

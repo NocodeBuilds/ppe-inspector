@@ -1,6 +1,7 @@
 
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { format } from 'date-fns';
 
 interface InspectionDetail {
   id: string;
@@ -32,52 +33,112 @@ export const generateInspectionExcelReport = async (inspection: InspectionDetail
     // Create a new workbook
     const wb = XLSX.utils.book_new();
     
-    // Create headers for main inspection info
-    const mainInfoData = [
-      ['Inspection Report'],
-      [`Date:`, new Date(inspection.date).toLocaleDateString()],
-      [`Type:`, inspection.type],
-      [`Result:`, inspection.overall_result.toUpperCase()],
-      [`Inspector:`, inspection.inspector_name],
-      ['']
+    // Set column widths for better formatting
+    const wscols = [
+      { wch: 20 },  // A
+      { wch: 30 },  // B
+      { wch: 20 },  // C
+      { wch: 30 },  // D
     ];
     
-    // Create equipment details
-    const equipmentData = [
-      ['Equipment Details'],
-      ['Type', 'Serial Number', 'Brand', 'Model'],
-      [inspection.ppe_type, inspection.ppe_serial, inspection.ppe_brand, inspection.ppe_model],
-      ['']
+    // Create header rows with merged cells
+    const headerRows = [
+      ['', 'PPE INSPECTION CHECKLIST', '', ''],
+      ['', '', 'Doc. No:', 'ABCD'],
+      ['', '', 'Approval Date:', format(new Date(), 'dd.MM.yyyy')],
+      ['', '', '', ''],
     ];
     
-    // Create checkpoint data
-    const checkpointHeaders = ['Checkpoint', 'Result', 'Notes'];
-    const checkpointRows = inspection.checkpoints.map(checkpoint => {
-      const result = checkpoint.passed === null ? 'N/A' : checkpoint.passed ? 'PASS' : 'FAIL';
+    // Create equipment details section
+    const equipmentRows = [
+      ['EQUIPMENT DETAILS', '', '', ''],
+      ['SITE:', 'Example Site', 'PPE TYPE:', inspection.ppe_type],
+      ['SERIAL NUMBER:', inspection.ppe_serial, 'MAKE:', inspection.ppe_brand],
+      ['MODEL NUMBER:', inspection.ppe_model, 'INSPECTION DATE:', format(new Date(inspection.date), 'dd.MM.yyyy')],
+      ['INSPECTION TYPE:', inspection.type.toUpperCase(), 'STATUS:', inspection.overall_result.toUpperCase()],
+      ['', '', '', ''],
+    ];
+    
+    // Create checkpoints section header
+    const checkpointHeader = [
+      ['INSPECTION CHECKPOINTS', '', '', ''],
+      ['S.No.', 'Checkpoint Description', 'Result', 'Remarks'],
+    ];
+    
+    // Create checkpoint rows
+    const checkpointRows = inspection.checkpoints.map((checkpoint, index) => {
+      const result = checkpoint.passed === null ? 'NA' : checkpoint.passed ? 'PASS' : 'FAIL';
       const notes = checkpoint.notes || '';
-      return [checkpoint.description, result, notes];
+      return [index + 1, checkpoint.description, result, notes];
     });
     
-    const checkpointData = [
-      ['Inspection Checkpoints'],
-      checkpointHeaders,
-      ...checkpointRows,
-      [''],
-      ['Additional Notes'],
-      [inspection.notes || 'No additional notes provided.']
+    // Create inspector details section
+    const inspectorRows = [
+      ['', '', '', ''],
+      ['INSPECTOR DETAILS', '', '', ''],
+      ['EMPLOYEE NAME:', inspection.inspector_name, 'EMPLOYEE ID:', ''],
+      ['ROLE:', 'Inspector', 'DEPARTMENT:', 'Safety'],
+      ['', '', '', ''],
     ];
     
-    // Combine all data
-    const allData = [...mainInfoData, ...equipmentData, ...checkpointData];
+    // Create final result section
+    const resultRows = [
+      ['FINAL INSPECTION RESULT', '', '', ''],
+      ['OVERALL RESULT:', inspection.overall_result.toUpperCase(), 'DATE:', format(new Date(inspection.date), 'dd.MM.yyyy')],
+      ['', '', '', ''],
+      ['Inspector Signature', '', '', ''],
+      ['', '', '', ''],
+      ['', '', '', ''],
+    ];
+    
+    // Combine all sections
+    const allRows = [
+      ...headerRows,
+      ...equipmentRows,
+      ...checkpointHeader,
+      ...checkpointRows,
+      ...inspectorRows,
+      ...resultRows,
+    ];
     
     // Create worksheet from data
-    const ws = XLSX.utils.aoa_to_sheet(allData);
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+    
+    // Set column widths
+    ws['!cols'] = wscols;
+    
+    // Set merged cells for better formatting
+    ws['!merges'] = [
+      // Header merges
+      { s: { r: 0, c: 1 }, e: { r: 0, c: 2 } },  // Title
+      
+      // Equipment details header
+      { s: { r: 4, c: 0 }, e: { r: 4, c: 3 } },
+      
+      // Checkpoints header
+      { s: { r: 10, c: 0 }, e: { r: 10, c: 3 } },
+      
+      // Inspector details header
+      { s: { r: 11 + inspection.checkpoints.length + 1, c: 0 }, 
+        e: { r: 11 + inspection.checkpoints.length + 1, c: 3 } },
+      
+      // Final result header
+      { s: { r: 11 + inspection.checkpoints.length + 6, c: 0 }, 
+        e: { r: 11 + inspection.checkpoints.length + 6, c: 3 } },
+      
+      // Signature field
+      { s: { r: 11 + inspection.checkpoints.length + 9, c: 0 }, 
+        e: { r: 11 + inspection.checkpoints.length + 9, c: 3 } },
+    ];
     
     // Add worksheet to workbook
     XLSX.utils.book_append_sheet(wb, ws, 'Inspection Report');
     
+    // Apply cell styling
+    // Note: Basic Excel doesn't support full styling like PDF, but we can add basic formatting
+    
     // Generate filename
-    const filename = `inspection_${inspection.ppe_serial}_${new Date(inspection.date).toISOString().split('T')[0]}.xlsx`;
+    const filename = `inspection_${inspection.ppe_serial}_${format(new Date(inspection.date), 'yyyyMMdd')}.xlsx`;
     
     // Get network status to determine download method
     const isOnline = navigator.onLine;
@@ -97,6 +158,8 @@ export const generateInspectionExcelReport = async (inspection: InspectionDetail
       console.log('Excel report generated successfully using Blob fallback');
     }
     
+    return;
+    
   } catch (error) {
     console.error('Error generating Excel report:', error);
     throw error;
@@ -112,30 +175,74 @@ export const generateInspectionsListExcelReport = async (inspections: any[]): Pr
     // Create a new workbook
     const wb = XLSX.utils.book_new();
     
-    // Create headers
-    const headers = ['Date', 'Type', 'PPE Serial #', 'PPE Type', 'Result', 'Inspector'];
+    // Set column widths for better formatting
+    const wscols = [
+      { wch: 15 },  // Date
+      { wch: 15 },  // Type
+      { wch: 20 },  // PPE Serial #
+      { wch: 20 },  // PPE Type
+      { wch: 15 },  // Result
+      { wch: 25 },  // Inspector
+    ];
+    
+    // Create header rows
+    const headerRows = [
+      ['INSPECTIONS REPORT', '', '', '', '', ''],
+      ['Doc. No: ABCD', '', '', 'Report Date:', format(new Date(), 'dd.MM.yyyy'), ''],
+      ['', '', '', '', '', ''],
+    ];
+    
+    // Create table headers
+    const tableHeader = [
+      ['Date', 'Type', 'PPE Serial #', 'PPE Type', 'Result', 'Inspector'],
+    ];
     
     // Create data rows
     const dataRows = inspections.map(inspection => [
-      new Date(inspection.date).toLocaleDateString(),
-      inspection.type,
+      format(new Date(inspection.date), 'dd.MM.yyyy'),
+      inspection.type.toUpperCase(),
       inspection.ppe_serial,
       inspection.ppe_type,
-      inspection.overall_result,
+      inspection.overall_result.toUpperCase(),
       inspection.inspector_name
     ]);
     
-    // Combine headers and data
-    const allData = [headers, ...dataRows];
+    // Create summary section
+    const summaryRows = [
+      ['', '', '', '', '', ''],
+      ['SUMMARY', '', '', '', '', ''],
+      ['Total Inspections:', inspections.length, '', '', '', ''],
+      ['Pass:', inspections.filter(i => i.overall_result.toLowerCase() === 'pass').length, '', '', '', ''],
+      ['Fail:', inspections.filter(i => i.overall_result.toLowerCase() === 'fail').length, '', '', '', ''],
+      ['', '', '', '', '', ''],
+    ];
+    
+    // Combine all sections
+    const allRows = [
+      ...headerRows,
+      ...tableHeader,
+      ...dataRows,
+      ...summaryRows,
+    ];
     
     // Create worksheet from data
-    const ws = XLSX.utils.aoa_to_sheet(allData);
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+    
+    // Set column widths
+    ws['!cols'] = wscols;
+    
+    // Set merged cells for header
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },  // Title
+      { s: { r: dataRows.length + tableHeader.length + headerRows.length + 1, c: 0 }, 
+        e: { r: dataRows.length + tableHeader.length + headerRows.length + 1, c: 5 } }, // Summary header
+    ];
     
     // Add worksheet to workbook
     XLSX.utils.book_append_sheet(wb, ws, 'Inspections Report');
     
     // Generate filename with current date
-    const today = new Date().toISOString().split('T')[0];
+    const today = format(new Date(), 'yyyyMMdd');
     const filename = `inspections_report_${today}.xlsx`;
     
     try {
@@ -149,6 +256,8 @@ export const generateInspectionsListExcelReport = async (inspections: any[]): Pr
       const blob = new Blob([wbout], { type: 'application/octet-stream' });
       saveAs(blob, filename);
     }
+    
+    return;
     
   } catch (error) {
     console.error('Error generating Excel report:', error);
