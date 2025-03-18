@@ -21,7 +21,7 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
   const {
     data: profile,
     isLoading,
-    refetch: refreshProfile
+    refetch
   } = useSupabaseQuery<Profile | null>(
     ['profile', userId || ''],
     async () => {
@@ -31,7 +31,7 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
         console.log("Fetching profile for:", userId);
         const { data, error } = await supabase
           .from('profiles')
-          .select('*, extended_profiles:user_id(*)')
+          .select('*')
           .eq('id', userId)
           .single();
 
@@ -40,22 +40,23 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
         if (data) {
           console.log("Profile data:", data);
           
-          // Merge the profile and extended profile data
-          const mergedProfile: Profile = {
+          // Cast data to Profile type
+          const profileData: Profile = {
             id: data.id,
             full_name: data.full_name,
             avatar_url: data.avatar_url,
             role: data.role,
             created_at: data.created_at,
             updated_at: data.updated_at,
-            employee_id: data.extended_profiles?.employee_id || null,
-            location: data.extended_profiles?.location || null,
-            department: data.extended_profiles?.department || null,
-            bio: data.extended_profiles?.bio || null,
+            // Extended profile fields
+            employee_id: data.employee_id || null,
+            location: data.location || null,
+            department: data.department || null,
+            bio: data.bio || null,
             email: null // We can add email if needed
           };
           
-          return mergedProfile;
+          return profileData;
         }
         return null;
       } catch (error) {
@@ -65,6 +66,15 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
     },
     { enabled: !!userId }
   );
+  
+  // Wrap the refetch function to match the expected return type
+  const refreshProfile = async (): Promise<void> => {
+    try {
+      await refetch();
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  };
   
   return {
     profile,
