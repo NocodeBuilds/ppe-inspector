@@ -333,12 +333,12 @@ const InspectionDetails = () => {
           <DropdownMenuContent align="end">
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <FilePdf className="mr-2 h-4 w-4" />
+                <FileText className="mr-2 h-4 w-4" />
                 <span>Export Report</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 <DropdownMenuItem onClick={handleExportPDF}>
-                  <FilePdf className="mr-2 h-4 w-4" />
+                  <FileText className="mr-2 h-4 w-4" />
                   Download as PDF
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleExportExcel}>
@@ -356,7 +356,7 @@ const InspectionDetails = () => {
               <DropdownMenuSubContent>
                 <DropdownMenuRadioGroup value={shareFormat} onValueChange={(value) => setShareFormat(value as 'pdf' | 'excel')}>
                   <DropdownMenuRadioItem value="pdf">
-                    <FilePdf className="mr-2 h-4 w-4" />
+                    <FileText className="mr-2 h-4 w-4" />
                     Share as PDF
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="excel">
@@ -380,7 +380,7 @@ const InspectionDetails = () => {
               <DropdownMenuSubContent>
                 <DropdownMenuRadioGroup value={shareFormat} onValueChange={(value) => setShareFormat(value as 'pdf' | 'excel')}>
                   <DropdownMenuRadioItem value="pdf">
-                    <FilePdf className="mr-2 h-4 w-4" />
+                    <FileText className="mr-2 h-4 w-4" />
                     Share as PDF
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="excel">

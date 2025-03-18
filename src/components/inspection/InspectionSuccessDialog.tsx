@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { FileText, Download, MessageSquare, Mail, Home, Plus, WifiOff, FileSpreadsheet } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -62,7 +63,9 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
           const registration = await navigator.serviceWorker.ready;
           
           if ('sync' in registration) {
-            await registration.sync.register('sync-offline-reports');
+            // Properly type the registration object to access the sync property
+            const syncManager = (registration as unknown as { sync: { register: (tag: string) => Promise<void> } }).sync;
+            await syncManager.register('sync-offline-reports');
             
             toast({
               title: "Queued for Sync",

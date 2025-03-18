@@ -98,7 +98,7 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     doc.setFontSize(12);
     doc.text("INSPECTION CHECKPOINTS", 14, finalY + 5);
     
-    // Format checkpoint data for table
+    // Format checkpoint data for table with properly typed fontStyle values
     const checkpointHeaders = [
       [
         { content: 'S.No.', styles: { fontStyle: 'bold', halign: 'center' } },
@@ -220,7 +220,7 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   const resultColor = !inspection.overall_result ? [100, 100, 100] : 
                       inspection.overall_result.toLowerCase() === 'pass' ? [0, 128, 0] : [255, 0, 0];
   
-  // Create final result and signature table
+  // Create final result and signature table with properly typed fontStyle values
   const finalResultData = [
     [
       { content: "OVERALL RESULT:", styles: { fontStyle: 'bold' } },
