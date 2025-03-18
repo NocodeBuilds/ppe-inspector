@@ -100,11 +100,13 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     
     // Format checkpoint data for table
     const checkpointHeaders = [
-      [{ content: 'S.No.', styles: { fontStyle: 'bold', halign: 'center' } },
-       { content: 'Checkpoint Description', styles: { fontStyle: 'bold', halign: 'left' } },
-       { content: 'Result', styles: { fontStyle: 'bold', halign: 'center' } },
-       { content: 'Photo Evidence', styles: { fontStyle: 'bold', halign: 'center' } },
-       { content: 'Remarks', styles: { fontStyle: 'bold', halign: 'left' } }]
+      [
+        { content: 'S.No.', styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: 'Checkpoint Description', styles: { fontStyle: 'bold', halign: 'left' } },
+        { content: 'Result', styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: 'Photo Evidence', styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: 'Remarks', styles: { fontStyle: 'bold', halign: 'left' } }
+      ]
     ];
     
     let checkpointRows = [];
@@ -222,7 +224,7 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   const finalResultData = [
     [
       { content: "OVERALL RESULT:", styles: { fontStyle: 'bold' } },
-      { content: resultText.toUpperCase(), styles: { fontStyle: 'bold', textColor: resultColor, halign: 'center' } },
+      { content: resultText.toUpperCase(), styles: { fontStyle: 'bold', halign: 'center', textColor: resultColor } },
       { content: "INSPECTOR SIGNATURE:", styles: { fontStyle: 'bold' } },
       { content: ' ', styles: { minCellHeight: 30 } }
     ]

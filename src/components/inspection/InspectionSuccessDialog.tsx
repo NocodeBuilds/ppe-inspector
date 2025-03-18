@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { FileText, Download, MessageSquare, Mail, Home, Plus, WifiOff, FileSpreadsheet, FilePdf } from 'lucide-react';
+import { FileText, Download, MessageSquare, Mail, Home, Plus, WifiOff, FileSpreadsheet } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -52,7 +51,6 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
     setIsLoading(actionName);
     
     try {
-      // Check if network is required but unavailable
       if (requiresNetwork && !isOnline) {
         toast({
           title: "Offline Mode",
@@ -60,13 +58,10 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
           variant: "default",
         });
         
-        // Request sync when back online
         if ('serviceWorker' in navigator && 'SyncManager' in window) {
           const registration = await navigator.serviceWorker.ready;
           
-          // Check if sync is supported in this browser
           if ('sync' in registration) {
-            // @ts-ignore - TypeScript doesn't recognize sync property
             await registration.sync.register('sync-offline-reports');
             
             toast({
@@ -77,7 +72,6 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
           }
         }
       } else {
-        // Execute the action
         await action();
       }
     } catch (error) {
@@ -96,14 +90,12 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
     setIsLoading(shareMethod);
     
     try {
-      // First generate the selected format
       if (shareFormat === 'pdf') {
         await onPDFDownload();
       } else {
         await onExcelDownload();
       }
       
-      // Then share it using the selected method
       if (shareMethod === 'whatsapp') {
         await onWhatsAppShare();
       } else {
@@ -163,7 +155,7 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
                   <span className="animate-pulse">Generating...</span>
                 ) : (
                   <>
-                    <FilePdf className="mr-2 h-5 w-5" />
+                    <FileText className="mr-2 h-5 w-5" />
                     PDF Format
                   </>
                 )}

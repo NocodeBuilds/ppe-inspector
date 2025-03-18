@@ -18,7 +18,6 @@ import {
   Download,
   MessageSquare,
   Mail,
-  FilePdf,
   FileSpreadsheet
 } from 'lucide-react';
 import { format } from 'date-fns';
