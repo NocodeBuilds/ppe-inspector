@@ -43,19 +43,22 @@ export const generateInspectionExcelReport = async (inspection: InspectionDetail
     
     // Create header rows with merged cells
     const headerRows = [
-      ['', 'PPE INSPECTION CHECKLIST', '', ''],
+      ['', inspection.ppe_type.toUpperCase() + ' INSPECTION CHECKLIST', '', ''],
       ['', '', 'Doc. No:', 'ABCD'],
       ['', '', 'Approval Date:', format(new Date(), 'dd.MM.yyyy')],
       ['', '', '', ''],
     ];
     
-    // Create equipment details section
+    // Get site name from inspector's location
+    const siteName = inspection.inspector_name || "Example Site";
+    
+    // Create equipment details section - updated structure
     const equipmentRows = [
       ['EQUIPMENT DETAILS', '', '', ''],
-      ['SITE:', 'Example Site', 'PPE TYPE:', inspection.ppe_type],
-      ['SERIAL NUMBER:', inspection.ppe_serial, 'MAKE:', inspection.ppe_brand],
-      ['MODEL NUMBER:', inspection.ppe_model, 'INSPECTION DATE:', format(new Date(inspection.date), 'dd.MM.yyyy')],
-      ['INSPECTION TYPE:', inspection.type.toUpperCase(), 'STATUS:', inspection.overall_result.toUpperCase()],
+      ['SITE NAME:', siteName, 'INSPECTION DATE:', format(new Date(inspection.date), 'dd.MM.yyyy')],
+      ['PPE TYPE:', inspection.ppe_type.toUpperCase(), 'SERIAL NUMBER:', inspection.ppe_serial],
+      ['MAKE (BRAND):', inspection.ppe_brand, 'MODEL NUMBER:', inspection.ppe_model],
+      ['MANUFACTURING DATE:', 'N/A', 'EXPIRY DATE:', 'N/A'],
       ['', '', '', ''],
     ];
     
@@ -197,12 +200,12 @@ export const generateInspectionsListExcelReport = async (inspections: any[]): Pr
       ['Date', 'Type', 'PPE Serial #', 'PPE Type', 'Result', 'Inspector'],
     ];
     
-    // Create data rows
+    // Create data rows - ensure all PPE types are in uppercase
     const dataRows = inspections.map(inspection => [
       format(new Date(inspection.date), 'dd.MM.yyyy'),
       inspection.type.toUpperCase(),
       inspection.ppe_serial,
-      inspection.ppe_type,
+      inspection.ppe_type.toUpperCase(),
       inspection.overall_result.toUpperCase(),
       inspection.inspector_name
     ]);

@@ -6,7 +6,6 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
-import { ExtendedProfile } from '@/contexts/AuthContext';
 import { 
   User, Settings, LogOut, Mail, 
   Building, MapPin, Briefcase, 
@@ -15,7 +14,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 const Profile = () => {
-  const { user, profile, signOut, extendedProfile, refreshProfile } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -26,10 +25,10 @@ const Profile = () => {
       return;
     }
     
-    if (!extendedProfile) {
+    if (!profile) {
       refreshProfile();
     }
-  }, [user, navigate, extendedProfile, refreshProfile]);
+  }, [user, navigate, profile, refreshProfile]);
   
   const handleLogout = async () => {
     setLoading(true);
@@ -122,7 +121,7 @@ const Profile = () => {
             <CardTitle>Additional Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {extendedProfile ? (
+            {profile ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-start">
@@ -130,7 +129,7 @@ const Profile = () => {
                     <div>
                       <p className="text-sm font-medium">Employee ID</p>
                       <p className="text-sm text-muted-foreground">
-                        {extendedProfile.employee_id || 'Not set'}
+                        {profile.employee_id || 'Not set'}
                       </p>
                     </div>
                   </div>
@@ -140,7 +139,7 @@ const Profile = () => {
                     <div>
                       <p className="text-sm font-medium">Department</p>
                       <p className="text-sm text-muted-foreground">
-                        {extendedProfile.department || 'Not set'}
+                        {profile.department || 'Not set'}
                       </p>
                     </div>
                   </div>
@@ -150,13 +149,13 @@ const Profile = () => {
                     <div>
                       <p className="text-sm font-medium">Location</p>
                       <p className="text-sm text-muted-foreground">
-                        {extendedProfile.location || 'Not set'}
+                        {profile.location || 'Not set'}
                       </p>
                     </div>
                   </div>
                 </div>
                 
-                {extendedProfile.bio && (
+                {profile.bio && (
                   <div className="pt-2">
                     <Separator className="mb-4" />
                     <div className="flex">
@@ -164,7 +163,7 @@ const Profile = () => {
                       <div>
                         <p className="text-sm font-medium">Bio</p>
                         <p className="text-sm text-muted-foreground whitespace-pre-line">
-                          {extendedProfile.bio}
+                          {profile.bio}
                         </p>
                       </div>
                     </div>

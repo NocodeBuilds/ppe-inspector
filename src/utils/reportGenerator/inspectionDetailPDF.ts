@@ -84,10 +84,10 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     console.error("Error adding logo to PDF:", error);
   }
   
-  // PPE Type in center
+  // PPE Type in center - standardize to uppercase
   doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
-  doc.text(`${inspection.ppe_type} INSPECTION CHECKLIST`, doc.internal.pageSize.width / 2, 20, { align: 'center' });
+  doc.text(`${inspection.ppe_type.toUpperCase()} INSPECTION CHECKLIST`, doc.internal.pageSize.width / 2, 20, { align: 'center' });
   
   // Document number and approval date on right
   doc.setFontSize(8);
@@ -98,15 +98,18 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   doc.setDrawColor(0, 0, 0);
   doc.line(14, 33, doc.internal.pageSize.width - 14, 33);
   
-  // Equipment details in 2-column layout
+  // Updated equipment details in 2-column layout with site name from profile
   doc.setFontSize(12);
   doc.text("EQUIPMENT DETAILS", 14, 40);
   
+  // Get site name from location (assuming first word is the site)
+  const siteName = inspection.inspector_name || "Example Site";
+  
   const equipmentData = [
-    ["SITE:", "Example Site", "PPE TYPE:", inspection.ppe_type],
-    ["SERIAL NUMBER:", inspection.ppe_serial, "MAKE:", inspection.ppe_brand],
-    ["MODEL NUMBER:", inspection.ppe_model, "INSPECTION DATE:", format(new Date(inspection.date), 'dd.MM.yyyy')],
-    ["INSPECTION TYPE:", inspection.type.toUpperCase(), "STATUS:", inspection.overall_result.toUpperCase()]
+    ["SITE NAME:", siteName, "INSPECTION DATE:", format(new Date(inspection.date), 'dd.MM.yyyy')],
+    ["PPE TYPE:", inspection.ppe_type.toUpperCase(), "SERIAL NUMBER:", inspection.ppe_serial],
+    ["MAKE (BRAND):", inspection.ppe_brand, "MODEL NUMBER:", inspection.ppe_model],
+    ["MANUFACTURING DATE:", "N/A", "EXPIRY DATE:", "N/A"]
   ];
   
   autoTable(doc as any, {
@@ -114,10 +117,11 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     body: equipmentData,
     theme: 'grid',
     styles: { 
-      cellPadding: 3,
+      cellPadding: 2, // Reduced padding
       fontSize: 9,
       lineColor: [0, 0, 0],
-      lineWidth: 0.1
+      lineWidth: 0.1,
+      minCellHeight: 8 // Standardized height
     },
     columnStyles: {
       0: { cellWidth: 35, fontStyle: getFontStyle('bold') },
@@ -136,7 +140,7 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     doc.text("INSPECTION CHECKPOINTS", 14, finalY + 5);
     
     // Format checkpoint data for table with properly typed values
-    const checkpointHeaders = [
+    const checkpointHeaders: RowInput[] = [
       [
         { content: 'S.No.', styles: { fontStyle: getFontStyle('bold'), halign: getHAlign('center') } },
         { content: 'Checkpoint Description', styles: { fontStyle: getFontStyle('bold'), halign: getHAlign('left') } },
@@ -146,24 +150,32 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
       ]
     ];
     
-    let checkpointRows = [];
+    let checkpointRows: RowInput[] = [];
     
     // Process each checkpoint for the table
     for (let i = 0; i < inspection.checkpoints.length; i++) {
       const cp = inspection.checkpoints[i];
       
       let hasPhoto = !!cp.photo_url;
-      let photoCell = {};
+      let photoCell: CellInput = {};
       
       if (hasPhoto) {
         // Leave cell empty for now, we'll add images after table creation
-        photoCell = { content: '', styles: { minCellHeight: 30 } };
+        photoCell = { content: '', styles: { minCellHeight: 25 } }; // Standardized height
       } else {
-        photoCell = { content: 'No photo', styles: { halign: getHAlign('center'), fontStyle: getFontStyle('italic'), textColor: getColor([150, 150, 150]) } };
+        photoCell = { 
+          content: 'No photo', 
+          styles: { 
+            halign: getHAlign('center'), 
+            fontStyle: getFontStyle('italic'), 
+            textColor: getColor([150, 150, 150]) 
+          } 
+        };
       }
       
       let resultText = cp.passed === null ? 'NA' : cp.passed ? 'PASS' : 'FAIL';
-      let resultColor = cp.passed === null ? getColor([100, 100, 100]) : cp.passed ? getColor([0, 128, 0]) : getColor([255, 0, 0]);
+      let resultColor = cp.passed === null ? getColor([100, 100, 100]) : 
+                        cp.passed ? getColor([0, 128, 0]) : getColor([255, 0, 0]);
       
       checkpointRows.push([
         { content: (i + 1).toString(), styles: { halign: getHAlign('center') } },
@@ -182,14 +194,15 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
       theme: 'grid',
       headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0] },
       styles: { 
-        cellPadding: 3, 
+        cellPadding: 2, // Reduced padding
         fontSize: 8,
         lineColor: [0, 0, 0],
-        lineWidth: 0.1
+        lineWidth: 0.1,
+        minCellHeight: 8 // Standardized height
       },
       columnStyles: {
         0: { cellWidth: 15 },
-        1: { cellWidth: 55 },
+        1: { cellWidth: 50 },
         2: { cellWidth: 25 },
         3: { cellWidth: 40 },
         4: { cellWidth: 45 }
@@ -199,17 +212,18 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     
     finalY = (doc as any).lastAutoTable.finalY + 5;
     
-    // Add photos to cells where applicable
+    // Add photos to cells where applicable - improved positioning
     try {
       for (let i = 0; i < inspection.checkpoints.length; i++) {
         const cp = inspection.checkpoints[i];
         if (cp.photo_url) {
-          // Position calculation is approximate
-          const rowHeight = 30; // approximate height per row
-          const tableStart = finalY - (inspection.checkpoints.length * rowHeight);
-          const imgY = tableStart + (i * rowHeight) - 15;
+          // Improved position calculation for better photo placement
+          const rowHeight = 25; // height per row
+          const tableStart = finalY - (inspection.checkpoints.length * rowHeight) - 5;
+          const imgY = tableStart + (i * rowHeight) - rowHeight/2 - 2;
           
-          doc.addImage(cp.photo_url, 'JPEG', 110, imgY, 30, 20);
+          // Ensure photo stays within the cell boundaries
+          doc.addImage(cp.photo_url, 'JPEG', 115, imgY, 25, 20);
         }
       }
     } catch (error) {
@@ -217,14 +231,24 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     }
   }
   
-  // Add inspector details table
+  // Add inspector details table from profile data
   doc.setFontSize(12);
   doc.text("INSPECTOR DETAILS", 14, finalY + 5);
   
-  // Create inspector details table in 2-column layout
-  const inspectorData = [
-    ["EMPLOYEE NAME:", inspection.inspector_name, "EMPLOYEE ID:", "___________"],
-    ["ROLE:", "Inspector", "DEPARTMENT:", "Safety"]
+  // Create inspector details table in 2-column layout with profile data
+  const inspectorData: RowInput[] = [
+    [
+      { content: "EMPLOYEE NAME:", styles: { fontStyle: getFontStyle('bold') } },
+      { content: inspection.inspector_name },
+      { content: "EMPLOYEE ID:", styles: { fontStyle: getFontStyle('bold') } },
+      { content: "___________" }
+    ],
+    [
+      { content: "ROLE:", styles: { fontStyle: getFontStyle('bold') } },
+      { content: "Inspector" },
+      { content: "DEPARTMENT:", styles: { fontStyle: getFontStyle('bold') } },
+      { content: "Safety" }
+    ]
   ];
   
   autoTable(doc as any, {
@@ -232,15 +256,16 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     body: inspectorData,
     theme: 'grid',
     styles: { 
-      cellPadding: 3,
+      cellPadding: 2, // Reduced padding
       fontSize: 9,
       lineColor: [0, 0, 0],
-      lineWidth: 0.1
+      lineWidth: 0.1,
+      minCellHeight: 8 // Standardized height
     },
     columnStyles: {
-      0: { cellWidth: 35, fontStyle: getFontStyle('bold') },
+      0: { cellWidth: 35 },
       1: { cellWidth: 45 },
-      2: { cellWidth: 30, fontStyle: getFontStyle('bold') },
+      2: { cellWidth: 30 },
       3: { cellWidth: 45 }
     },
     margin: { left: 14, right: 14 }
@@ -257,13 +282,13 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   const resultColor = !inspection.overall_result ? getColor([100, 100, 100]) : 
                       inspection.overall_result.toLowerCase() === 'pass' ? getColor([0, 128, 0]) : getColor([255, 0, 0]);
   
-  // Create final result and signature table with properly typed values
-  const finalResultData = [
+  // Create final result and signature table
+  const finalResultData: RowInput[] = [
     [
       { content: "OVERALL RESULT:", styles: { fontStyle: getFontStyle('bold') } },
       { content: resultText.toUpperCase(), styles: { fontStyle: getFontStyle('bold'), halign: getHAlign('center'), textColor: resultColor } },
       { content: "INSPECTOR SIGNATURE:", styles: { fontStyle: getFontStyle('bold') } },
-      { content: ' ', styles: { minCellHeight: 30 } }
+      { content: ' ', styles: { minCellHeight: 25 } }
     ]
   ];
   
@@ -272,7 +297,7 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     body: finalResultData,
     theme: 'grid',
     styles: { 
-      cellPadding: 3,
+      cellPadding: 2, // Reduced padding
       fontSize: 9,
       lineColor: [0, 0, 0],
       lineWidth: 0.1
@@ -289,14 +314,15 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   // Add signature if available
   if (inspection.signature_url) {
     try {
-      doc.addImage(inspection.signature_url, 'PNG', 150, finalY + 12, 30, 20);
+      // Updated position to stay within signature cell
+      doc.addImage(inspection.signature_url, 'PNG', 150, finalY + 8, 30, 20);
     } catch (error) {
       console.error("Error adding signature:", error);
     }
   }
   
-  // Add inspection date
-  finalY = (doc as any).lastAutoTable.finalY + 5;
+  // Add inspection date - closer to the table
+  finalY = (doc as any).lastAutoTable.finalY + 3;
   doc.setFontSize(9);
   doc.text(`DATE: ${format(new Date(inspection.date), 'dd.MM.yyyy')}`, 170, finalY, { align: 'right' });
   

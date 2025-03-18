@@ -1,13 +1,11 @@
 
 import { useState } from 'react';
 import { supabase, Profile } from '@/integrations/supabase/client';
-import { ExtendedProfile } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 
 type ProfileHook = {
   profile: Profile | null;
-  extendedProfile: ExtendedProfile | null;
   isLoading: boolean;
   refreshProfile: () => Promise<void>;
 };
@@ -22,8 +20,8 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
   // Use React Query for profile data
   const {
     data: profile,
-    isLoading: isProfileLoading,
-    refetch: refetchProfile
+    isLoading,
+    refetch: refreshProfile
   } = useSupabaseQuery<Profile | null>(
     ['profile', userId || ''],
     async () => {
@@ -33,7 +31,7 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
         console.log("Fetching profile for:", userId);
         const { data, error } = await supabase
           .from('profiles')
-          .select('*')
+          .select('*, extended_profiles:user_id(*)')
           .eq('id', userId)
           .single();
 
@@ -41,7 +39,23 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
 
         if (data) {
           console.log("Profile data:", data);
-          return data as Profile; // Return the complete data object as Profile
+          
+          // Merge the profile and extended profile data
+          const mergedProfile: Profile = {
+            id: data.id,
+            full_name: data.full_name,
+            avatar_url: data.avatar_url,
+            role: data.role,
+            created_at: data.created_at,
+            updated_at: data.updated_at,
+            employee_id: data.extended_profiles?.employee_id || null,
+            location: data.extended_profiles?.location || null,
+            department: data.extended_profiles?.department || null,
+            bio: data.extended_profiles?.bio || null,
+            email: null // We can add email if needed
+          };
+          
+          return mergedProfile;
         }
         return null;
       } catch (error) {
@@ -52,51 +66,8 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
     { enabled: !!userId }
   );
   
-  // Use React Query for extended profile data
-  const {
-    data: extendedProfile,
-    isLoading: isExtendedProfileLoading,
-    refetch: refetchExtendedProfile
-  } = useSupabaseQuery<ExtendedProfile | null>(
-    ['extendedProfile', userId || ''],
-    async () => {
-      try {
-        const { data, error } = await supabase.rpc('get_extended_profile');
-        
-        if (error) {
-          if (error.code === 'PGRST116') return null; // No rows returned
-          throw error;
-        }
-        
-        return data as ExtendedProfile;
-      } catch (error) {
-        console.error('Error fetching extended profile:', error);
-        throw error;
-      }
-    },
-    { enabled: !!userId }
-  );
-  
-  // Combined refresh function
-  const refreshProfile = async () => {
-    try {
-      await Promise.all([refetchProfile(), refetchExtendedProfile()]);
-    } catch (error: any) {
-      console.error('Error refreshing profile:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to refresh profile',
-        variant: 'destructive',
-      });
-    }
-  };
-  
-  // Combined loading state
-  const isLoading = isProfileLoading || isExtendedProfileLoading;
-  
   return {
     profile,
-    extendedProfile,
     isLoading,
     refreshProfile
   };
