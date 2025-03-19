@@ -33,11 +33,9 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
     if (scannerRef.current) {
       try {
         console.log('Stopping scanner...');
-        if (!scannerRef.current.isStopping()) {
-          scannerRef.current.stop().catch(() => {
-            console.log('Error stopping scanner, but continuing cleanup');
-          });
-        }
+        scannerRef.current.stop().catch(() => {
+          console.log('Error stopping scanner, but continuing cleanup');
+        });
       } catch (e) {
         console.log('Exception during scanner cleanup, ignoring:', e);
       } finally {

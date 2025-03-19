@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { XMarkIcon } from '@heroicons/react/24/solid';
+import { X } from 'lucide-react'; // Replacing HeroIcon with Lucide (which is already installed)
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/hooks/useNotifications';
 import ScannerPermissionRequest from './ScannerPermissionRequest';
@@ -44,8 +45,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
           },
         };
 
-        // Select the back camera by default
-        const cameraList = await html5QrCode.getCameras();
+        // Use static method to get cameras
+        const cameraList = await Html5Qrcode.getCameras();
         
         if (cameraList.length === 0) {
           throw new Error("No cameras found on this device.");
@@ -192,7 +193,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
             onError("Scanning cancelled");
           }}
         >
-          <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+          <X className="h-6 w-6" aria-hidden="true" />
         </button>
       </div>
     </EnhancedErrorBoundary>

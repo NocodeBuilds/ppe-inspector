@@ -73,7 +73,12 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
           throw error;
         }
         
-        return data as ExtendedProfile;
+        // Handle the conversion properly by explicitly checking and casting
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          return data as ExtendedProfile;
+        }
+        
+        return null;
       } catch (error) {
         console.error('Error fetching extended profile:', error);
         throw error;

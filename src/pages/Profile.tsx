@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
-import { ExtendedProfile } from '@/contexts/AuthContext';
+import { ExtendedProfile } from '@/types/extendedProfile';
 import { 
   User, Settings, LogOut, Mail, 
   Building, MapPin, Briefcase, 

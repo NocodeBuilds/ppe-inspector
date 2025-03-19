@@ -40,7 +40,7 @@ const StartInspection = () => {
       toast({
         title: 'Processing',
         description: 'Processing QR code...',
-        variant: 'info'
+        variant: 'default'
       });
       
       await searchBySerial(result);
@@ -94,7 +94,7 @@ const StartInspection = () => {
     toast({
       title: 'PPE Found',
       description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`,
-      variant: 'success'
+      variant: 'default'
     });
     
     // Navigate to the inspection form with the PPE ID
