@@ -199,7 +199,7 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
       
       console.log('Starting scanner with constraints:', cameraConstraints);
 
-      const startConfig = deviceId ? { deviceId: { exact: deviceId } } : cameraConstraints;
+      const startConfig = deviceId ? deviceId : cameraConstraints;
 
       await scannerRef.current.start(
         startConfig,
