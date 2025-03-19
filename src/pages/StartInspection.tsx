@@ -36,14 +36,18 @@ const StartInspection = () => {
     
     try {
       // Show scanning feedback
-      toast('Processing', 'info', {
+      toast({
+        title: 'Processing',
+        variant: 'default',
         description: 'Processing QR code...'
       });
       
       await searchBySerial(result);
     } catch (error) {
       console.error('Error handling scan result:', error);
-      toast('Error', 'error', {
+      toast({
+        title: 'Error',
+        variant: 'destructive',
         description: error instanceof Error ? error.message : 'Failed to process QR code'
       });
     }
@@ -86,7 +90,9 @@ const StartInspection = () => {
     setShowScanner(false);
     setSerialNumber('');
     
-    toast('PPE Found', 'success', {
+    toast({
+      title: 'PPE Found',
+      variant: 'success',
       description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`
     });
     
