@@ -59,96 +59,101 @@ const ManualInspection = () => {
     try {
       // Check if the PPE exists
       const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(serialNumber);
+
+      const orFilter = isValidUUID
+        ? [`id.eq.${serialNumber}`]
+        : [`serial_number.eq.${serialNumber}`];
+
       const { data: ppeData, error: ppeError } = await supabase
         .from('ppe_items')
         .select('*')
-        .or([
-          isValidUUID ? {
-            id: serialNumber,
-            _and: `id LIKE 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'`
-          } : null,
-          `serial_number.eq.${serialNumber}`,
-        ].filter(Boolean));
-      
+        .or(orFilter.join(','));
+
       if (ppeError) {
         console.error("Error checking PPE existence:", ppeError);
-        throw ppeError;
-      }
-      
-      if (ppeData && ppeData.length > 0) {
-        // PPE exists, redirect to inspection form
-        const ppeItem = ppeData[0];
-        // Fix: Update to correct route path
-        navigate(`/inspect/${ppeItem.id}`);
-        return;
-      }
-      
-      // PPE doesn't exist, create a new one
-      if (!watch('type')) {
         toast({
-          title: 'Error',
-          description: 'PPE type is required for new equipment',
+          title: 'Error Checking PPE',
+          description: ppeError.message,
           variant: 'destructive',
         });
-        setIsLoading(false);
         return;
       }
-      
-      // Set default dates if not provided
-      const currentDate = new Date().toISOString().split('T')[0];
-      // Default expiry date is 5 years from today
-      const defaultExpiryDate = new Date();
-      defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 5);
-      const defaultExpiryString = defaultExpiryDate.toISOString().split('T')[0];
-      
-      const manufacturingDate = watch('manufacturingDate') || currentDate;
-      const expiryDate = watch('expiryDate') || defaultExpiryString;
-      
-      // Calculate next inspection date (1 month from today)
-      const nextInspection = new Date();
-      nextInspection.setMonth(nextInspection.getMonth() + 1);
-      
-      console.log("Creating new PPE with data:", {
-        serial_number: serialNumber,
-        type: watch('type'),
-        brand: watch('brand') || 'Unknown',
-        model_number: watch('modelNumber') || 'Unknown',
-        manufacturing_date: manufacturingDate,
-        expiry_date: expiryDate,
-        created_by: user.id,
-      });
-      
-      // Insert new PPE
-      const { data: newPpeData, error: insertError } = await supabase
-        .from('ppe_items')
-        .insert({
+
+      if (!ppeData || ppeData.length === 0) {
+        // PPE doesn't exist, create a new one
+        if (!watch('type')) {
+          toast({
+            title: 'Error',
+            description: 'PPE type is required for new equipment',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // Set default expiry date (5 years from now)
+        const defaultExpiryDate = new Date();
+        defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 5);
+        const defaultExpiryString = defaultExpiryDate.toISOString().split('T')[0];
+
+        const currentDate = new Date().toISOString().split('T')[0];
+        const manufacturingDate = watch('manufacturingDate') || currentDate;
+        const expiryDate = watch('expiryDate') || defaultExpiryString;
+
+        // Calculate next inspection date (1 month from today)
+        const nextInspection = new Date();
+        nextInspection.setMonth(nextInspection.getMonth() + 1);
+        const nextInspectionString = nextInspection.toISOString().split('T')[0];
+
+        console.log("Creating new PPE with data:", {
           serial_number: serialNumber,
           type: watch('type'),
           brand: watch('brand') || 'Unknown',
           model_number: watch('modelNumber') || 'Unknown',
           manufacturing_date: manufacturingDate,
           expiry_date: expiryDate,
-          status: 'active',
-          next_inspection: nextInspection.toISOString(),
           created_by: user.id,
-        })
-        .select('id')
-        .single();
-      
-      if (insertError) {
-        console.error("Error inserting new PPE:", insertError);
-        throw insertError;
+          status: 'active',
+          next_inspection_date: nextInspectionString,
+        });
+
+        const { data: newPpeData, error: insertError } = await supabase
+          .from('ppe_items')
+          .insert({
+            serial_number: serialNumber,
+            type: watch('type'),
+            brand: watch('brand') || 'Unknown',
+            model_number: watch('modelNumber') || 'Unknown',
+            manufacturing_date: manufacturingDate,
+            expiry_date: expiryDate,
+            status: 'active',
+            next_inspection_date: nextInspectionString,
+            created_by: user.id,
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("Error inserting new PPE:", insertError);
+          toast({
+            title: 'Error Inserting PPE',
+            description: insertError.message,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        toast({
+          title: 'PPE Created',
+          description: 'New PPE item created successfully',
+        });
+
+        navigate(`/inspect/${newPpeData.id}`);
+
+      } else {
+        // PPE exists, navigate to inspection page
+        console.log("PPE exists, navigating to inspection page");
+        navigate(`/inspect/${ppeData[0].id}`);
       }
-      
-      if (!newPpeData || !newPpeData.id) {
-        throw new Error('Failed to create new PPE item');
-      }
-      
-      console.log("New PPE created with ID:", newPpeData.id);
-      
-      // Fix: Update to correct route path
-      navigate(`/inspect/${newPpeData.id}`);
-      
     } catch (error: any) {
       console.error('Error checking PPE existence:', error);
       toast({
