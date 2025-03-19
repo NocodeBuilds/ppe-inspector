@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { useNotifications } from '@/hooks/useNotifications';
 
 interface ScannerInitializerProps {
   scannerContainerId: string;
@@ -26,7 +25,6 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
   forceBackCamera = true
 }) => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const { showNotification } = useNotifications();
   const isMountedRef = useRef(true);
   const [isInitializing, setIsInitializing] = useState(false);
 
@@ -208,10 +206,6 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
       );
       
       if (isMountedRef.current) {
-        showNotification('Camera activated', 'info', {
-          description: 'Point camera at a QR code to scan'
-        });
-        
         onScannerStart(scannerRef.current);
         console.log('QR scanner started successfully');
       }
@@ -231,7 +225,6 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
     onScanError, 
     onScannerStart, 
     onScannerError, 
-    showNotification, 
     cleanupScanner, 
     findBestCamera,
     isInitializing

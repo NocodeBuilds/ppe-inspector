@@ -7,7 +7,6 @@ import { QrCode, ChevronRight, Scan, Search } from 'lucide-react';
 import QRCodeScanner from '@/components/inspection/QRCodeScanner';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { useNotifications } from '@/hooks/useNotifications';
 import { usePPEData } from '@/hooks/usePPEData';
 import PPESelectionDialog from '@/components/inspection/PPESelectionDialog';
 import { PPEItem } from '@/integrations/supabase/client';
@@ -24,7 +23,6 @@ const StartInspection = () => {
   const [multiplePPE, setMultiplePPE] = useState<PPEItem[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { showNotification } = useNotifications();
   const { getPPEBySerialNumber } = usePPEData();
 
   const handleCloseScanner = () => {
@@ -38,14 +36,14 @@ const StartInspection = () => {
     
     try {
       // Show scanning feedback
-      showNotification('Processing', 'info', {
+      toast('Processing', 'info', {
         description: 'Processing QR code...'
       });
       
       await searchBySerial(result);
     } catch (error) {
       console.error('Error handling scan result:', error);
-      showNotification('Error', 'error', {
+      toast('Error', 'error', {
         description: error instanceof Error ? error.message : 'Failed to process QR code'
       });
     }
@@ -88,7 +86,7 @@ const StartInspection = () => {
     setShowScanner(false);
     setSerialNumber('');
     
-    showNotification('PPE Found', 'success', {
+    toast('PPE Found', 'success', {
       description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`
     });
     
@@ -100,12 +98,6 @@ const StartInspection = () => {
     console.error('Scanner error:', error);
     setScanning(false);
     setShowScanner(false);
-    
-    if (error !== 'Scanning cancelled') {
-      showNotification('Scanner Error', 'error', {
-        description: error
-      });
-    }
   };
 
   const handleManualSearch = (e: React.FormEvent) => {
