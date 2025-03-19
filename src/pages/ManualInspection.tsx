@@ -56,6 +56,7 @@ const ManualInspection = () => {
   }, []);
   
   const checkPPEExistence = async (serialNumber: string) => {
+    console.log("checkPPEExistence called with serialNumber:", serialNumber);
     try {
       // Check if the PPE exists
       const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(serialNumber);
