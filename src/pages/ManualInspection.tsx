@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -20,20 +19,6 @@ import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePPE } from '@/hooks/usePPE';
 import { standardPPETypes } from '@/components/equipment/ConsolidatedPPETypeFilter';
-
-
-    } catch (error: any) {
-      console.error('Error checking PPE existence:', error);
-      setError(error.message || 'Failed to check PPE existence');
-      toast({
-        title: 'Error Checking PPE',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
 
   return (
