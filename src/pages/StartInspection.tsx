@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -36,15 +37,19 @@ const StartInspection = () => {
     
     try {
       // Show scanning feedback
-      toast('Processing', 'info', {
-        description: 'Processing QR code...'
+      toast({
+        title: 'Processing',
+        description: 'Processing QR code...',
+        variant: 'info'
       });
       
       await searchBySerial(result);
     } catch (error) {
       console.error('Error handling scan result:', error);
-      toast('Error', 'error', {
-        description: error instanceof Error ? error.message : 'Failed to process QR code'
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to process QR code',
+        variant: 'destructive'
       });
     }
   };
@@ -86,8 +91,10 @@ const StartInspection = () => {
     setShowScanner(false);
     setSerialNumber('');
     
-    toast('PPE Found', 'success', {
-      description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`
+    toast({
+      title: 'PPE Found',
+      description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`,
+      variant: 'success'
     });
     
     // Navigate to the inspection form with the PPE ID
