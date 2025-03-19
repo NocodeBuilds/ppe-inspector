@@ -62,22 +62,23 @@ const queryClient = new QueryClient({
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
 
-  // Set up PWA features
+  // Set up PWA features with better error handling
   useEffect(() => {
     const setupPWA = async () => {
       try {
         // Use enhanced PWA initialization with timeout
         await initializePWA();
+        console.log("PWA initialized successfully");
       } catch (error) {
         console.error('Error setting up PWA:', error);
       } finally {
-        // Ensure loading state is cleared after max 3 seconds if initialization hangs
+        // Ensure loading state is cleared after max 2 seconds if initialization hangs
         const fallbackTimer = setTimeout(() => {
           if (isLoading) {
             console.warn('Forcing app to load after timeout');
             setIsLoading(false);
           }
-        }, 3000);
+        }, 2000);
         
         // Normal finish loading
         setIsLoading(false);
