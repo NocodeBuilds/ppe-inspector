@@ -8,7 +8,6 @@ import { QrCode, ChevronRight, Scan, Search } from 'lucide-react';
 import QRCodeScanner from '@/components/inspection/QRCodeScanner';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { useNotifications } from '@/hooks/useNotifications';
 import { usePPEData } from '@/hooks/usePPEData';
 import PPESelectionDialog from '@/components/inspection/PPESelectionDialog';
 import { PPEItem } from '@/integrations/supabase/client';
@@ -25,7 +24,6 @@ const StartInspection = () => {
   const [multiplePPE, setMultiplePPE] = useState<PPEItem[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { showNotification } = useNotifications();
   const { getPPEBySerialNumber } = usePPEData();
 
   const handleCloseScanner = () => {
@@ -35,15 +33,30 @@ const StartInspection = () => {
 
   const handleScanResult = async (result: string) => {
     setScanning(false);
-    await searchBySerial(result);
+    setShowScanner(false);
+    
+    try {
+      // Show scanning feedback
+      toast({
+        title: 'Processing',
+        description: 'Processing QR code...',
+        variant: 'default'
+      });
+      
+      await searchBySerial(result);
+    } catch (error) {
+      console.error('Error handling scan result:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to process QR code',
+        variant: 'destructive'
+      });
+    }
   };
 
   const searchBySerial = async (serial: string) => {
     if (!serial.trim()) {
-      showNotification('Error', 'error', {
-        description: 'Please enter a valid serial number'
-      });
-      return;
+      throw new Error('Please enter a valid serial number');
     }
     
     setIsLoading(true);
@@ -56,11 +69,7 @@ const StartInspection = () => {
       console.log('Found PPE items:', ppeItems);
       
       if (!ppeItems || ppeItems.length === 0) {
-        showNotification('Not Found', 'error', {
-          description: `No PPE found with serial number: ${serial}`
-        });
-        setShowScanner(false);
-        return;
+        throw new Error(`No PPE found with serial number: ${serial}`);
       }
       
       if (ppeItems.length === 1) {
@@ -70,9 +79,7 @@ const StartInspection = () => {
       }
     } catch (error) {
       console.error('Error processing serial number:', error);
-      showNotification('Error', 'error', {
-        description: 'Failed to process serial number'
-      });
+      throw error; // Re-throw to be handled by caller
     } finally {
       setIsLoading(false);
       setIsSearching(false);
@@ -84,8 +91,10 @@ const StartInspection = () => {
     setShowScanner(false);
     setSerialNumber('');
     
-    showNotification('PPE Found', 'success', {
-      description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`
+    toast({
+      title: 'PPE Found',
+      description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`,
+      variant: 'default'
     });
     
     // Navigate to the inspection form with the PPE ID
@@ -96,12 +105,6 @@ const StartInspection = () => {
     console.error('Scanner error:', error);
     setScanning(false);
     setShowScanner(false);
-    
-    if (error !== 'Scanning cancelled') {
-      showNotification('Scanner Error', 'error', {
-        description: error
-      });
-    }
   };
 
   const handleManualSearch = (e: React.FormEvent) => {

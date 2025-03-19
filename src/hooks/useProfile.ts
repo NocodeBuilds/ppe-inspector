@@ -66,13 +66,6 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
     },
     { enabled: !!userId }
   );
-  
-  // Wrap the refetch function to match the expected return type
-  const refreshProfile = async (): Promise<void> => {
-    try {
-      await refetch();
-    } catch (error) {
-      console.error('Error refreshing profile:', error);
     }
   };
   

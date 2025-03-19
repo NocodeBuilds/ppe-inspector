@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PPEItem, PPEStatus } from '@/integrations/supabase/client';
@@ -114,18 +113,38 @@ export function usePPEData() {
     }
   };
 
-  // Get PPE by serial number - updated to return all matches
+  // Get PPE by serial number - updated for exact matching
   const getPPEBySerialNumber = async (serialNumber: string): Promise<PPEItem[]> => {
     try {
-      // Search by serial number directly
-      const { data, error } = await supabase
+      // Normalize the serial number
+      const normalizedSerial = serialNumber.trim().toUpperCase();
+      
+      if (!normalizedSerial) {
+        throw new Error('Serial number cannot be empty');
+      }
+
+      // Search by exact serial number first
+      const { data: exactMatch, error: exactError } = await supabase
         .from('ppe_items')
         .select('*')
-        .ilike('serial_number', `%${serialNumber}%`);
+        .eq('serial_number', normalizedSerial);
 
-      if (error) throw error;
+      if (exactError) throw exactError;
       
-      return data || [];
+      // If we found an exact match, return it
+      if (exactMatch && exactMatch.length > 0) {
+        return exactMatch;
+      }
+
+      // If no exact match, try a more permissive search but with stricter pattern
+      const { data: fuzzyMatch, error: fuzzyError } = await supabase
+        .from('ppe_items')
+        .select('*')
+        .ilike('serial_number', `${normalizedSerial}`);
+
+      if (fuzzyError) throw fuzzyError;
+      
+      return fuzzyMatch || [];
     } catch (error) {
       console.error('Error getting PPE by serial number:', error);
       throw error;

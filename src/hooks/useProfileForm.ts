@@ -59,12 +59,6 @@ export const useProfileForm = () => {
     
     // Populate form with existing data
     if (profile) {
-      setFormData({
-        fullName: profile.full_name || '',
-        employeeId: profile.employee_id || '',
-        location: profile.location || '',
-        department: profile.department || '',
-        bio: profile.bio || '',
       });
       setIsLoading(false);
     }
@@ -139,7 +133,7 @@ export const useProfileForm = () => {
       
       toast({
         title: 'Profile Updated',
-        description: 'Your profile has been successfully updated',
+        description: 'Your profile has been successfully updated'
       });
       
       navigate('/profile');
@@ -148,7 +142,7 @@ export const useProfileForm = () => {
       toast({
         title: 'Update Failed',
         description: error.message || 'Failed to update profile',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setIsSaving(false);

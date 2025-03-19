@@ -6,7 +6,6 @@ import { useAuthSession } from '@/hooks/useAuthSession';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthActions } from '@/hooks/useAuthActions';
 import { toast } from '@/hooks/use-toast';
-
 type AuthContextType = {
   session: Session | null;
   user: User | null;

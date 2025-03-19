@@ -21,142 +21,20 @@ import { cn } from '@/lib/utils';
 import { usePPE } from '@/hooks/usePPE';
 import { standardPPETypes } from '@/components/equipment/ConsolidatedPPETypeFilter';
 
-// Define form schema using zod
-const formSchema = z.object({
-  serialNumber: z.string().min(1, 'Serial number is required'),
-  type: z.string().optional(),
-  brand: z.string().optional(),
-  modelNumber: z.string().optional(),
-  manufacturingDate: z.string().optional(),
-  expiryDate: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
-
-const ManualInspection: React.FC = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const { getPPEBySerialNumber } = usePPE();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [submittedSerialNumber, setSubmittedSerialNumber] = useState<string>('');
-
-  // Initialize form
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      serialNumber: '',
-      type: '',
-      brand: '',
-      modelNumber: '',
-      manufacturingDate: '',
-      expiryDate: '',
-    },
-  });
-
-  const onSubmit = async (data: FormValues) => {
-    try {
-      if (!user) {
-        toast({
-          title: 'Authentication Required',
-          description: 'You must be logged in to perform inspections',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-      setSubmittedSerialNumber(data.serialNumber);
-
-      console.log("Form data:", data);
-
-      // Check if the PPE exists
-      const serialNumberQuery = data.serialNumber ? data.serialNumber.trim() : '';
-      
-      if (!serialNumberQuery) {
-        throw new Error('Serial number is required');
-      }
-      
-      console.log("Searching for PPE with serial number:", serialNumberQuery);
-      
-      // Use our new consolidated hook function
-      const ppeItems = await getPPEBySerialNumber(serialNumberQuery);
-
-      if (ppeItems && ppeItems.length > 0) {
-        // PPE exists, redirect to inspection form
-        const ppeItem = ppeItems[0];
-        console.log("PPE found:", ppeItem);
-        navigate(`/inspect/${ppeItem.id}`);
-        return;
-      }
-
-      // PPE doesn't exist, create a new one
-      if (!data.type) {
-        toast({
-          title: 'Error',
-          description: 'PPE type is required for new equipment',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Set default dates if not provided
-      const currentDate = new Date().toISOString().split('T')[0];
-      const defaultExpiryDate = new Date();
-      defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 5);
-      const defaultExpiryString = defaultExpiryDate.toISOString().split('T')[0];
-
-      const manufacturingDate = data.manufacturingDate || currentDate;
-      const expiryDate = data.expiryDate || defaultExpiryString;
-
-      // Calculate next inspection date (1 month from today)
-      const nextInspection = new Date();
-      nextInspection.setMonth(nextInspection.getMonth() + 1);
-
-      console.log("Creating new PPE with data:", {
-        serial_number: data.serialNumber,
-        type: data.type,
-        brand: data.brand || 'Unknown',
-        model_number: data.modelNumber || 'Unknown',
-        manufacturing_date: manufacturingDate,
-        expiry_date: expiryDate,
-        created_by: user.id,
-      });
-
-      // Use our consolidated hook for PPE creation
-      const { createPPE } = usePPE();
-      
-      const newPpeData = await createPPE({
-        serial_number: data.serialNumber,
-        type: data.type,
-        brand: data.brand || 'Unknown',
-        model_number: data.modelNumber || 'Unknown',
-        manufacturing_date: manufacturingDate,
-        expiry_date: expiryDate,
-      });
-
-      if (!newPpeData || !newPpeData.id) {
-        throw new Error('Failed to create new PPE item');
-      }
-
-      console.log("New PPE created with ID:", newPpeData.id);
-      navigate(`/inspect/${newPpeData.id}`);
 
     } catch (error: any) {
-      console.error('Error in manual inspection:', error);
-      setError(error.message || 'An unexpected error occurred');
+      console.error('Error checking PPE existence:', error);
+      setError(error.message || 'Failed to check PPE existence');
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to process inspection request',
-        variant: 'destructive',
+        title: 'Error Checking PPE',
+        description: error.message || 'An unexpected error occurred',
+        variant: 'destructive'
       });
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="container max-w-3xl mx-auto py-6 space-y-6">

@@ -1,7 +1,5 @@
-
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { useNotifications } from '@/hooks/useNotifications';
 
 interface ScannerInitializerProps {
   scannerContainerId: string;
@@ -27,7 +25,6 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
   forceBackCamera = true
 }) => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const { showNotification } = useNotifications();
   const isMountedRef = useRef(true);
   const [isInitializing, setIsInitializing] = useState(false);
 
@@ -159,88 +156,76 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
 
       // Find the best camera to use
       const deviceId = await findBestCamera();
-      
+      console.log('Best camera device ID:', deviceId);
+
       // Create a new scanner instance
       console.log('Creating new scanner instance for', scannerContainerId);
-      scannerRef.current = new Html5Qrcode(scannerContainerId);
+      scannerRef.current = new Html5Qrcode(scannerContainerId, {
+        verbose: true,
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+      });
 
       const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        fps: 15,
+        qrbox: {
+          width: Math.min(250, window.innerWidth - 50),
+          height: Math.min(250, window.innerWidth - 50)
+        },
+        aspectRatio: window.innerHeight / window.innerWidth,
+        disableFlip: false,
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: true
         },
       };
-      
-      // Camera constraints
-      let cameraConstraints: MediaTrackConstraints = {};
-      
-      if (deviceId) {
-        cameraConstraints.deviceId = { exact: deviceId };
-      } else {
-        cameraConstraints.facingMode = 'environment';
-      }
       
       if (!isMountedRef.current) {
         cleanupScanner();
         return;
       }
       
-      console.log('Starting scanner with constraints:', cameraConstraints);
+      // Create a simplified camera identifier object
+      // Must contain ONLY ONE of: deviceId OR facingMode
+      const cameraIdentifier = deviceId 
+        ? { deviceId: { exact: deviceId } } 
+        : { facingMode: "environment" };
       
+      console.log('Starting scanner with camera identifier:', cameraIdentifier);
+
+      if (!deviceId) {
+        onScannerError('No valid device ID found');
+        return;
+      }
+
       await scannerRef.current.start(
-        cameraConstraints,
+        cameraIdentifier,  // Only pass the camera identifier here - MUST have just ONE key
         config,
         handleScanSuccess,
         onScanError
-      );
-      
-      if (isMountedRef.current) {
-        showNotification('Camera activated', 'info', {
-          description: 'Point camera at a QR code to scan'
+      ).then(() => {
+          console.log('QR scanner started successfully');
+          onScannerStart(scannerRef.current);
+        })
+        .catch((error) => {
+          console.error('Error starting QR scanner:', error);
+          onScannerError(error);
         });
-        
-        onScannerStart(scannerRef.current);
-        console.log('QR scanner started successfully');
-      }
-    } catch (err) {
-      console.error('Error starting QR scanner:', err);
-      if (isMountedRef.current) {
-        onScannerError(err);
-      }
+    } catch (error) {
+      console.error('Error initializing scanner:', error);
+      onScannerError(error);
     } finally {
       if (isMountedRef.current) {
         setIsInitializing(false);
       }
     }
-  }, [
-    scannerContainerId, 
-    handleScanSuccess, 
-    onScanError, 
-    onScannerStart, 
-    onScannerError, 
-    showNotification, 
-    cleanupScanner, 
-    findBestCamera,
-    isInitializing
-  ]);
+  }, [scannerContainerId, onScanSuccess, onScanError, cleanupScanner, findBestCamera, isMountedRef, onScannerError]);
 
-  // Initialize scanner on mount
   useEffect(() => {
-    isMountedRef.current = true;
-    
-    // Use timeout to ensure DOM is ready
-    const timer = setTimeout(() => {
-      if (isMountedRef.current) {
-        startScanner();
-      }
-    }, 500);
-    
+    // Start the scanner when the component mounts
+    startScanner();
+
+    // Clean up the scanner when the component unmounts
     return () => {
       isMountedRef.current = false;
-      clearTimeout(timer);
       cleanupScanner();
     };
   }, [startScanner, cleanupScanner]);
