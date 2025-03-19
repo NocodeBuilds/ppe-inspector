@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -162,25 +161,36 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
       
       // Create a new scanner instance
       console.log('Creating new scanner instance for', scannerContainerId);
-      scannerRef.current = new Html5Qrcode(scannerContainerId);
+      scannerRef.current = new Html5Qrcode(scannerContainerId, {
+        verbose: true,
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+      });
 
       const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        fps: 15,
+        qrbox: {
+          width: Math.min(250, window.innerWidth - 50),
+          height: Math.min(250, window.innerWidth - 50)
+        },
+        aspectRatio: window.innerHeight / window.innerWidth,
+        disableFlip: false,
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: true
         },
       };
       
-      // Camera constraints
-      let cameraConstraints: MediaTrackConstraints = {};
+      // Camera constraints with improved settings
+      const cameraConstraints: MediaTrackConstraints = {
+        width: { min: 640, ideal: 1280, max: 1920 },
+        height: { min: 480, ideal: 720, max: 1080 },
+        focusMode: 'continuous',
+        zoom: 1.0
+      };
       
       if (deviceId) {
         cameraConstraints.deviceId = { exact: deviceId };
       } else {
-        cameraConstraints.facingMode = 'environment';
+        cameraConstraints.facingMode = { ideal: 'environment' };
       }
       
       if (!isMountedRef.current) {

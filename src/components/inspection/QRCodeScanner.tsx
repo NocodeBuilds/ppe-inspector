@@ -43,7 +43,6 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
   useEffect(() => {
     const fetchAvailableDevices = async () => {
       if (!isMountedRef.current || isInitializing) return;
-      
       setIsInitializing(true);
       
       try {
