@@ -59,7 +59,6 @@ export const useInspectionForm = () => {
         navigate('/start-inspection');
         return;
       }
-
       setIsLoading(true);
       try {
         // Fetch PPE item
