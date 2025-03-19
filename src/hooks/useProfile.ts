@@ -1,13 +1,11 @@
 
 import { useState } from 'react';
 import { supabase, Profile } from '@/integrations/supabase/client';
-import { ExtendedProfile } from '@/types/extendedProfile';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 
 type ProfileHook = {
   profile: Profile | null;
-  extendedProfile: ExtendedProfile | null;
   isLoading: boolean;
   refreshProfile: () => Promise<void>;
 };
@@ -22,8 +20,8 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
   // Use React Query for profile data
   const {
     data: profile,
-    isLoading: isProfileLoading,
-    refetch: refetchProfile
+    isLoading,
+    refetch
   } = useSupabaseQuery<Profile | null>(
     ['profile', userId || ''],
     async () => {
@@ -41,12 +39,24 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
 
         if (data) {
           console.log("Profile data:", data);
-          return {
+          
+          // Cast data to Profile type
+          const profileData: Profile = {
             id: data.id,
             full_name: data.full_name,
-            role: data.role || 'user',
-            avatar_url: data.avatar_url
+            avatar_url: data.avatar_url,
+            role: data.role,
+            created_at: data.created_at,
+            updated_at: data.updated_at,
+            // Extended profile fields now directly in profiles table
+            employee_id: data.employee_id || null,
+            location: data.location || null,
+            department: data.department || null,
+            bio: data.bio || null,
+            email: null // We can add email if needed
           };
+          
+          return profileData;
         }
         return null;
       } catch (error) {
@@ -56,57 +66,11 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
     },
     { enabled: !!userId }
   );
-  
-  // Use React Query for extended profile data
-  const {
-    data: extendedProfile,
-    isLoading: isExtendedProfileLoading,
-    refetch: refetchExtendedProfile
-  } = useSupabaseQuery<ExtendedProfile | null>(
-    ['extendedProfile', userId || ''],
-    async () => {
-      try {
-        const { data, error } = await supabase.rpc('get_extended_profile');
-        
-        if (error) {
-          if (error.code === 'PGRST116') return null; // No rows returned
-          throw error;
-        }
-        
-        // Handle the conversion properly by explicitly checking and casting
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-          return data as ExtendedProfile;
-        }
-        
-        return null;
-      } catch (error) {
-        console.error('Error fetching extended profile:', error);
-        throw error;
-      }
-    },
-    { enabled: !!userId }
-  );
-  
-  // Combined refresh function
-  const refreshProfile = async () => {
-    try {
-      await Promise.all([refetchProfile(), refetchExtendedProfile()]);
-    } catch (error: any) {
-      console.error('Error refreshing profile:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to refresh profile',
-        variant: 'destructive'
-      });
     }
   };
   
-  // Combined loading state
-  const isLoading = isProfileLoading || isExtendedProfileLoading;
-  
   return {
     profile,
-    extendedProfile,
     isLoading,
     refreshProfile
   };

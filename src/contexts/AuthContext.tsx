@@ -6,13 +6,10 @@ import { useAuthSession } from '@/hooks/useAuthSession';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthActions } from '@/hooks/useAuthActions';
 import { toast } from '@/hooks/use-toast';
-import { ExtendedProfile } from '@/types/extendedProfile';
-
 type AuthContextType = {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
-  extendedProfile: ExtendedProfile | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
@@ -30,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // Use our custom hooks to separate concerns
   const { session, user, isLoading: sessionLoading } = useAuthSession();
-  const { profile, extendedProfile, refreshProfile, isLoading: profileLoading } = useProfile(user?.id);
+  const { profile, refreshProfile, isLoading: profileLoading } = useProfile(user?.id);
   const { 
     isLoading: authActionsLoading, 
     signIn, 
@@ -76,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     user,
     profile,
-    extendedProfile,
     isLoading,
     signIn,
     signUp,
