@@ -1,7 +1,55 @@
-import React, { useState } from 'react';
-// ...other imports
 
-const ManualInspection = () => {  // <--- Added this missing function declaration
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import PageHeader from '@/components/common/PageHeader';
+import { standardPPETypes } from '@/utils/ppeTypes';
+
+// Define form schema
+const formSchema = z.object({
+  serialNumber: z.string().min(1, { message: "Serial number is required" }),
+  type: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+const ManualInspection = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Initialize form
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      serialNumber: "",
+      type: "",
+    },
+  });
+
+  // Form submission handler
+  const onSubmit = async (values: FormValues) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log("Form values:", values);
+      // Add your submission logic here
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="container max-w-3xl mx-auto py-6 space-y-6">
