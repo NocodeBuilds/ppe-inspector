@@ -1,45 +1,38 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, ImageIcon, RefreshCw, Check, CameraOff, Loader2 } from 'lucide-react';
+import { Camera, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
+import CardOverlay from '@/components/ui/card-overlay';
 
 interface CameraCaptureProps {
-  onImageCapture: (imageFile: File) => void;
-  existingImage?: string | null;
+  onImageCapture: (file: File) => void;
+  existingImage?: File | null;
 }
 
-const CameraCapture: React.FC<CameraCaptureProps> = ({ 
-  onImageCapture, 
-  existingImage 
+const CameraCapture: React.FC<CameraCaptureProps> = ({
+  onImageCapture,
+  existingImage
 }) => {
-  // State management
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [capturedImage, setCapturedImage] = useState<string | null>(existingImage || null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraTimeout, setCameraTimeout] = useState<NodeJS.Timeout | null>(null);
   
-  // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  // Clean up resources when component unmounts
+  
   useEffect(() => {
+    // Clean up on unmount
     return () => {
       stopCamera();
-      if (cameraTimeout) {
-        clearTimeout(cameraTimeout);
-      }
     };
-  }, [cameraTimeout]);
-
-  // Stop camera and release resources
+  }, []);
+  
   const stopCamera = () => {
     console.log("CameraCapture: Stopping camera");
+    
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => {
         track.stop();
@@ -51,138 +44,85 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       videoRef.current.srcObject = null;
     }
     
-    setIsCameraActive(false);
-    setIsLoading(false);
+    // Clear any existing timeout
+    if (cameraTimeout) {
+      clearTimeout(cameraTimeout);
+      setCameraTimeout(null);
+    }
+    
+    setIsCapturing(false);
   };
-
-  // Function to compress and resize images for better performance
-  const resizeAndCompressImage = async (imageDataUrl: string, maxWidth = 800, quality = 0.8): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        
-        // Calculate new dimensions if image is larger than maxWidth
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-        
-        // Set canvas dimensions
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Draw and compress image
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Could not get canvas context'));
-          return;
-        }
-        
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Get compressed data URL
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedDataUrl);
-      };
-      
-      img.onerror = () => {
-        reject(new Error('Failed to load image'));
-      };
-      
-      img.src = imageDataUrl;
-    });
-  };
-
-  // Start camera with simpler constraints focused on back camera first
+  
   const startCamera = async () => {
-    setIsLoading(true);
-    setError(null);
-    console.log("CameraCapture: Starting camera initialization");
+    setIsCameraOpen(true);
+    setIsCapturing(true);
+    setCameraError(null);
+    
+    console.log("CameraCapture: Starting camera");
     
     // Set a timeout to prevent getting stuck in loading state
     const timeout = setTimeout(() => {
       console.log("CameraCapture: Camera initialization timed out");
-      if (isLoading) {
-        setError('Camera initialization timed out. Please try again.');
-        setIsLoading(false);
-        if (streamRef.current) {
-          stopCamera();
-        }
+      if (isCapturing) {
+        setCameraError("Camera initialization timed out. Please try again.");
+        setIsCapturing(false);
       }
     }, 10000); // 10 second timeout
     
     setCameraTimeout(timeout);
     
     try {
-      if (streamRef.current) {
-        stopCamera();
-      }
-      
-      // Check if the browser supports getUserMedia
+      // Check if browser supports getUserMedia
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Your browser does not support camera access');
       }
       
-      // Simple constraints focused on getting any camera working first
-      console.log("CameraCapture: Requesting camera with basic constraints");
+      // Try to get a stream with back camera if possible
       let stream: MediaStream;
       
       try {
-        // First try to get the environment-facing (back) camera
+        // First try with environment-facing camera
+        console.log("CameraCapture: Trying with environment facing camera");
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
-          audio: false
+          video: { 
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
         });
-        console.log("CameraCapture: Successfully got environment camera");
       } catch (err) {
-        console.log("CameraCapture: Couldn't get environment camera, trying any camera", err);
-        // If that fails, try to get any camera
+        console.log("CameraCapture: Environment facing failed, trying default camera", err);
+        // If that fails, try with default camera
         stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
+          video: true
         });
-        console.log("CameraCapture: Successfully got any camera");
       }
       
-      // Check if we got a valid stream
-      if (!stream) {
-        throw new Error('Could not access any camera');
-      }
-      
+      // Store the stream ref
       streamRef.current = stream;
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
+        
+        videoRef.current.onloadedmetadata = async () => {
           console.log("CameraCapture: Video metadata loaded");
           if (videoRef.current) {
-            videoRef.current.play()
-              .then(() => {
-                console.log("CameraCapture: Video playback started");
-                setIsCameraActive(true);
-                setIsLoading(false);
-                
-                // Clear the timeout since camera initialized successfully
-                if (cameraTimeout) {
-                  clearTimeout(cameraTimeout);
-                  setCameraTimeout(null);
-                }
-              })
-              .catch(err => {
-                console.error('Error playing video:', err);
-                setError('Could not start video playback');
-                setIsLoading(false);
-                stopCamera();
-                
-                // Clear the timeout
-                if (cameraTimeout) {
-                  clearTimeout(cameraTimeout);
-                  setCameraTimeout(null);
-                }
-              });
+            try {
+              await videoRef.current.play();
+              console.log("CameraCapture: Video playback started");
+              
+              // Clear the timeout since camera initialized successfully
+              if (cameraTimeout) {
+                clearTimeout(cameraTimeout);
+                setCameraTimeout(null);
+              }
+            } catch (error) {
+              console.error("Error playing video:", error);
+              setCameraError("Could not start video playback");
+              stopCamera();
+            } finally {
+              setIsCapturing(false);
+            }
           }
         };
       }
@@ -198,11 +138,12 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
         errorMessage = 'Camera is in use by another application.';
       } else if (error.name === 'OverconstrainedError') {
-        errorMessage = 'Camera constraints not satisfiable.';
+        errorMessage = 'Camera does not meet the required constraints.';
+      } else if (error.name === 'TypeError') {
+        errorMessage = 'Invalid constraints or parameters.';
       }
-      
-      setError(errorMessage);
-      setIsLoading(false);
+
+      setCameraError(errorMessage);
       
       // Clear the timeout
       if (cameraTimeout) {
@@ -211,207 +152,163 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       }
       
       toast({
-        title: "Camera Error",
-        description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
+        title: 'Camera Error',
+        description: errorMessage
       });
+    } finally {
+      // Ensure isCapturing is set to false if it hasn't been already
+      setTimeout(() => {
+        if (isCapturing) {
+          setIsCapturing(false);
+        }
+      }, 3000);
     }
   };
-
-  // Activate camera on button click
-  const activateCamera = () => {
-    startCamera();
-  };
-
-  // Capture image from video stream
-  const captureImage = async () => {
+  
+  const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current || !streamRef.current) {
-      toast({
-        title: "Error",
-        description: "Camera not properly initialized",
-        variant: "destructive",
-      });
+      setCameraError("Camera is not ready");
       return;
     }
     
     try {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      
-      // Set canvas dimensions to match video dimensions
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      
       const context = canvas.getContext('2d');
-      if (context) {
-        // Draw the current video frame to the canvas
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      if (!context) {
+        throw new Error('Could not get canvas context');
+      }
+      
+      // Set canvas size to match video dimensions
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw video frame to canvas
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert canvas content to blob
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          throw new Error('Failed to create image blob');
+        }
         
-        // Compress the image before converting to file
-        const rawImageUrl = canvas.toDataURL('image/jpeg', 0.85);
-        const compressedImageUrl = await resizeAndCompressImage(rawImageUrl, 800, 0.7);
+        // Create a File object from the blob
+        const fileName = `ppe_photo_${new Date().getTime()}.jpg`;
+        const file = new File([blob], fileName, { type: 'image/jpeg' });
         
-        // Convert compressed data URL to blob
-        const response = await fetch(compressedImageUrl);
-        const blob = await response.blob();
-        
-        // Create a File from the blob
-        const file = new File([blob], `ppe-image-${Date.now()}.jpg`, { type: 'image/jpeg' });
-        
-        // Pass the file to parent component
+        // Close camera and pass image data
+        stopCamera();
+        setIsCameraOpen(false);
         onImageCapture(file);
         
-        // Create a URL for preview
-        setCapturedImage(compressedImageUrl);
-        
-        // Show success toast
         toast({
-          title: "Image Captured",
-          description: "Photo saved successfully",
+          title: 'Photo Captured',
+          description: 'Image has been captured successfully'
         });
-        
-        // Stop the camera after capturing
-        stopCamera();
-      }
-    } catch (error) {
-      console.error('Error capturing image:', error);
-      setError('Failed to capture image');
+      }, 'image/jpeg', 0.8);
+    } catch (error: any) {
+      console.error('Error capturing photo:', error);
+      setCameraError(error.message || 'Failed to capture image');
+      
       toast({
-        title: "Capture Failed",
-        description: "Failed to capture image",
-        variant: "destructive",
+        variant: 'destructive',
+        title: 'Capture Error',
+        description: error.message || 'Failed to capture image'
       });
     }
   };
-
-  // Retake photo
-  const retakePhoto = () => {
-    if (capturedImage) {
-      // Revoke the object URL to avoid memory leaks
-      URL.revokeObjectURL(capturedImage);
-    }
-    
-    setCapturedImage(null);
-    activateCamera();
-  };
-
-  // Render the camera states: idle, active or captured
-  const renderCameraState = () => {
-    if (isCameraActive) {
-      return (
-        <div className="flex flex-col items-center">
-          <div className="relative w-full rounded-md overflow-hidden bg-black">
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              className="w-full rounded-md"
-              style={{ height: '240px', objectFit: 'cover' }}
-            />
-          </div>
-          
-          <div className="mt-4 flex justify-center gap-2">
-            <Button
-              type="button"
-              onClick={stopCamera}
-              variant="outline"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={captureImage}
-              variant="default"
-            >
-              <Camera className="mr-2 h-4 w-4" />
-              Capture
-            </Button>
-          </div>
-        </div>
-      );
-    } else if (capturedImage) {
-      return (
-        <div className="flex flex-col items-center">
-          <div className="relative w-full rounded-md overflow-hidden" style={{ height: '240px' }}>
-            <img 
-              src={capturedImage} 
-              alt="Captured PPE"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute top-2 right-2 bg-green-500 rounded-full p-1">
-              <Check className="h-4 w-4 text-white" />
-            </div>
-          </div>
-          
-          <div className="mt-4 flex justify-center">
-            <Button
-              type="button"
-              onClick={retakePhoto}
-              variant="outline"
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Retake Photo
-            </Button>
-          </div>
-        </div>
-      );
-    } else {
-      return (
-        <div className="flex flex-col items-center">
-          <div 
-            className="w-full h-[240px] rounded-md border border-dashed flex items-center justify-center bg-muted/30"
-            onClick={!isLoading && !error ? activateCamera : undefined}
-            style={{ cursor: !isLoading && !error ? 'pointer' : 'default' }}
-          >
-            <div className="flex flex-col items-center text-muted-foreground p-4">
-              {isLoading ? (
-                <LoadingSpinner size="md" text="Initializing camera..." />
-              ) : error ? (
-                <>
-                  <CameraOff className="h-12 w-12 mb-2 text-destructive" />
-                  <p className="text-center">Camera error</p>
-                  <p className="text-red-500 text-xs mt-2 text-center">{error}</p>
-                </>
-              ) : (
-                <>
-                  <ImageIcon className="h-12 w-12 mb-2" />
-                  <p>Click to take a photo of the PPE</p>
-                </>
-              )}
-            </div>
-          </div>
-          
-          <div className="mt-4 flex justify-center">
-            <Button
-              type="button"
-              onClick={activateCamera}
-              variant="outline"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Initializing...
-                </>
-              ) : (
-                <>
-                  <Camera className="mr-2 h-4 w-4" />
-                  {error ? "Try Again" : "Open Camera"}
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      );
-    }
-  };
-
+  
   return (
-    <Card className="p-4 relative">
-      {renderCameraState()}
-      {/* Hidden canvas for processing */}
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
-    </Card>
+    <div>
+      <div className="flex items-center gap-3">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={startCamera}
+          className="flex items-center gap-2"
+        >
+          <Camera size={16} />
+          {existingImage ? 'Change Photo' : 'Take Photo'}
+        </Button>
+        
+        {existingImage && (
+          <div className="h-12 w-12 rounded overflow-hidden border">
+            <p className="text-xs text-muted-foreground mt-2">
+              {existingImage.name}
+            </p>
+          </div>
+        )}
+      </div>
+      
+      <CardOverlay
+        show={isCameraOpen}
+        onClose={() => {
+          stopCamera();
+          setIsCameraOpen(false);
+        }}
+        title="Take Photo"
+      >
+        <div className="space-y-4">
+          {cameraError ? (
+            <div className="text-center p-4 border rounded">
+              <p className="text-destructive mb-3">{cameraError}</p>
+              <div className="flex justify-center gap-2">
+                <Button onClick={() => {
+                  setCameraError(null);
+                  startCamera();
+                }}>Try Again</Button>
+                <Button variant="outline" onClick={() => {
+                  stopCamera();
+                  setIsCameraOpen(false);
+                }}>Cancel</Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="aspect-video bg-black rounded-md overflow-hidden relative">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-contain"
+                />
+                {isCapturing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
+                  </div>
+                )}
+              </div>
+              
+              <canvas ref={canvasRef} className="hidden" />
+              
+              <div className="flex justify-between">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    stopCamera();
+                    setIsCameraOpen(false);
+                  }}
+                >
+                  <X size={16} className="mr-2" />
+                  Cancel
+                </Button>
+                
+                <Button 
+                  onClick={capturePhoto}
+                  disabled={isCapturing || !streamRef.current}
+                >
+                  <Camera size={16} className="mr-2" />
+                  Capture
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </CardOverlay>
+    </div>
   );
 };
 

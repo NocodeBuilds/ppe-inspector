@@ -1,53 +1,61 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { supabase } from '@/integrations/supabase/client';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Camera, Calendar, Loader2, X } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import QRCodeScanner from '@/components/inspection/QRCodeScanner';
-import { PPEType } from '@/types';
-import { getAllPPETypes } from '@/services/checkpointService';
-import { useAuth } from '@/hooks/useAuth';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import PageHeader from '@/components/common/PageHeader';
+import { PPEType } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { usePPE } from '@/hooks/usePPE';
+import { standardPPETypes } from '@/components/equipment/ConsolidatedPPETypeFilter';
 
-const ManualInspection = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [ppeTypes, setPpeTypes] = useState<PPEType[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [submittedSerialNumber, setSubmittedSerialNumber] = useState<string | null>(null);
+// Define form schema using zod
+const formSchema = z.object({
+  serialNumber: z.string().min(1, 'Serial number is required'),
+  type: z.string().optional(),
+  brand: z.string().optional(),
+  modelNumber: z.string().optional(),
+  manufacturingDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+const ManualInspection: React.FC = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { user } = useAuth();
-  
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    reset,
-    watch,
-    formState: { errors }
-  } = useForm();
-  
-  const selectedType = watch('type');
-  
-  useEffect(() => {
-    // Use standardized PPE types
-    setPpeTypes(getAllPPETypes());
-  }, []);
-  
-  const onSubmit = async (data: any) => {
+  const { toast } = useToast();
+  const { getPPEBySerialNumber } = usePPE();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submittedSerialNumber, setSubmittedSerialNumber] = useState<string>('');
+
+  // Initialize form
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      serialNumber: '',
+      type: '',
+      brand: '',
+      modelNumber: '',
+      manufacturingDate: '',
+      expiryDate: '',
+    },
+  });
+
+  const onSubmit = async (data: FormValues) => {
     try {
       if (!user) {
         toast({
@@ -57,32 +65,33 @@ const ManualInspection = () => {
         });
         return;
       }
-      
+
       setIsLoading(true);
       setError(null);
       setSubmittedSerialNumber(data.serialNumber);
-      
+
       console.log("Form data:", data);
-      
+
       // Check if the PPE exists
-      const { data: ppeData, error: ppeError } = await supabase
-        .from('ppe_items')
-        .select('*')
-        .or(`serial_number.eq.${data.serialNumber},id.eq.${data.serialNumber}`);
+      const serialNumberQuery = data.serialNumber ? data.serialNumber.trim() : '';
       
-      if (ppeError) {
-        console.error("Error checking PPE existence:", ppeError);
-        throw ppeError;
+      if (!serialNumberQuery) {
+        throw new Error('Serial number is required');
       }
       
-      if (ppeData && ppeData.length > 0) {
+      console.log("Searching for PPE with serial number:", serialNumberQuery);
+      
+      // Use our new consolidated hook function
+      const ppeItems = await getPPEBySerialNumber(serialNumberQuery);
+
+      if (ppeItems && ppeItems.length > 0) {
         // PPE exists, redirect to inspection form
-        const ppeItem = ppeData[0];
-        // Fix: Update to correct route path
+        const ppeItem = ppeItems[0];
+        console.log("PPE found:", ppeItem);
         navigate(`/inspect/${ppeItem.id}`);
         return;
       }
-      
+
       // PPE doesn't exist, create a new one
       if (!data.type) {
         toast({
@@ -93,21 +102,20 @@ const ManualInspection = () => {
         setIsLoading(false);
         return;
       }
-      
+
       // Set default dates if not provided
       const currentDate = new Date().toISOString().split('T')[0];
-      // Default expiry date is 5 years from today
       const defaultExpiryDate = new Date();
       defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 5);
       const defaultExpiryString = defaultExpiryDate.toISOString().split('T')[0];
-      
+
       const manufacturingDate = data.manufacturingDate || currentDate;
       const expiryDate = data.expiryDate || defaultExpiryString;
-      
+
       // Calculate next inspection date (1 month from today)
       const nextInspection = new Date();
       nextInspection.setMonth(nextInspection.getMonth() + 1);
-      
+
       console.log("Creating new PPE with data:", {
         serial_number: data.serialNumber,
         type: data.type,
@@ -117,38 +125,26 @@ const ManualInspection = () => {
         expiry_date: expiryDate,
         created_by: user.id,
       });
+
+      // Use our consolidated hook for PPE creation
+      const { createPPE } = usePPE();
       
-      // Insert new PPE
-      const { data: newPpeData, error: insertError } = await supabase
-        .from('ppe_items')
-        .insert({
-          serial_number: data.serialNumber,
-          type: data.type,
-          brand: data.brand || 'Unknown',
-          model_number: data.modelNumber || 'Unknown',
-          manufacturing_date: manufacturingDate,
-          expiry_date: expiryDate,
-          status: 'active',
-          next_inspection: nextInspection.toISOString(),
-          created_by: user.id,
-        })
-        .select('id')
-        .single();
-      
-      if (insertError) {
-        console.error("Error inserting new PPE:", insertError);
-        throw insertError;
-      }
-      
+      const newPpeData = await createPPE({
+        serial_number: data.serialNumber,
+        type: data.type,
+        brand: data.brand || 'Unknown',
+        model_number: data.modelNumber || 'Unknown',
+        manufacturing_date: manufacturingDate,
+        expiry_date: expiryDate,
+      });
+
       if (!newPpeData || !newPpeData.id) {
         throw new Error('Failed to create new PPE item');
       }
-      
+
       console.log("New PPE created with ID:", newPpeData.id);
-      
-      // Fix: Update to correct route path
       navigate(`/inspect/${newPpeData.id}`);
-      
+
     } catch (error: any) {
       console.error('Error in manual inspection:', error);
       setError(error.message || 'An unexpected error occurred');
@@ -161,177 +157,199 @@ const ManualInspection = () => {
       setIsLoading(false);
     }
   };
-  
-  const handleQRCodeResult = (result: string) => {
-    // Assuming the QR code contains the serial number
-    setValue('serialNumber', result);
-    setIsScanning(false);
-    
-    toast({
-      title: 'QR Code Scanned',
-      description: `Serial number: ${result}`,
-    });
-  };
-  
-  const handleScanError = (error: string) => {
-    console.error('QR scan error:', error);
-    setIsScanning(false);
-    
-    // Only show toast for actual errors, not for user cancellations
-    if (error !== 'Scanning cancelled') {
-      toast({
-        title: 'Scan Error',
-        description: 'QR code scanning encountered an error',
-        variant: 'destructive',
-      });
-    }
-  };
-  
+
   return (
-    <div className="container mx-auto px-4 py-6 pb-24">
-      <h1 className="text-2xl font-bold mb-6">Start Inspection</h1>
+    <div className="container max-w-3xl mx-auto py-6 space-y-6">
+      <PageHeader title="Manual Inspection" />
       
-      <div className="mb-6">
-        <Button 
-          onClick={() => setIsScanning(true)} 
-          className="w-full flex items-center justify-center"
-        >
-          <Camera className="mr-2" size={18} />
-          Scan QR Code
-        </Button>
-      </div>
-      
-      {error && (
-        <div className="mb-6 p-4 border border-destructive/50 bg-destructive/10 rounded-md text-destructive">
-          <p className="font-medium">Error</p>
-          <p className="text-sm">{error}</p>
-        </div>
-      )}
-      
-      <Card className="border border-border/40 shadow-sm">
-        <CardContent className="pt-6">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="serialNumber">PPE Serial Number / ID</Label>
-              <Input
-                id="serialNumber"
-                placeholder="Enter PPE serial number or ID"
-                {...register('serialNumber', { required: 'Serial number is required' })}
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>PPE Information</CardTitle>
+          <CardDescription>
+            Enter the serial number or create a new PPE item
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="serialNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Serial Number*</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter serial number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {errors.serialNumber && (
-                <p className="text-xs text-destructive">{errors.serialNumber.message as string}</p>
-              )}
-            </div>
-            
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                If this is new equipment, please provide additional details:
-              </p>
               
-              <div className="space-y-2">
-                <Label htmlFor="type">PPE Type</Label>
-                <Select 
-                  onValueChange={(value) => setValue('type', value)}
-                  value={selectedType}
+              <div className="bg-muted/50 p-4 rounded-md">
+                <h3 className="text-sm font-medium mb-3">If creating new PPE, fill the details below:</h3>
+                
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>PPE Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select PPE type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {standardPPETypes.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="brand"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Brand</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter brand name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="modelNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Model Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter model number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="manufacturingDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Manufacturing Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(new Date(field.value), "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ? new Date(field.value) : undefined}
+                              onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="expiryDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Expiry Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(new Date(field.value), "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ? new Date(field.value) : undefined}
+                              onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              
+              {error && (
+                <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+              
+              <CardFooter className="px-0 pt-2">
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={isLoading}
                 >
-                  <SelectTrigger id="type">
-                    <SelectValue placeholder="Select PPE type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ppeTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="brand">Brand (Optional)</Label>
-                <Input
-                  id="brand"
-                  placeholder="Enter brand name"
-                  {...register('brand')}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="modelNumber">Model Number (Optional)</Label>
-                <Input
-                  id="modelNumber"
-                  placeholder="Enter model number"
-                  {...register('modelNumber')}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="manufacturingDate">Manufacturing Date (Optional)</Label>
-                <div className="relative">
-                  <Input
-                    id="manufacturingDate"
-                    type="date"
-                    className="pl-10"
-                    {...register('manufacturingDate')}
-                  />
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="expiryDate">Expiry Date (Optional)</Label>
-                <div className="relative">
-                  <Input
-                    id="expiryDate"
-                    type="date"
-                    className="pl-10"
-                    {...register('expiryDate')}
-                  />
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                </div>
-              </div>
-            </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full flex items-center justify-center" 
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                'Start Inspection'
-              )}
-            </Button>
-          </form>
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : 'Start Inspection'}
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
         </CardContent>
       </Card>
-      
-      {isScanning && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-lg shadow-lg max-w-md w-full p-6 border border-border/40">
-            <div className="flex justify-end mb-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setIsScanning(false);
-                }}
-                className="h-8 w-8"
-              >
-                <X size={18} />
-              </Button>
-            </div>
-            <QRCodeScanner 
-              onResult={handleQRCodeResult} 
-              onError={handleScanError} 
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

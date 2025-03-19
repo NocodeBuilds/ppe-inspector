@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ExtendedProfile } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 type ProfileFormData = {
@@ -20,7 +19,6 @@ export const useProfileForm = () => {
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [extendedProfile, setExtendedProfile] = useState<ExtendedProfile | null>(null);
   
   // Form state
   const [formData, setFormData] = useState<ProfileFormData>({
@@ -59,49 +57,18 @@ export const useProfileForm = () => {
       return;
     }
     
-    fetchExtendedProfile();
-    
+    // Populate form with existing data
     if (profile) {
-      setFormData(prev => ({
-        ...prev,
-        fullName: profile.full_name || ''
-      }));
-    }
-  }, [profile, navigate]);
-  
-  const fetchExtendedProfile = async () => {
-    try {
-      const { data, error } = await supabase.rpc('get_extended_profile');
-      
-      if (error) {
-        if (error.code !== 'PGRST116') { // PGRST116 means no rows returned
-          throw error;
-        }
-      } else if (data) {
-        // Cast the data to ExtendedProfile type
-        const profileData = data as unknown as ExtendedProfile;
-        setExtendedProfile(profileData);
-        
-        // Populate form with existing data
-        setFormData({
-          fullName: formData.fullName, // Keep the already set fullName
-          employeeId: profileData.employee_id || '',
-          location: profileData.location || '',
-          department: profileData.department || '',
-          bio: profileData.bio || '',
-        });
-      }
-    } catch (error: any) {
-      console.error('Error fetching extended profile:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load profile data',
-        variant: 'destructive',
+      setFormData({
+        fullName: profile.full_name || '',
+        employeeId: profile.employee_id || '',
+        location: profile.location || '',
+        department: profile.department || '',
+        bio: profile.bio || '',
       });
-    } finally {
       setIsLoading(false);
     }
-  };
+  }, [profile, navigate]);
   
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -149,7 +116,7 @@ export const useProfileForm = () => {
         avatarUrl = await uploadAvatar();
       }
       
-      // Update profile basic info
+      // Update profile fields in a single query
       if (profile) {
         const { error: profileError } = await supabase
           .from('profiles')
@@ -157,24 +124,15 @@ export const useProfileForm = () => {
             full_name: formData.fullName,
             avatar_url: avatarUrl || profile.avatar_url,
             updated_at: new Date().toISOString(),
+            employee_id: formData.employeeId,
+            location: formData.location,
+            department: formData.department,
+            bio: formData.bio
           })
           .eq('id', profile.id);
         
         if (profileError) throw profileError;
       }
-      
-      // Update or insert extended profile
-      const { data: updatedExtendedProfile, error: extendedProfileError } = await supabase.rpc(
-        'upsert_extended_profile',
-        {
-          p_employee_id: formData.employeeId,
-          p_location: formData.location,
-          p_department: formData.department,
-          p_bio: formData.bio
-        }
-      );
-      
-      if (extendedProfileError) throw extendedProfileError;
       
       // Refresh profile data
       await refreshProfile();
