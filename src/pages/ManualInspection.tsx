@@ -64,10 +64,17 @@ const ManualInspection = () => {
         ? [`id.eq.${serialNumber}`]
         : [`serial_number.eq.${serialNumber}`];
 
+      console.log("orFilter:", orFilter);
+
       const { data: ppeData, error: ppeError } = await supabase
         .from('ppe_items')
         .select('*')
         .or(orFilter.join(','));
+
+      console.log("Supabase query:", supabase
+        .from('ppe_items')
+        .select('*')
+        .or(orFilter.join(',')).toString());
 
       if (ppeError) {
         console.error("Error checking PPE existence:", ppeError);
