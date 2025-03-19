@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
@@ -178,31 +179,21 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
         },
       };
       
-      // Camera constraints with improved settings
-      const cameraConstraints: MediaTrackConstraints = {
-        width: { min: 640, ideal: 1280, max: 1920 },
-        height: { min: 480, ideal: 720, max: 1080 },
-        focusMode: 'continuous',
-        zoom: 1.0
-      };
-      
-      if (deviceId) {
-        cameraConstraints.deviceId = { exact: deviceId };
-      } else {
-        cameraConstraints.facingMode = { ideal: 'environment' };
-      }
-      
       if (!isMountedRef.current) {
         cleanupScanner();
         return;
       }
       
-      console.log('Starting scanner with constraints:', cameraConstraints);
-
-      const startConfig = deviceId ? { deviceId: { exact: deviceId } } : {};
+      // Create a simplified camera identifier object
+      // Must contain ONLY ONE of: deviceId OR facingMode
+      const cameraIdentifier = deviceId 
+        ? { deviceId: { exact: deviceId } } 
+        : { facingMode: "environment" };
+      
+      console.log('Starting scanner with camera identifier:', cameraIdentifier);
 
       await scannerRef.current.start(
-        startConfig,
+        cameraIdentifier,  // Only pass the camera identifier here - MUST have just ONE key
         config,
         handleScanSuccess,
         onScanError
