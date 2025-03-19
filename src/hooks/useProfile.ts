@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase, Profile } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -48,7 +47,6 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
             role: data.role,
             created_at: data.created_at,
             updated_at: data.updated_at,
-            // Extended profile fields now directly in profiles table
             employee_id: data.employee_id || null,
             location: data.location || null,
             department: data.department || null,
@@ -65,10 +63,8 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
       }
     },
     { enabled: !!userId }
-  );
-    }
-  };
-  
+  ); // ✅ Correct closing bracket here
+
   return {
     profile,
     isLoading,
