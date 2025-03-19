@@ -39,13 +39,8 @@ const StartInspection = () => {
       // Show scanning feedback
       toast({
         title: 'Processing',
-<<<<<<< HEAD
-        variant: 'default',
-        description: 'Processing QR code...'
-=======
         description: 'Processing QR code...',
         variant: 'info'
->>>>>>> 652560af9797f1ef98e504675f79ee1856133292
       });
       
       await searchBySerial(result);
@@ -53,13 +48,8 @@ const StartInspection = () => {
       console.error('Error handling scan result:', error);
       toast({
         title: 'Error',
-<<<<<<< HEAD
-        variant: 'destructive',
-        description: error instanceof Error ? error.message : 'Failed to process QR code'
-=======
         description: error instanceof Error ? error.message : 'Failed to process QR code',
         variant: 'destructive'
->>>>>>> 652560af9797f1ef98e504675f79ee1856133292
       });
     }
   };
@@ -103,13 +93,8 @@ const StartInspection = () => {
     
     toast({
       title: 'PPE Found',
-<<<<<<< HEAD
-      variant: 'success',
-      description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`
-=======
       description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`,
       variant: 'success'
->>>>>>> 652560af9797f1ef98e504675f79ee1856133292
     });
     
     // Navigate to the inspection form with the PPE ID
