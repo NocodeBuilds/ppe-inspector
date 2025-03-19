@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useToast } from '@/hooks/use-toast';
@@ -97,9 +96,21 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
     // Prevent multiple scans
     if (hasScanned || !isMountedRef.current) return;
     
-    setHasScanned(true);
-    
     try {
+      // Basic validation of QR code format
+      const trimmedText = decodedText.trim();
+      if (!trimmedText) {
+        throw new Error('Invalid QR code: empty content');
+      }
+
+      // You might want to add more specific validation based on your QR code format
+      // For example, if it should match a specific pattern
+      if (!/^[A-Za-z0-9-_]+$/.test(trimmedText)) {
+        throw new Error('Invalid QR code format: should only contain alphanumeric characters, hyphens, and underscores');
+      }
+
+      setHasScanned(true);
+      
       if (qrScanner && isScanning) {
         await qrScanner.stop();
         if (!isMountedRef.current) return;
@@ -110,15 +121,17 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
           description: 'Successfully scanned QR code'
         });
         
-        // Process the result
-        onResult(decodedText);
+        // Process the result with validated text
+        onResult(trimmedText);
       }
-    } catch (err) {
-      console.error('Error stopping QR scanner after successful scan:', err);
+    } catch (err: any) {
+      console.error('Error processing QR code:', err);
       if (isMountedRef.current) {
         setIsScanning(false);
-        // Still pass the result even if stopping the scanner failed
-        onResult(decodedText);
+        onError(err.message || 'Failed to process QR code');
+        showNotification('QR Code Error', 'error', {
+          description: err.message || 'Failed to process QR code'
+        });
       }
     }
   };

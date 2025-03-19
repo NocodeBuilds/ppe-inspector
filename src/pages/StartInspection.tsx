@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -35,15 +34,26 @@ const StartInspection = () => {
 
   const handleScanResult = async (result: string) => {
     setScanning(false);
-    await searchBySerial(result);
+    setShowScanner(false);
+    
+    try {
+      // Show scanning feedback
+      showNotification('Processing', 'info', {
+        description: 'Processing QR code...'
+      });
+      
+      await searchBySerial(result);
+    } catch (error) {
+      console.error('Error handling scan result:', error);
+      showNotification('Error', 'error', {
+        description: error instanceof Error ? error.message : 'Failed to process QR code'
+      });
+    }
   };
 
   const searchBySerial = async (serial: string) => {
     if (!serial.trim()) {
-      showNotification('Error', 'error', {
-        description: 'Please enter a valid serial number'
-      });
-      return;
+      throw new Error('Please enter a valid serial number');
     }
     
     setIsLoading(true);
@@ -56,11 +66,7 @@ const StartInspection = () => {
       console.log('Found PPE items:', ppeItems);
       
       if (!ppeItems || ppeItems.length === 0) {
-        showNotification('Not Found', 'error', {
-          description: `No PPE found with serial number: ${serial}`
-        });
-        setShowScanner(false);
-        return;
+        throw new Error(`No PPE found with serial number: ${serial}`);
       }
       
       if (ppeItems.length === 1) {
@@ -70,9 +76,7 @@ const StartInspection = () => {
       }
     } catch (error) {
       console.error('Error processing serial number:', error);
-      showNotification('Error', 'error', {
-        description: 'Failed to process serial number'
-      });
+      throw error; // Re-throw to be handled by caller
     } finally {
       setIsLoading(false);
       setIsSearching(false);
