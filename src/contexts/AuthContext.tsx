@@ -6,18 +6,7 @@ import { useAuthSession } from '@/hooks/useAuthSession';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthActions } from '@/hooks/useAuthActions';
 import { toast } from '@/hooks/use-toast';
-
-// Define the ExtendedProfile type to match the database structure
-export type ExtendedProfile = {
-  id: string;
-  user_id: string;
-  employee_id: string | null;
-  location: string | null;
-  department: string | null;
-  bio: string | null;
-  created_at: string;
-  updated_at: string;
-};
+import { ExtendedProfile } from '@/types/extendedProfile';
 
 type AuthContextType = {
   session: Session | null;

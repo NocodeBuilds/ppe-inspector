@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -34,7 +35,6 @@ const ManualInspection = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [ppeTypes, setPpeTypes] = useState<PPEType[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [submittedSerialNumber, setSubmittedSerialNumber] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -58,42 +58,53 @@ const ManualInspection = () => {
   const checkPPEExistence = async (serialNumber: string) => {
     console.log("checkPPEExistence called with serialNumber:", serialNumber);
     try {
-      // Check if the PPE exists
-      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(serialNumber);
-
-      const orFilter = isValidUUID
-        ? [`id.eq.${serialNumber}`]
-        : [`serial_number.eq.${serialNumber}`];
-
-      console.log("orFilter:", orFilter);
-
-      const { data: ppeData, error: ppeError } = await supabase
-        .from('ppe_items')
-        .select('*')
-        .or(orFilter.join(','));
-
-      console.log("Supabase query:", supabase
-        .from('ppe_items')
-        .select('*')
-        .or(orFilter.join(',')).toString());
-
-      if (ppeError) {
-        console.error("Error checking PPE existence:", ppeError);
-        toast({
-          title: 'Error Checking PPE',
-          description: ppeError.message,
-          variant: 'destructive',
-        });
-        return;
+      setIsLoading(true);
+      setError(null);
+      
+      // Determine if input is a valid UUID
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(serialNumber);
+      
+      let ppeData;
+      
+      if (isValidUUID) {
+        // If valid UUID, try to find by ID first
+        const { data, error } = await supabase
+          .from('ppe_items')
+          .select('*')
+          .eq('id', serialNumber)
+          .maybeSingle();
+          
+        if (error) {
+          console.error("Error checking PPE by ID:", error);
+          throw error;
+        }
+        
+        ppeData = data;
+      }
+      
+      // If not found by ID or not a UUID, search by serial number
+      if (!ppeData) {
+        const { data, error } = await supabase
+          .from('ppe_items')
+          .select('*')
+          .eq('serial_number', serialNumber)
+          .maybeSingle();
+          
+        if (error) {
+          console.error("Error checking PPE by serial number:", error);
+          throw error;
+        }
+        
+        ppeData = data;
       }
 
-      if (!ppeData || ppeData.length === 0) {
+      if (!ppeData) {
         // PPE doesn't exist, create a new one
         if (!watch('type')) {
           toast({
             title: 'Error',
             description: 'PPE type is required for new equipment',
-            variant: 'destructive',
+            variant: 'destructive'
           });
           return;
         }
@@ -145,14 +156,14 @@ const ManualInspection = () => {
           toast({
             title: 'Error Inserting PPE',
             description: insertError.message,
-            variant: 'destructive',
+            variant: 'destructive'
           });
           return;
         }
 
         toast({
           title: 'PPE Created',
-          description: 'New PPE item created successfully',
+          description: 'New PPE item created successfully'
         });
 
         navigate(`/inspect/${newPpeData.id}`);
@@ -160,35 +171,32 @@ const ManualInspection = () => {
       } else {
         // PPE exists, navigate to inspection page
         console.log("PPE exists, navigating to inspection page");
-        navigate(`/inspect/${ppeData[0].id}`);
+        navigate(`/inspect/${ppeData.id}`);
       }
     } catch (error: any) {
       console.error('Error checking PPE existence:', error);
+      setError(error.message || 'Failed to check PPE existence');
       toast({
         title: 'Error Checking PPE',
-        description: error.message,
-        variant: 'destructive',
+        description: error.message || 'An unexpected error occurred',
+        variant: 'destructive'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const onSubmit = async (values: ManualInspectionFormValues) => {
-    try {
-      // Check if PPE item exists
-      await checkPPEExistence(values.serialNumber);
-
-      toast({
-        title: 'Success',
-        description: 'PPE item exists.',
-      });
-    } catch (error: any) {
-      console.error('Error in manual inspection:', error);
+    if (!values.serialNumber.trim()) {
       toast({
         title: 'Error',
-        description: error.message,
-        variant: 'destructive',
+        description: 'Serial number is required',
+        variant: 'destructive'
       });
+      return;
     }
+    
+    await checkPPEExistence(values.serialNumber);
   };
 
   const handleQRCodeResult = (result: string) => {
@@ -198,7 +206,7 @@ const ManualInspection = () => {
     
     toast({
       title: 'QR Code Scanned',
-      description: `Serial number: ${result}`,
+      description: `Serial number: ${result}`
     });
   };
   
@@ -211,7 +219,7 @@ const ManualInspection = () => {
       toast({
         title: 'Scan Error',
         description: 'QR code scanning encountered an error',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   };

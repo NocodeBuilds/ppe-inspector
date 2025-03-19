@@ -1,11 +1,11 @@
 
 export interface ExtendedProfile {
   id: string;
-  userId: string;
-  employeeId?: string | null;
+  user_id: string;
+  employee_id?: string | null;
   location?: string | null;
   department?: string | null;
   bio?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
+  created_at?: string;
+  updated_at?: string;
 }

@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { supabase, Profile } from '@/integrations/supabase/client';
-import { ExtendedProfile } from '@/contexts/AuthContext';
+import { ExtendedProfile } from '@/types/extendedProfile';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 
@@ -91,7 +91,7 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to refresh profile',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   };

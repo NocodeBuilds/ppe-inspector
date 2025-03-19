@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ExtendedProfile } from '@/contexts/AuthContext';
+import { ExtendedProfile } from '@/types/extendedProfile';
 import { useToast } from '@/hooks/use-toast';
 
 type ProfileFormData = {
@@ -83,20 +83,21 @@ export const useProfileForm = () => {
         setExtendedProfile(profileData);
         
         // Populate form with existing data
-        setFormData({
-          fullName: formData.fullName, // Keep the already set fullName
+        setFormData(prev => ({
+          ...prev,
+          fullName: prev.fullName, // Keep the already set fullName
           employeeId: profileData.employee_id || '',
           location: profileData.location || '',
           department: profileData.department || '',
           bio: profileData.bio || '',
-        });
+        }));
       }
     } catch (error: any) {
       console.error('Error fetching extended profile:', error);
       toast({
         title: 'Error',
         description: 'Failed to load profile data',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setIsLoading(false);
@@ -181,7 +182,7 @@ export const useProfileForm = () => {
       
       toast({
         title: 'Profile Updated',
-        description: 'Your profile has been successfully updated',
+        description: 'Your profile has been successfully updated'
       });
       
       navigate('/profile');
@@ -190,7 +191,7 @@ export const useProfileForm = () => {
       toast({
         title: 'Update Failed',
         description: error.message || 'Failed to update profile',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setIsSaving(false);
