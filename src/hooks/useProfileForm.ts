@@ -59,7 +59,7 @@ export const useProfileForm = () => {
     
     // Populate form with existing data
     if (profile) {
-      });
+      };
       setIsLoading(false);
     }
   }, [profile, navigate]);
