@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -21,6 +20,15 @@ import { PPEType } from '@/types';
 import { getAllPPETypes } from '@/services/checkpointService';
 import { useAuth } from '@/hooks/useAuth';
 
+interface ManualInspectionFormValues {
+  serialNumber: string;
+  type: string;
+  brand: string;
+  modelNumber: string;
+  manufacturingDate: string;
+  expiryDate: string;
+}
+
 const ManualInspection = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -38,7 +46,7 @@ const ManualInspection = () => {
     reset,
     watch,
     formState: { errors }
-  } = useForm();
+  } = useForm<ManualInspectionFormValues>();
   
   const selectedType = watch('type');
   
@@ -47,28 +55,19 @@ const ManualInspection = () => {
     setPpeTypes(getAllPPETypes());
   }, []);
   
-  const onSubmit = async (data: any) => {
+  const checkPPEExistence = async (serialNumber: string) => {
     try {
-      if (!user) {
-        toast({
-          title: 'Authentication Required',
-          description: 'You must be logged in to perform inspections',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      setIsLoading(true);
-      setError(null);
-      setSubmittedSerialNumber(data.serialNumber);
-      
-      console.log("Form data:", data);
-      
       // Check if the PPE exists
       const { data: ppeData, error: ppeError } = await supabase
         .from('ppe_items')
         .select('*')
-        .or(`serial_number.eq.${data.serialNumber},id.eq.${data.serialNumber}`);
+        .or([
+          {
+            id: serialNumber,
+            _and: `id LIKE 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'`
+          },
+          `serial_number.eq.${serialNumber}`,
+        ]);
       
       if (ppeError) {
         console.error("Error checking PPE existence:", ppeError);
@@ -84,7 +83,7 @@ const ManualInspection = () => {
       }
       
       // PPE doesn't exist, create a new one
-      if (!data.type) {
+      if (!watch('type')) {
         toast({
           title: 'Error',
           description: 'PPE type is required for new equipment',
@@ -101,18 +100,18 @@ const ManualInspection = () => {
       defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 5);
       const defaultExpiryString = defaultExpiryDate.toISOString().split('T')[0];
       
-      const manufacturingDate = data.manufacturingDate || currentDate;
-      const expiryDate = data.expiryDate || defaultExpiryString;
+      const manufacturingDate = watch('manufacturingDate') || currentDate;
+      const expiryDate = watch('expiryDate') || defaultExpiryString;
       
       // Calculate next inspection date (1 month from today)
       const nextInspection = new Date();
       nextInspection.setMonth(nextInspection.getMonth() + 1);
       
       console.log("Creating new PPE with data:", {
-        serial_number: data.serialNumber,
-        type: data.type,
-        brand: data.brand || 'Unknown',
-        model_number: data.modelNumber || 'Unknown',
+        serial_number: serialNumber,
+        type: watch('type'),
+        brand: watch('brand') || 'Unknown',
+        model_number: watch('modelNumber') || 'Unknown',
         manufacturing_date: manufacturingDate,
         expiry_date: expiryDate,
         created_by: user.id,
@@ -122,10 +121,10 @@ const ManualInspection = () => {
       const { data: newPpeData, error: insertError } = await supabase
         .from('ppe_items')
         .insert({
-          serial_number: data.serialNumber,
-          type: data.type,
-          brand: data.brand || 'Unknown',
-          model_number: data.modelNumber || 'Unknown',
+          serial_number: serialNumber,
+          type: watch('type'),
+          brand: watch('brand') || 'Unknown',
+          model_number: watch('modelNumber') || 'Unknown',
           manufacturing_date: manufacturingDate,
           expiry_date: expiryDate,
           status: 'active',
@@ -150,18 +149,34 @@ const ManualInspection = () => {
       navigate(`/inspect/${newPpeData.id}`);
       
     } catch (error: any) {
-      console.error('Error in manual inspection:', error);
-      setError(error.message || 'An unexpected error occurred');
+      console.error('Error checking PPE existence:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to process inspection request',
+        title: 'Error Checking PPE',
+        description: error.message,
         variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
     }
   };
-  
+
+  const onSubmit = async (values: ManualInspectionFormValues) => {
+    try {
+      // Check if PPE item exists
+      await checkPPEExistence(values.serialNumber);
+
+      toast({
+        title: 'Success',
+        description: 'PPE item exists.',
+      });
+    } catch (error: any) {
+      console.error('Error in manual inspection:', error);
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleQRCodeResult = (result: string) => {
     // Assuming the QR code contains the serial number
     setValue('serialNumber', result);
