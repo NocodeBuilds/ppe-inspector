@@ -58,16 +58,17 @@ const ManualInspection = () => {
   const checkPPEExistence = async (serialNumber: string) => {
     try {
       // Check if the PPE exists
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(serialNumber);
       const { data: ppeData, error: ppeError } = await supabase
         .from('ppe_items')
         .select('*')
         .or([
-          {
+          isValidUUID ? {
             id: serialNumber,
             _and: `id LIKE 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'`
-          },
+          } : null,
           `serial_number.eq.${serialNumber}`,
-        ]);
+        ].filter(Boolean));
       
       if (ppeError) {
         console.error("Error checking PPE existence:", ppeError);
