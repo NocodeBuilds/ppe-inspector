@@ -156,7 +156,8 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
 
       // Find the best camera to use
       const deviceId = await findBestCamera();
-      
+      console.log('Best camera device ID:', deviceId);
+
       // Create a new scanner instance
       console.log('Creating new scanner instance for', scannerContainerId);
       scannerRef.current = new Html5Qrcode(scannerContainerId, {
@@ -197,27 +198,24 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
       }
       
       console.log('Starting scanner with constraints:', cameraConstraints);
-      
+
       await scannerRef.current.start(
         cameraConstraints,
         config,
         handleScanSuccess,
         onScanError
-      );
-      
-      if (isMountedRef.current) {
-        onScannerStart(scannerRef.current);
-        console.log('QR scanner started successfully');
-      }
-    } catch (err) {
-      console.error('Error starting QR scanner:', err);
-      if (isMountedRef.current) {
+      ).then(() => {
+          console.log('QR scanner started successfully');
+          onScannerStart(scannerRef.current);
+      }).catch((err: any) => {
+        console.error('Failed to start QR scanner:', err);
         onScannerError(err);
-      }
+      });
+    } catch (error: any) {
+      console.error('Error initializing scanner:', error);
+      onScannerError(error);
     } finally {
-      if (isMountedRef.current) {
-        setIsInitializing(false);
-      }
+      setIsInitializing(false);
     }
   }, [
     scannerContainerId, 
@@ -227,7 +225,7 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
     onScannerError, 
     cleanupScanner, 
     findBestCamera,
-    isInitializing
+    isMountedRef
   ]);
 
   // Initialize scanner on mount
