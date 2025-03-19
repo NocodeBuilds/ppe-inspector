@@ -199,7 +199,14 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
       
       console.log('Starting scanner with constraints:', cameraConstraints);
 
-      const startConfig = deviceId ? deviceId : cameraConstraints;
+      const startConfig = deviceId ? {
+        deviceId: { exact: deviceId },
+        width: { min: 640, ideal: 1280, max: 1920 },
+        height: { min: 480, ideal: 720, max: 1080 },
+        facingMode: { ideal: 'environment' },
+        focusMode: 'continuous',
+        zoom: 1.0
+      } : cameraConstraints;
 
       await scannerRef.current.start(
         startConfig,
