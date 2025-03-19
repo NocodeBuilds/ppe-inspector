@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
@@ -34,9 +33,11 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
     if (scannerRef.current) {
       try {
         console.log('Stopping scanner...');
-        scannerRef.current.stop().catch(() => {
-          console.log('Error stopping scanner, but continuing cleanup');
-        });
+        if (!scannerRef.current.isStopping()) {
+          scannerRef.current.stop().catch(() => {
+            console.log('Error stopping scanner, but continuing cleanup');
+          });
+        }
       } catch (e) {
         console.log('Exception during scanner cleanup, ignoring:', e);
       } finally {
@@ -192,6 +193,11 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
       
       console.log('Starting scanner with camera identifier:', cameraIdentifier);
 
+      if (!deviceId) {
+        onScannerError('No valid device ID found');
+        return;
+      }
+
       await scannerRef.current.start(
         cameraIdentifier,  // Only pass the camera identifier here - MUST have just ONE key
         config,
@@ -200,32 +206,28 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
       ).then(() => {
           console.log('QR scanner started successfully');
           onScannerStart(scannerRef.current);
-      }).catch((err: any) => {
-        console.error('Failed to start QR scanner:', err);
-        onScannerError(err);
-      });
-    } catch (error: any) {
+        })
+        .catch((error) => {
+          console.error('Error starting QR scanner:', error);
+          onScannerError(error);
+        });
+    } catch (error) {
       console.error('Error initializing scanner:', error);
       onScannerError(error);
     } finally {
-      setIsInitializing(false);
-    }
-  }, [scannerContainerId, onScanSuccess, onScanError, onScannerStart, cleanupScanner, findBestCamera, isMountedRef]);
-
-  // Initialize scanner on mount
-  useEffect(() => {
-    isMountedRef.current = true;
-    
-    // Use timeout to ensure DOM is ready
-    const timer = setTimeout(() => {
       if (isMountedRef.current) {
-        startScanner();
+        setIsInitializing(false);
       }
-    }, 500);
-    
+    }
+  }, [scannerContainerId, onScanSuccess, onScanError, cleanupScanner, findBestCamera, isMountedRef, onScannerError]);
+
+  useEffect(() => {
+    // Start the scanner when the component mounts
+    startScanner();
+
+    // Clean up the scanner when the component unmounts
     return () => {
       isMountedRef.current = false;
-      clearTimeout(timer);
       cleanupScanner();
     };
   }, [startScanner, cleanupScanner]);
