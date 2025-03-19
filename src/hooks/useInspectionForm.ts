@@ -15,14 +15,12 @@ const inspectionFormSchema = z.object({
   notes: z.string().optional(),
   signatureUrl: z.string().optional(),
   overallResult: z.enum(['pass', 'fail', 'maintenance-required']),
-  checkpointResults: z.array(
-    z.object({
-      checkpointId: z.string(),
-      passed: z.boolean(),
-      notes: z.string().optional(),
-      photoUrl: z.string().optional(),
-    })
-  ),
+  checkpointResults: z.array(z.object({
+    checkpointId: z.string(),
+    passed: z.boolean(),
+    notes: z.string().optional(),
+    photoUrl: z.string().optional(),
+  }))
 });
 
 export type InspectionFormValues = z.infer<typeof inspectionFormSchema>;
@@ -46,8 +44,8 @@ export const useInspectionForm = () => {
       type: 'pre-use',
       notes: '',
       overallResult: 'pass',
-      checkpointResults: [],
-    },
+      checkpointResults: []
+    }
   });
 
   // Load PPE data and checkpoints
@@ -55,7 +53,7 @@ export const useInspectionForm = () => {
     const loadData = async () => {
       if (!ppeId) {
         showNotification('Error', 'error', {
-          description: 'No PPE ID provided',
+          description: 'No PPE ID provided'
         });
         navigate('/start-inspection');
         return;
@@ -63,8 +61,10 @@ export const useInspectionForm = () => {
       setIsLoading(true);
       try {
         const ppe = await getPPEById(ppeId);
-        if (!ppe) throw new Error('PPE not found');
-
+        if (!ppe) {
+          throw new Error('PPE not found');
+        }
+        
         setPpeItem(ppe);
 
         const { data: checkpointData, error: checkpointError } = await supabase
@@ -73,22 +73,22 @@ export const useInspectionForm = () => {
           .eq('ppe_type', ppe.type);
 
         if (checkpointError) throw checkpointError;
-
+        
         setCheckpoints(checkpointData || []);
 
-        form.setValue(
-          'checkpointResults',
-          (checkpointData || []).map((checkpoint) => ({
+        if (ppe) {
+          form.setValue('checkpointResults', (checkpointData || []).map(checkpoint => ({
             checkpointId: checkpoint.id,
             passed: true,
             notes: '',
             photoUrl: '',
-          }))
-        );
+          })));
+        }
+
       } catch (error: any) {
         console.error('Error loading inspection data:', error);
         showNotification('Error', 'error', {
-          description: `Failed to load inspection data: ${error.message}`,
+          description: `Failed to load inspection data: ${error.message}`
         });
         navigate('/start-inspection');
       } finally {
@@ -102,9 +102,11 @@ export const useInspectionForm = () => {
   // Handle form submission
   const onSubmit = async (data: InspectionFormValues) => {
     if (!user || !ppeItem) return;
-
+    
     setIsSubmitting(true);
     try {
+      console.log('Submitting inspection form data:', data);
+
       const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
         .insert({
@@ -114,19 +116,19 @@ export const useInspectionForm = () => {
           date: new Date().toISOString(),
           overall_result: data.overallResult,
           signature_url: data.signatureUrl,
-          notes: data.notes,
+          notes: data.notes
         })
         .select()
         .single();
 
       if (inspectionError) throw inspectionError;
 
-      const resultsToInsert = data.checkpointResults.map((result) => ({
+      const resultsToInsert = data.checkpointResults.map(result => ({
         inspection_id: inspection.id,
         checkpoint_id: result.checkpointId,
         passed: result.passed,
         notes: result.notes || null,
-        photo_url: result.photoUrl || null,
+        photo_url: result.photoUrl || null
       }));
 
       const { error: resultsError } = await supabase
@@ -137,7 +139,7 @@ export const useInspectionForm = () => {
 
       const now = new Date();
       let nextInspectionDate: Date;
-
+      
       switch (data.type) {
         case 'pre-use':
           nextInspectionDate = new Date(now);
@@ -162,35 +164,29 @@ export const useInspectionForm = () => {
         updatePPEStatus({ id: ppeId, status: 'maintenance' });
       }
 
-      const { error: ppeUpdateError } = await supabase
+      await supabase
         .from('ppe_items')
         .update({
           last_inspection: now.toISOString(),
           next_inspection: nextInspectionDate.toISOString(),
-          updated_at: now.toISOString(),
+          updated_at: now.toISOString()
         })
         .eq('id', ppeId);
 
-      if (ppeUpdateError) throw ppeUpdateError;
-
       showNotification('Success', 'success', {
-        description: 'Inspection completed successfully',
+        description: 'Inspection completed successfully'
       });
-
+      
       setShowSuccess(true);
+
     } catch (error: any) {
       console.error('Error submitting inspection:', error);
       showNotification('Error', 'error', {
-        description: `Failed to submit inspection: ${error.message}`,
+        description: `Failed to submit inspection: ${error.message}`
       });
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const resetForm = () => {
-    form.reset();
-    setShowSuccess(false);
   };
 
   return {
@@ -200,8 +196,6 @@ export const useInspectionForm = () => {
     isLoading,
     isSubmitting,
     showSuccess,
-    onSubmit: form.handleSubmit(onSubmit),
-    resetForm,
-    setShowSuccess,
+    onSubmit: form.handleSubmit(onSubmit)
   };
 };
