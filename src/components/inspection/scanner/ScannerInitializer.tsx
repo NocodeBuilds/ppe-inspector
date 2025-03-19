@@ -199,14 +199,7 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
       
       console.log('Starting scanner with constraints:', cameraConstraints);
 
-      const startConfig = deviceId ? {
-        deviceId: { exact: deviceId },
-        width: { min: 640, ideal: 1280, max: 1920 },
-        height: { min: 480, ideal: 720, max: 1080 },
-        facingMode: { ideal: 'environment' },
-        focusMode: 'continuous',
-        zoom: 1.0
-      } : cameraConstraints;
+      const startConfig = deviceId ? { deviceId: { exact: deviceId } } : {};
 
       await scannerRef.current.start(
         startConfig,
@@ -226,16 +219,7 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
     } finally {
       setIsInitializing(false);
     }
-  }, [
-    scannerContainerId, 
-    handleScanSuccess, 
-    onScanError, 
-    onScannerStart, 
-    onScannerError, 
-    cleanupScanner, 
-    findBestCamera,
-    isMountedRef
-  ]);
+  }, [scannerContainerId, onScanSuccess, onScanError, onScannerStart, cleanupScanner, findBestCamera, isMountedRef]);
 
   // Initialize scanner on mount
   useEffect(() => {
