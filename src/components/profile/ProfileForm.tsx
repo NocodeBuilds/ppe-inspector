@@ -14,14 +14,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface ProfileFormProps {
   fullName: string;
   employeeId: string;
-  location: string;
+  siteName: string;  // Updated from location to siteName
   department: string;
   bio: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSelectChange: (field: string, value: string) => void;
 }
 
-const locations = [
+const siteNames = [  // Updated variable name from locations to siteNames
   'Molagavalli 1 & 2', 
   'Molagavalli 3', 
   'Nimbagallu', 
@@ -50,7 +50,7 @@ const departments = [
 const ProfileForm = ({ 
   fullName, 
   employeeId, 
-  location, 
+  siteName,  // Updated from location to siteName
   department, 
   bio, 
   onChange,
@@ -79,19 +79,19 @@ const ProfileForm = ({
       </div>
       
       <div>
-        <label htmlFor="location" className="text-sm font-medium block mb-1">Location (Optional)</label>
+        <label htmlFor="siteName" className="text-sm font-medium block mb-1">Site Name (Optional)</label>
         <Select
-          value={location}
-          onValueChange={(value) => onSelectChange('location', value)}
+          value={siteName}
+          onValueChange={(value) => onSelectChange('siteName', value)}
         >
-          <SelectTrigger id="location" className="w-full">
-            <SelectValue placeholder="Select your location" />
+          <SelectTrigger id="siteName" className="w-full">
+            <SelectValue placeholder="Select your site" />
           </SelectTrigger>
           <SelectContent>
             <ScrollArea className="h-[200px]">
-              {locations.map((loc) => (
-                <SelectItem key={loc} value={loc}>
-                  {loc}
+              {siteNames.map((site) => (
+                <SelectItem key={site} value={site}>
+                  {site}
                 </SelectItem>
               ))}
             </ScrollArea>

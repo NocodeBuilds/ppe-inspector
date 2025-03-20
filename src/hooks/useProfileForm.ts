@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 type ProfileFormData = {
   fullName: string;
   employeeId: string;
-  location: string;
+  siteName: string;  // Updated from location to siteName
   department: string;
   bio: string;
 };
@@ -24,7 +24,7 @@ export const useProfileForm = () => {
   const [formData, setFormData] = useState<ProfileFormData>({
     fullName: '',
     employeeId: '',
-    location: '',
+    siteName: '',  // Updated from location to siteName
     department: '',
     bio: '',
   });
@@ -59,6 +59,12 @@ export const useProfileForm = () => {
     
     // Populate form with existing data
     if (profile) {
+      setFormData({
+        fullName: profile.full_name || '',
+        employeeId: profile.employee_id || '',
+        siteName: profile.site_name || '',  // Updated from location to siteName
+        department: profile.department || '',
+        bio: profile.bio || '',
       });
       setIsLoading(false);
     }
@@ -119,7 +125,7 @@ export const useProfileForm = () => {
             avatar_url: avatarUrl || profile.avatar_url,
             updated_at: new Date().toISOString(),
             employee_id: formData.employeeId,
-            location: formData.location,
+            site_name: formData.siteName,  // Updated from location to site_name
             department: formData.department,
             bio: formData.bio
           })
