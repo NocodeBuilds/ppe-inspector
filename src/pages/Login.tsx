@@ -47,7 +47,7 @@ const Login = () => {
     });
 
     if (user) {
-      navigate('/');
+      navigate('/profile');
       return;
     }
 
@@ -72,6 +72,8 @@ const Login = () => {
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
             <LogoIcon size="lg" className="mx-auto" withText={true} />
+            <h1 className="text-xl font-bold mt-4">PPE Inspector</h1>
+            <p className="text-muted-foreground">Log in to manage equipment inspections</p>
           </div>
           
           <div className="glass-card rounded-lg p-6 sm:p-8 shadow-lg border border-border/20 mt-4">

@@ -1,181 +1,146 @@
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import InspectionList from './InspectionList';
-import { toast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
-import { useNetwork } from '@/hooks/useNetwork';
+import React, { useState } from 'react';
+import { useInspectionHistory } from '@/hooks/useInspectionHistory';
 import { InspectionType } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
+import { AlertCircle, FileText, Download, RefreshCw } from 'lucide-react';
+import { formatDate } from '@/lib/utils';
+import PageHeader from '@/components/common/PageHeader';
+import InspectionsSkeleton from './InspectionsSkeleton';
+import { InspectionList } from './InspectionList';
 
-interface InspectionFilters {
-  searchTerm?: string;
-  type?: InspectionType | 'all';
-  result?: string;
-  dateFrom?: string;
-  dateTo?: string;
-}
+type FilterType = {
+  type: InspectionType | 'all';
+  result: string;
+  dateFrom: string | null;
+  dateTo: string | null;
+};
 
-const InspectionHistoryView = () => {
-  const [inspections, setInspections] = useState<any[] | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<InspectionFilters>({});
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const itemsPerPage = 10;
-  const { isOnline } = useNetwork();
-  
-  useEffect(() => {
-    fetchInspections();
-  }, [filters, currentPage]);
-  
-  const fetchInspections = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Calculate pagination limits
-      const from = (currentPage - 1) * itemsPerPage;
-      const to = from + itemsPerPage - 1;
-      
-      // Start building the query
-      let query = supabase
-        .from('inspections')
-        .select(`
-          id,
-          date,
-          type,
-          overall_result,
-          profiles!inspections_inspector_id_fkey(full_name, site_name),
-          ppe_items!inspections_ppe_id_fkey(type, serial_number)
-        `, { count: 'exact' });
-      
-      // Apply filters
-      if (filters.searchTerm) {
-        const searchTerm = `%${filters.searchTerm}%`;
-        query = query.or(`ppe_items.serial_number.ilike.${searchTerm},ppe_items.type.ilike.${searchTerm}`);
-      }
-      
-      if (filters.type && filters.type !== 'all') {
-        // Make sure we only pass valid inspection types
-        const validTypes: InspectionType[] = ['pre-use', 'monthly', 'quarterly'];
-        if (validTypes.includes(filters.type as InspectionType)) {
-          query = query.eq('type', filters.type as InspectionType);
-        }
-      }
-      
-      if (filters.result && filters.result !== 'all') {
-        query = query.eq('overall_result', filters.result);
-      }
-      
-      if (filters.dateFrom) {
-        query = query.gte('date', filters.dateFrom);
-      }
-      
-      if (filters.dateTo) {
-        query = query.lte('date', filters.dateTo);
-      }
-      
-      // Add pagination
-      query = query
-        .order('date', { ascending: false })
-        .range(from, to);
-      
-      // Execute the query
-      const { data, error, count } = await query;
-      
-      if (error) throw error;
-      
-      // Process the inspection data
-      const processedInspections = data.map(item => ({
-        id: item.id,
-        date: item.date,
-        type: item.type,
-        overall_result: item.overall_result,
-        inspector_name: item.profiles?.full_name || 'Unknown',
-        site_name: item.profiles?.site_name || 'Unknown',
-        ppe_type: item.ppe_items?.type || 'Unknown',
-        ppe_serial: item.ppe_items?.serial_number || 'Unknown'
-      }));
-      
-      setInspections(processedInspections);
-      
-      // Update pagination information
-      if (count !== null) {
-        setTotalCount(count);
-        setTotalPages(Math.ceil(count / itemsPerPage));
-      }
-      
-    } catch (error: any) {
-      console.error('Error fetching inspections:', error);
-      setError(error.message || 'Failed to load inspections');
-      
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to load inspections',
-        variant: 'destructive',
-      });
-      
-      // Try to load from cache if offline
-      if (!isOnline) {
-        try {
-          const cachedInspections = localStorage.getItem('inspections_cache');
-          if (cachedInspections) {
-            const { data, timestamp } = JSON.parse(cachedInspections);
-            setInspections(data);
-            toast({
-              title: 'Offline Mode',
-              description: 'Showing cached inspections data',
-            });
-          }
-        } catch (cacheError) {
-          console.error('Error loading from cache:', cacheError);
-        }
-      }
-    } finally {
-      setIsLoading(false);
-    }
+const InspectionHistoryView: React.FC = () => {
+  const [filters, setFilters] = useState<FilterType>({
+    type: 'all',
+    result: '',
+    dateFrom: null,
+    dateTo: null,
+  });
+
+  const { inspections, isLoading, error, refetch } = useInspectionHistory({
+    type: filters.type,
+    result: filters.result || undefined,
+    dateFrom: filters.dateFrom || undefined,
+    dateTo: filters.dateTo || undefined,
+  });
+
+  const handleFilterChange = (key: keyof FilterType, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
-  
-  const handleFilterChange = (newFilters: InspectionFilters) => {
-    setFilters({...filters, ...newFilters});
-    setCurrentPage(1); // Reset to first page when filters change
-  };
-  
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-  
+
+  const validInspectionTypes: (InspectionType | 'all')[] = ['all', 'pre-use', 'monthly', 'quarterly'];
+
   return (
-    <div className="space-y-4">
-      {error && !inspections && (
-        <div className="p-4 border border-red-300 bg-red-50 rounded-md text-red-800">
-          {error}
-        </div>
-      )}
-      
-      {isLoading && !inspections && (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      )}
-      
-      <InspectionList
-        inspections={inspections}
-        isLoading={isLoading && !inspections}
-        showFilters={true}
-        onFilterChange={handleFilterChange}
-        onPageChange={handlePageChange}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        emptyMessage="No inspection records found. Complete an inspection to see it here."
+    <div className="w-full max-w-7xl mx-auto px-4 py-8">
+      <PageHeader 
+        title="Inspection History" 
+        description="View and filter all equipment inspections"
+        icon={<FileText className="h-6 w-6" />}
       />
-      
-      {totalCount > 0 && (
-        <div className="text-sm text-muted-foreground text-right">
-          Showing {inspections?.length || 0} of {totalCount} total inspections
+
+      <div className="mb-6 flex flex-wrap gap-4">
+        <div className="w-full sm:w-auto">
+          <Select 
+            value={filters.type} 
+            onValueChange={(value) => handleFilterChange('type', value as InspectionType | 'all')}
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Inspection Type" />
+            </SelectTrigger>
+            <SelectContent>
+              {validInspectionTypes.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type === 'all' ? 'All Types' : type.charAt(0).toUpperCase() + type.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
+        <div className="w-full sm:w-auto">
+          <Select 
+            value={filters.result} 
+            onValueChange={(value) => handleFilterChange('result', value)}
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Result" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Results</SelectItem>
+              <SelectItem value="pass">Pass</SelectItem>
+              <SelectItem value="fail">Fail</SelectItem>
+              <SelectItem value="flagged">Flagged</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-full sm:w-auto">
+          <DatePicker 
+            placeholder="From Date"
+            value={filters.dateFrom ? new Date(filters.dateFrom) : undefined}
+            onChange={(date) => handleFilterChange('dateFrom', date ? formatDate(date) : null)}
+          />
+        </div>
+
+        <div className="w-full sm:w-auto">
+          <DatePicker 
+            placeholder="To Date"
+            value={filters.dateTo ? new Date(filters.dateTo) : undefined} 
+            onChange={(date) => handleFilterChange('dateTo', date ? formatDate(date) : null)}
+          />
+        </div>
+
+        <div className="w-full sm:w-auto ml-auto">
+          <Button variant="outline" onClick={() => refetch()} className="gap-2">
+            <RefreshCw size={18} />
+            Refresh
+          </Button>
+        </div>
+        
+        <div className="w-full sm:w-auto">
+          <Button variant="outline" className="gap-2">
+            <Download size={18} />
+            Export
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <Card className="mb-6 p-4 border-red-300 bg-red-50 text-red-800">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+            <div>
+              <h3 className="font-medium">Error Loading Inspections</h3>
+              <p className="text-sm">{error}</p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <InspectionsSkeleton />
+      ) : (
+        <>
+          {inspections && inspections.length > 0 ? (
+            <InspectionList inspections={inspections} />
+          ) : (
+            <div className="text-center py-12">
+              <h3 className="text-lg font-medium mb-2">No inspections found</h3>
+              <p className="text-gray-500">Try adjusting your filters or adding new inspections</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
