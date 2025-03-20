@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Check, X, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -48,7 +49,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
         type="button"
         size="sm"
         variant={passed === false ? "default" : "outline"}
-        className={passed === false ? "bg-red-500 hover:bg-red-600" : "bg-red-200 hover:bg-red-300"}
+        className={passed === false ? "bg-red-500 hover:bg-red-600" : ""}
         onClick={handleFailClick}
         disabled={disabled}
       >
