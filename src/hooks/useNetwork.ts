@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 
 export interface NetworkStatus {
@@ -9,9 +8,6 @@ export interface NetworkStatus {
   lastOffline: Date | null;
 }
 
-/**
- * Hook to track network status changes and handle online/offline events
- */
 export const useNetwork = (): NetworkStatus => {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [wasOffline, setWasOffline] = useState<boolean>(false);
@@ -19,13 +15,11 @@ export const useNetwork = (): NetworkStatus => {
   const [lastOffline, setLastOffline] = useState<Date | null>(isOnline ? null : new Date());
 
   useEffect(() => {
-    // Handler for when network comes online
     const handleOnline = () => {
       console.log("Network is online");
       setIsOnline(true);
       setLastOnline(new Date());
-      
-      // If was previously offline, show reconnection toast
+
       if (!isOnline) {
         setWasOffline(true);
         toast({
@@ -33,17 +27,14 @@ export const useNetwork = (): NetworkStatus => {
           description: "Your connection has been restored. Syncing data...",
           variant: "default",
         });
-        
-        // Request sync when back online
+
         if ('serviceWorker' in navigator && 'SyncManager' in window) {
           navigator.serviceWorker.ready
             .then(registration => {
-              // Check if sync is supported in this browser
               if ('sync' in registration) {
-                // Trigger both inspection and report syncs
-                // @ts-ignore - TypeScript doesn't recognize sync property
+                // @ts-ignore
                 registration.sync.register('sync-inspections');
-                // @ts-ignore - TypeScript doesn't recognize sync property
+                // @ts-ignore
                 registration.sync.register('sync-offline-reports');
               }
             })
@@ -51,32 +42,28 @@ export const useNetwork = (): NetworkStatus => {
               console.error('Failed to register sync:', err);
             });
         }
-        
-        // Reset wasOffline flag after a delay
+
         setTimeout(() => {
           setWasOffline(false);
         }, 10000);
       }
     };
 
-    // Handler for when network goes offline
     const handleOffline = () => {
       console.log("Network is offline");
       setIsOnline(false);
       setLastOffline(new Date());
-      
+
       toast({
         title: "You're Offline",
         description: "Don't worry, you can continue working. Changes will sync when you're back online.",
-        variant: "default", // Changed from "warning" to "default" to match allowed types
+        variant: "default",
       });
     };
 
-    // Add event listeners
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Clean up event listeners on unmount
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -86,9 +73,6 @@ export const useNetwork = (): NetworkStatus => {
   return { isOnline, wasOffline, lastOnline, lastOffline };
 };
 
-/**
- * Helper component to listen for network changes at the app level
- */
 export const NetworkStatusListener: React.FC = () => {
   useNetwork();
   return null;
