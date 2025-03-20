@@ -205,18 +205,18 @@ const InspectionHistory = () => {
         {filteredInspections.map((inspection) => (
           <Card key={inspection.id} className="p-4">
             <CardHeader>
-              <CardTitle className="text-lg font-medium">{inspection.ppe_items.type}</CardTitle>
-              <CardDescription className="text-sm text-muted-foreground">Serial: {inspection.ppe_items.serial_number}</CardDescription>
+              <CardTitle className="text-lg font-medium">{inspection.ppe_items?.type || 'Unknown Type'}</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">Serial: {inspection.ppe_items?.serial_number || 'Unknown Serial'}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between items-center">
-                <p className="text-sm">{inspection.date}</p>
-                <Badge variant={inspection.overall_result === 'pass' ? 'success' : 'error'}>
-                  {inspection.overall_result.toUpperCase()}
+                <p className="text-sm">{inspection.date || 'Unknown Date'}</p>
+                <Badge variant={inspection.overall_result === 'pass' ? 'success' : 'destructive'}>
+                  {inspection.overall_result?.toUpperCase() || 'UNKNOWN'}
                 </Badge>
               </div>
               <div className="text-sm">
-                <p>Inspector: {inspection.profiles.full_name}</p>
+                <p>Inspector: {inspection.profiles?.full_name || 'Unknown Inspector'}</p>
                 <p>Notes: {inspection.notes || 'No notes provided'}</p>
               </div>
             </CardContent>
