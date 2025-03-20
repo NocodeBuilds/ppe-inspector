@@ -34,10 +34,13 @@ export const useProfile = (userId?: string | null): UseProfileResult => {
       if (error) throw error;
       
       if (data) {
-        // Adding the email property to satisfy the Profile type
+        // Get email from auth if available, otherwise use null
+        const { data: userData } = await supabase.auth.getUser();
+        const email = userData?.user?.email || null;
+        
         setProfile({
           ...data,
-          email: null // Setting default email to null since it's required by the Profile type
+          email // Add email to satisfy the Profile type
         });
       }
     } catch (err: any) {
