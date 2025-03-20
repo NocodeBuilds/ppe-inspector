@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PageHeader from '@/components/common/PageHeader';
-import { PPEType } from '@/integrations/supabase/client';
+import { PPEType } from '@/types/index';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -20,6 +21,80 @@ import { cn } from '@/lib/utils';
 import { usePPE } from '@/hooks/usePPE';
 import { standardPPETypes } from '@/components/equipment/ConsolidatedPPETypeFilter';
 
+// Define form schema
+const formSchema = z.object({
+  serialNumber: z.string().min(1, "Serial number is required"),
+  type: z.string().optional(),
+  brand: z.string().optional(),
+  modelNumber: z.string().optional(),
+  manufacturingDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+});
+
+const ManualInspection = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { createPPE, getPPEBySerialNumber } = usePPE();
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      serialNumber: "",
+      type: "",
+      brand: "",
+      modelNumber: "",
+      manufacturingDate: "",
+      expiryDate: "",
+    }
+  });
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // First, check if PPE with serial number exists
+      const existingPPE = await getPPEBySerialNumber(values.serialNumber);
+      
+      if (existingPPE) {
+        // If it exists, start inspection for this PPE
+        navigate(`/inspect/${existingPPE.id}`);
+        return;
+      }
+      
+      // If it doesn't exist, create new PPE with the provided details
+      if (!values.type) {
+        setError("Type is required when creating a new PPE item");
+        setIsLoading(false);
+        return;
+      }
+      
+      const newPPE = await createPPE({
+        serialNumber: values.serialNumber,
+        type: values.type as PPEType,
+        brand: values.brand || "",
+        modelNumber: values.modelNumber || "",
+        manufacturingDate: values.manufacturingDate || "",
+        expiryDate: values.expiryDate || "",
+      });
+      
+      if (newPPE) {
+        toast({
+          title: "PPE Created",
+          description: "The new PPE item has been successfully created",
+        });
+        navigate(`/inspect/${newPPE.id}`);
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred while processing");
+      console.error("Error in manual inspection:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="container max-w-3xl mx-auto py-6 space-y-6">

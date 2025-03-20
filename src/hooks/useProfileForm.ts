@@ -59,6 +59,12 @@ export const useProfileForm = () => {
     
     // Populate form with existing data
     if (profile) {
+      setFormData({
+        fullName: profile.full_name || '',
+        employeeId: profile.employee_id || '',
+        location: profile.location || '',
+        department: profile.department || '',
+        bio: profile.bio || '',
       });
       setIsLoading(false);
     }
