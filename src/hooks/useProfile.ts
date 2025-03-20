@@ -73,4 +73,4 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
       await refetch();
     }
   };
-};
+}
