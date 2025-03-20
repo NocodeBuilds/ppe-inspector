@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -79,6 +78,11 @@ const StartInspection = () => {
       }
     } catch (error) {
       console.error('Error processing serial number:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to find PPE with the given serial number',
+        variant: 'destructive'
+      });
       throw error; // Re-throw to be handled by caller
     } finally {
       setIsLoading(false);
