@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase, Profile } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -40,15 +39,14 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
         if (data) {
           console.log("Profile data:", data);
           
-          // Cast data to Profile type with type checking
+          // Cast data to Profile type with proper type safety
           const profileData: Profile = {
             id: data.id,
-            full_name: data.full_name,
-            avatar_url: data.avatar_url,
-            role: data.role,
-            created_at: data.created_at,
-            updated_at: data.updated_at,
-            // Profile fields directly in profiles table
+            full_name: data.full_name || null,
+            avatar_url: data.avatar_url || null,
+            role: data.role || 'user',
+            created_at: data.created_at || null,
+            updated_at: data.updated_at || null,
             employee_id: data.employee_id || null,
             site_name: data.site_name || null, // Updated from location to site_name
             department: data.department || null,
@@ -67,11 +65,23 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
     { enabled: !!userId }
   );
   
+  // Create a function to refresh the profile data
+  const refreshProfile = async () => {
+    try {
+      await refetch();
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to refresh profile data',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return {
     profile,
     isLoading,
-    refreshProfile: async () => {
-      await refetch();
-    }
+    refreshProfile
   };
 }

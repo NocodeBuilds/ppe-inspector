@@ -1,22 +1,17 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
+import * as z from 'zod';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PageHeader from '@/components/common/PageHeader';
 import { PPEType } from '@/types/index';
-import { format } from 'date-fns';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { usePPE } from '@/hooks/usePPE';
 import { standardPPETypes } from '@/components/equipment/ConsolidatedPPETypeFilter';
 
@@ -30,6 +25,8 @@ const formSchema = z.object({
   expiryDate: z.string().optional(),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 const ManualInspection = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -38,7 +35,8 @@ const ManualInspection = () => {
   const [error, setError] = useState<string | null>(null);
   const { createPPE, getPPEBySerialNumber } = usePPE();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  // Initialize form
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       serialNumber: "",
@@ -50,7 +48,8 @@ const ManualInspection = () => {
     }
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  // Form submission handler
+  const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
     setError(null);
     
@@ -110,6 +109,7 @@ const ManualInspection = () => {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Serial Number Field */}
               <FormField
                 control={form.control}
                 name="serialNumber"
@@ -123,10 +123,9 @@ const ManualInspection = () => {
                   </FormItem>
                 )}
               />
-              
+              {/* PPE Details */}
               <div className="bg-muted/50 p-4 rounded-md">
                 <h3 className="text-sm font-medium mb-3">If creating new PPE, fill the details below:</h3>
-                
                 <div className="space-y-4">
                   <FormField
                     control={form.control}
@@ -152,121 +151,15 @@ const ManualInspection = () => {
                       </FormItem>
                     )}
                   />
-                  
-                  <FormField
-                    control={form.control}
-                    name="brand"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Brand</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter brand name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="modelNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Model Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter model number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="manufacturingDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Manufacturing Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(new Date(field.value), "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value ? new Date(field.value) : undefined}
-                              onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="expiryDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Expiry Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(new Date(field.value), "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value ? new Date(field.value) : undefined}
-                              onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
               </div>
-              
+
               {error && (
                 <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
                   {error}
                 </div>
               )}
-              
+
               <CardFooter className="px-0 pt-2">
                 <Button 
                   type="submit" 
