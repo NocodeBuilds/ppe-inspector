@@ -815,4 +815,22 @@ return (
       </Button>
     </div>
   </div>
-);
+);// Assuming `inspections` is the array of inspection records
+const InspectionHistory = ({ inspections }) => {
+  if (!inspections || inspections.length === 0) {
+    return <p>No inspection history available.</p>;
+  }
+
+  return (
+    <div>
+      {inspections.map((inspection, index) => (
+        <div key={index}>
+          <h3>{inspection.type || 'Unknown Type'}</h3>
+          <p>Inspector: {inspection.inspector_name || 'Unknown Inspector'}</p>
+          <p>Date: {inspection.date ? new Date(inspection.date).toLocaleDateString() : 'Unknown Date'}</p>
+          {/* Add more fields as necessary, with similar checks */}
+        </div>
+      ))}
+    </div>
+  );
+};
