@@ -95,7 +95,7 @@ const InspectionDetails = () => {
           notes,
           signature_url,
           inspector_id,
-          profiles(full_name),
+          profiles(full_name, site_name),
           ppe_items(type, serial_number, brand, model_number, manufacturing_date, expiry_date)
         `)
         .eq('id', inspectionId)
@@ -141,7 +141,7 @@ const InspectionDetails = () => {
         ppe_serial: inspectionData.ppe_items?.serial_number || 'Unknown',
         ppe_brand: inspectionData.ppe_items?.brand || 'Unknown',
         ppe_model: inspectionData.ppe_items?.model_number || 'Unknown',
-        site_name: 'Unknown Site',
+        site_name: inspectionData.profiles?.site_name || 'Unknown Site',
         manufacturing_date: inspectionData.ppe_items?.manufacturing_date || 'N/A',
         expiry_date: inspectionData.ppe_items?.expiry_date || 'N/A',
         checkpoints: formattedCheckpoints,
