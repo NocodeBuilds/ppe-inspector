@@ -5,7 +5,7 @@ import { InspectionType } from '@/integrations/supabase/client';
 
 interface InspectionHistoryFilters {
   ppeId?: string;
-  type?: InspectionType | string;
+  type?: InspectionType | 'all' | string;
   result?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -46,7 +46,8 @@ export const useInspectionHistory = (filters: InspectionHistoryFilters = {}) => 
       if (filters.type && filters.type !== 'all') {
         // Make sure we only pass valid inspection types
         // Type could be either direct InspectionType or string (from UI)
-        if (['pre-use', 'monthly', 'quarterly'].includes(filters.type as string)) {
+        const validTypes: InspectionType[] = ['pre-use', 'monthly', 'quarterly'];
+        if (validTypes.includes(filters.type as InspectionType)) {
           query = query.eq('type', filters.type as InspectionType);
         }
       }

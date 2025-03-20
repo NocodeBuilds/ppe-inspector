@@ -1,24 +1,41 @@
 
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import NetworkStatus from '@/components/layout/NetworkStatus';
-import { Loading } from '@/components/common/LoadingSpinner';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 import InspectionHistoryView from '@/components/inspections/InspectionHistoryView';
+
+// Create a NotificationsContext if it doesn't exist
+import { createContext, useContext, useState } from 'react';
+import { useNotifications } from '@/hooks/useNotifications';
+
+// Create a NotificationsContext
+const NotificationsContext = createContext<ReturnType<typeof useNotifications> | undefined>(undefined);
+
+// Create a NotificationsProvider component
+export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const notificationsData = useNotifications();
+  
+  return (
+    <NotificationsContext.Provider value={notificationsData}>
+      {children}
+    </NotificationsContext.Provider>
+  );
+};
 
 const LandingPage = lazy(() => import('@/pages/Home'));
 const LoginPage = lazy(() => import('@/pages/Login'));
 const RegisterPage = lazy(() => import('@/pages/Register'));
 const ProfilePage = lazy(() => import('@/pages/Profile'));
-const AdminPage = lazy(() => import('@/pages/Admin'));
+const AdminPage = lazy(() => import('@/pages/Settings')); // Changed from Admin to Settings
 const ReportsPage = lazy(() => import('@/pages/Reports'));
 const StartInspection = lazy(() => import('@/pages/StartInspection'));
 const InspectionForm = lazy(() => import('@/pages/InspectionForm'));
 const InspectionDetails = lazy(() => import('@/pages/InspectionDetails'));
 const FlaggedItems = lazy(() => import('@/pages/FlaggedIssues'));
 const EquipmentPage = lazy(() => import('@/pages/Equipment'));
-const EquipmentDetails = lazy(() => import('@/pages/EquipmentDetails'));
+const EquipmentDetailsPage = lazy(() => import('@/pages/Equipment')); // Temporarily using Equipment as a fallback
 const EquipmentInspectionHistory = lazy(() => import('@/pages/EquipmentInspectionHistory'));
 
 function LoadingScreen() {
@@ -30,7 +47,7 @@ function LoadingScreen() {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-background z-50">
-      <Loading />
+      <LoadingSpinner size="lg" />
     </div>
   );
 }
@@ -55,7 +72,7 @@ function App() {
                 <Route path="/inspection/:id" element={<InspectionDetails />} />
                 <Route path="/flagged" element={<FlaggedItems />} />
                 <Route path="/equipment" element={<EquipmentPage />} />
-                <Route path="/equipment/:id" element={<EquipmentDetails />} />
+                <Route path="/equipment/:id" element={<EquipmentDetailsPage />} />
                 <Route path="/reports/inspections" element={<React.Suspense fallback={<LoadingScreen />}>
                   <InspectionHistoryView />
                 </React.Suspense>} />

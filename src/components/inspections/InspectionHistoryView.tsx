@@ -59,8 +59,10 @@ const InspectionHistoryView = () => {
       
       if (filters.type && filters.type !== 'all') {
         // Make sure we only pass valid inspection types
-        const inspectionType = filters.type as InspectionType;
-        query = query.eq('type', inspectionType);
+        const validTypes: InspectionType[] = ['pre-use', 'monthly', 'quarterly'];
+        if (validTypes.includes(filters.type as InspectionType)) {
+          query = query.eq('type', filters.type as InspectionType);
+        }
       }
       
       if (filters.result && filters.result !== 'all') {
