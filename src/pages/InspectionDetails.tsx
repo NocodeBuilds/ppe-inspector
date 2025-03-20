@@ -556,4 +556,263 @@ const InspectionDetails = () => {
   );
 };
 
-export default InspectionDetails;
+export default InspectionDetails;// Ensure inspection is not null before accessing its properties
+if (error || !inspection) {
+  return (
+    <div className="text-center my-12">
+      <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
+      <h2 className="text-xl font-bold mb-2">Error Loading Inspection</h2>
+      <p className="text-muted-foreground mb-6">{error || 'Inspection not found'}</p>
+      <Button onClick={() => navigate('/flagged')}>
+        Back to Flagged Issues
+      </Button>
+    </div>
+  );
+}
+
+return (
+  <div className="space-y-6">
+    <PageHeader 
+      title="Inspection Details" 
+      showBackButton={true}
+      rightElement={
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9">
+                <Share2 className="h-4 w-4 mr-2" />
+                Share
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>Export Report</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={handleExportPDF}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Download as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportExcel}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Download as Excel
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  <span>Share via WhatsApp</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup value={shareFormat} onValueChange={(value) => setShareFormat(value as 'pdf' | 'excel')}>
+                    <DropdownMenuRadioItem value="pdf">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Share as PDF
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="excel">
+                      <FileSpreadsheet className="mr-2 h-4 w-4" />
+                      Share as Excel
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                  <Separator className="my-1" />
+                  <DropdownMenuItem onClick={handleShareWhatsApp}>
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Share Now
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Mail className="mr-2 h-4 w-4" />
+                  <span>Share via Email</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup value={shareFormat} onValueChange={(value) => setShareFormat(value as 'pdf' | 'excel')}>
+                    <DropdownMenuRadioItem value="pdf">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Share as PDF
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="excel">
+                      <FileSpreadsheet className="mr-2 h-4 w-4" />
+                      Share as Excel
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                  <Separator className="my-1" />
+                  <DropdownMenuItem onClick={handleShareEmail}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Share Now
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      }
+    />
+    
+    <div className="mb-6 flex flex-col sm:flex-row justify-between sm:items-center">
+      <div>
+        <div className="flex items-center mb-1">
+          <h2 className="text-xl font-semibold mr-3">{inspection.ppe_type || 'Unknown Type'}</h2>
+          <Badge 
+            variant={inspection.overall_result === 'pass' ? 'default' : 'destructive'}
+            className="uppercase"
+          >
+            {inspection.overall_result || 'Unknown Result'}
+          </Badge>
+        </div>
+        <p className="text-muted-foreground">Serial: {inspection.ppe_serial || 'Unknown Serial'}</p>
+      </div>
+      
+      <div className="flex items-center mt-3 sm:mt-0">
+        <div className="text-sm text-right">
+          <div className="flex items-center justify-end">
+            <Calendar size={14} className="mr-1 text-muted-foreground" />
+            <span>{inspection.date ? format(new Date(inspection.date), 'MMM d, yyyy') : 'Unknown Date'}</span>
+          </div>
+          <div className="flex items-center justify-end mt-1">
+            <User size={14} className="mr-1 text-muted-foreground" />
+            <span className="text-muted-foreground">Inspector: {inspection.inspector_name || 'Unknown Inspector'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <Card className="mb-6">
+      <CardContent className="p-4">
+        <h3 className="font-medium mb-3">Equipment Details</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Type</p>
+            <p className="font-medium">{inspection.ppe_type || 'Unknown Type'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Serial Number</p>
+            <p className="font-medium">{inspection.ppe_serial || 'Unknown Serial'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Brand</p>
+            <p className="font-medium">{inspection.ppe_brand || 'Unknown Brand'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Model</p>
+            <p className="font-medium">{inspection.ppe_model || 'Unknown Model'}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+    
+    <div className="mb-6">
+      <h3 className="font-medium mb-3">Inspection Results</h3>
+      <div className="space-y-3">
+        {inspection.checkpoints.map((checkpoint) => (
+          <Card 
+            key={checkpoint.id} 
+            className={`border-l-4 ${checkpoint.passed ? 'border-l-green-500' : 'border-l-destructive'}`}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start">
+                  {checkpoint.passed ? (
+                    <CheckCircle size={18} className="text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                  ) : (
+                    <AlertTriangle size={18} className="text-destructive mt-0.5 mr-2 flex-shrink-0" />
+                  )}
+                  <div>
+                    <p className="font-medium">{checkpoint.description || 'Unknown Checkpoint'}</p>
+                    {checkpoint.notes && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Notes: {checkpoint.notes}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                {checkpoint.photo_url && (
+                  <div className="flex-shrink-0 ml-3">
+                    <div className="relative h-12 w-12 rounded overflow-hidden border bg-muted flex items-center justify-center">
+                      <img 
+                        src={checkpoint.photo_url} 
+                        alt="Checkpoint evidence" 
+                        className="object-cover h-full w-full"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = ''; // Clear the broken image
+                          target.className = 'hidden';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            const icon = document.createElement('div');
+                            icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>';
+                            parent.appendChild(icon);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+    
+    <div className="mb-6">
+      <h3 className="font-medium mb-3">Additional Information</h3>
+      <Card>
+        <CardContent className="p-4">
+          <div className="mb-4">
+            <p className="text-sm text-muted-foreground mb-1">Notes</p>
+            <p>{inspection.notes || 'No additional notes provided.'}</p>
+          </div>
+          
+          <Separator className="my-4" />
+          
+          <div>
+            <p className="text-sm text-muted-foreground mb-2">Inspector Signature</p>
+            {inspection.signature_url ? (
+              <div className="border rounded-md p-2 bg-background">
+                <img 
+                  src={inspection.signature_url} 
+                  alt="Inspector signature"
+                  className="max-h-20 w-auto"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.innerHTML = 'Signature not available';
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <p>No signature provided</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+    
+    <div className="flex flex-col sm:flex-row gap-3">
+      <Button 
+        onClick={() => navigate(`/inspect/${inspection.ppe_serial || ''}`)}
+        className="flex-1"
+      >
+        Re-inspect Equipment
+      </Button>
+      <Button 
+        variant="outline" 
+        onClick={() => navigate(-1)}
+        className="flex-1"
+      >
+        Back to List
+      </Button>
+    </div>
+  </div>
+);
