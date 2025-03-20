@@ -5,10 +5,11 @@ import InspectionList from './InspectionList';
 import { toast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useNetwork } from '@/hooks/useNetwork';
+import { InspectionType } from '@/integrations/supabase/client';
 
 interface InspectionFilters {
   searchTerm?: string;
-  type?: string;
+  type?: InspectionType | 'all';
   result?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -57,7 +58,9 @@ const InspectionHistoryView = () => {
       }
       
       if (filters.type && filters.type !== 'all') {
-        query = query.eq('type', filters.type);
+        // Make sure we only pass valid inspection types
+        const inspectionType = filters.type as InspectionType;
+        query = query.eq('type', inspectionType);
       }
       
       if (filters.result && filters.result !== 'all') {

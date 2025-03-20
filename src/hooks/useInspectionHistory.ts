@@ -1,10 +1,11 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { InspectionType } from '@/integrations/supabase/client';
 
 interface InspectionHistoryFilters {
   ppeId?: string;
-  type?: string;
+  type?: InspectionType | string;
   result?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -42,8 +43,12 @@ export const useInspectionHistory = (filters: InspectionHistoryFilters = {}) => 
         query = query.eq('ppe_id', filters.ppeId);
       }
       
-      if (filters.type) {
-        query = query.eq('type', filters.type);
+      if (filters.type && filters.type !== 'all') {
+        // Make sure we only pass valid inspection types
+        // Type could be either direct InspectionType or string (from UI)
+        if (['pre-use', 'monthly', 'quarterly'].includes(filters.type as string)) {
+          query = query.eq('type', filters.type as InspectionType);
+        }
       }
       
       if (filters.result) {
@@ -109,7 +114,7 @@ export const useInspectionHistory = (filters: InspectionHistoryFilters = {}) => 
               item.ppe_id === filters.ppeId);
           }
           
-          if (filters.type) {
+          if (filters.type && filters.type !== 'all') {
             filteredData = filteredData.filter((item: any) => 
               item.type === filters.type);
           }
