@@ -12,10 +12,14 @@ interface InspectionDetail {
   notes: string | null;
   signature_url: string | null;
   inspector_name: string;
+  inspector_id: string;
   ppe_type: string;
   ppe_serial: string;
   ppe_brand: string;
   ppe_model: string;
+  site_name: string;
+  manufacturing_date: string;
+  expiry_date: string;
   checkpoints: {
     id: string;
     description: string;
@@ -92,10 +96,10 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     console.error("Error adding logo to PDF:", error);
   }
   
-  // PPE Type in center - standardize to uppercase
-  doc.setFontSize(16);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`${inspection.ppe_type.toUpperCase()} INSPECTION CHECKLIST`, pageWidth / 2, 20, { align: 'center' });
+  // Adjust header to prevent overlap
+  const headerText = `${inspection.ppe_type.toUpperCase()} INSPECTION CHECKLIST`;
+  const headerLines = doc.splitTextToSize(headerText, contentWidth);
+  doc.text(headerLines, pageWidth / 2, 20, { align: 'center' });
   
   // Document number and approval date on right
   doc.setFontSize(8);
@@ -110,13 +114,16 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   doc.setFontSize(12);
   doc.text("EQUIPMENT DETAILS", margin.left, 40);
   
-  const siteName = inspection.inspector_name || "Example Site";
-  
+  // Fetch site name and manufacturing/expiry dates from inspection details
+  const siteName = inspection.site_name || "Unknown Site";
+  const manufacturingDate = inspection.manufacturing_date || "N/A";
+  const expiryDate = inspection.expiry_date || "N/A";
+
   const equipmentData = [
     ["SITE NAME:", siteName, "INSPECTION DATE:", format(new Date(inspection.date), 'dd.MM.yyyy')],
     ["PPE TYPE:", inspection.ppe_type.toUpperCase(), "SERIAL NUMBER:", inspection.ppe_serial],
     ["MAKE (BRAND):", inspection.ppe_brand, "MODEL NUMBER:", inspection.ppe_model],
-    ["MANUFACTURING DATE:", "N/A", "EXPIRY DATE:", "N/A"]
+    ["MANUFACTURING DATE:", manufacturingDate, "EXPIRY DATE:", expiryDate]
   ];
   
   // Equipment details table with consistent widths
@@ -142,6 +149,44 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   
   let finalY = (doc as any).lastAutoTable.finalY + 10;
   
+  // Reinsert inspector details
+  const inspectorData: RowInput[] = [
+    [
+      { content: "EMPLOYEE NAME:", styles: { fontStyle: 'bold' } },
+      { content: inspection.inspector_name },
+      { content: "EMPLOYEE ID:", styles: { fontStyle: 'bold' } },
+      { content: inspection.inspector_id || "N/A" }
+    ],
+    [
+      { content: "ROLE:", styles: { fontStyle: 'bold' } },
+      { content: "Inspector" },
+      { content: "DEPARTMENT:", styles: { fontStyle: 'bold' } },
+      { content: "Safety" }
+    ]
+  ];
+
+  autoTable(doc as any, {
+    startY: finalY,
+    body: inspectorData,
+    theme: 'grid',
+    styles: { 
+      cellPadding: 3,
+      fontSize: 9,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.1,
+      minCellHeight: 8
+    },
+    columnStyles: {
+      0: { cellWidth: contentWidth * 0.2 },
+      1: { cellWidth: contentWidth * 0.3 },
+      2: { cellWidth: contentWidth * 0.2 },
+      3: { cellWidth: contentWidth * 0.3 }
+    },
+    margin: { left: margin.left, right: margin.right }
+  });
+
+  finalY = (doc as any).lastAutoTable.finalY + 5;
+
   // Checkpoints section
   if (inspection.checkpoints && inspection.checkpoints.length > 0) {
     doc.setFontSize(12);
@@ -238,7 +283,7 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
     }
   }
   
-  // Add page break before final sections if close to bottom
+  // Ensure no unwanted gaps between tables
   if (finalY > doc.internal.pageSize.height - 100) {
     doc.addPage();
     finalY = margin.top;
