@@ -309,104 +309,89 @@ const InspectionDetails = () => {
   }
   
   return (
-    <div className="fade-in pb-20">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="mr-2"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft size={18} />
-          </Button>
-          <h1 className="text-2xl font-bold">Inspection Details</h1>
-        </div>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" disabled={isExporting || !isOnline}>
-              {isExporting ? (
-                <>
-                  <Loader2 size={16} className="mr-2 animate-spin" />
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <Share2 size={16} className="mr-2" />
+    <div className="space-y-6">
+      <PageHeader 
+        title="Inspection Details" 
+        showBackButton={true}
+        rightElement={
+          <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                  <Share2 className="h-4 w-4 mr-2" />
                   Share
-                </>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <FileText className="mr-2 h-4 w-4" />
-                <span>Export Report</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem onClick={handleExportPDF}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Download as PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportExcel}>
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Download as Excel
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <MessageSquare className="mr-2 h-4 w-4" />
-                <span>Share via WhatsApp</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value={shareFormat} onValueChange={(value) => setShareFormat(value as 'pdf' | 'excel')}>
-                  <DropdownMenuRadioItem value="pdf">
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
                     <FileText className="mr-2 h-4 w-4" />
-                    Share as PDF
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="excel">
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    Share as Excel
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-                <Separator className="my-1" />
-                <DropdownMenuItem onClick={handleShareWhatsApp}>
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  Share Now
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Mail className="mr-2 h-4 w-4" />
-                <span>Share via Email</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value={shareFormat} onValueChange={(value) => setShareFormat(value as 'pdf' | 'excel')}>
-                  <DropdownMenuRadioItem value="pdf">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Share as PDF
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="excel">
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    Share as Excel
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-                <Separator className="my-1" />
-                <DropdownMenuItem onClick={handleShareEmail}>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Share Now
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+                    <span>Export Report</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={handleExportPDF}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Download as PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportExcel}>
+                      <FileSpreadsheet className="mr-2 h-4 w-4" />
+                      Download as Excel
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <span>Share via WhatsApp</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuRadioGroup value={shareFormat} onValueChange={(value) => setShareFormat(value as 'pdf' | 'excel')}>
+                      <DropdownMenuRadioItem value="pdf">
+                        <FileText className="mr-2 h-4 w-4" />
+                        Share as PDF
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="excel">
+                        <FileSpreadsheet className="mr-2 h-4 w-4" />
+                        Share as Excel
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                    <Separator className="my-1" />
+                    <DropdownMenuItem onClick={handleShareWhatsApp}>
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Share Now
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Mail className="mr-2 h-4 w-4" />
+                    <span>Share via Email</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuRadioGroup value={shareFormat} onValueChange={(value) => setShareFormat(value as 'pdf' | 'excel')}>
+                      <DropdownMenuRadioItem value="pdf">
+                        <FileText className="mr-2 h-4 w-4" />
+                        Share as PDF
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="excel">
+                        <FileSpreadsheet className="mr-2 h-4 w-4" />
+                        Share as Excel
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                    <Separator className="my-1" />
+                    <DropdownMenuItem onClick={handleShareEmail}>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Share Now
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        }
+      />
       
       <div className="mb-6 flex flex-col sm:flex-row justify-between sm:items-center">
         <div>
