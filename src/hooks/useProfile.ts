@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase, Profile } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -49,7 +48,7 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
             created_at: data.created_at || null,
             updated_at: data.updated_at || null,
             employee_id: data.employee_id || null,
-            location: data.location || null,
+            site_name: data.site_name || null, // Updated from location to site_name
             department: data.department || null,
             bio: data.bio || null,
             email: null // We can add email if needed
@@ -85,4 +84,4 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
     isLoading,
     refreshProfile
   };
-};
+}

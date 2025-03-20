@@ -10,9 +10,9 @@ export type Profile = {
   role: AppRole | null;
   created_at: string;
   updated_at: string;
-  // Extended profile fields merged in
+  // Profile fields directly in profiles table
   employee_id: string | null;
-  location: string | null;
+  site_name: string | null;  // Updated from location to site_name
   department: string | null;
   bio: string | null;
   email: string | null;
