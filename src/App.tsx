@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -133,26 +132,17 @@ const App = () => {
                       <Route path="edit-profile" element={<EditProfile />} />
                       <Route path="start-inspection" element={<StartInspection />} />
                       <Route path="inspect/new" element={<ManualInspection />} />
-                      {/* Ensure this path exactly matches our navigation calls */}
-                      <Route path="inspect/:ppeId" element={<InspectionForm />} />
-                      <Route path="inspection/:id" element={<InspectionDetails />} />
-                      <Route path="analytics" element={<Analytics />} />
-                      
-                      {/* Update reports route to be accessible by all authenticated users */}
+                      <Route path="/inspection/:id" element={<InspectionDetails />} />
                       <Route path="reports" element={
                         <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
                           <ReportsPage />
                         </RoleProtectedRoute>
                       } />
-                      
-                      {/* Admin-only deletion routes */}
                       <Route path="admin/delete/:type/:id" element={
                         <RoleProtectedRoute requiredRole="admin" fallbackPath="access-denied">
                           <ReportsPage />
                         </RoleProtectedRoute>
                       } />
-                      
-                      {/* Allow all other paths - let layout handle unauthorized access */}
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Routes>
