@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -341,12 +340,12 @@ const InspectionDetails = () => {
   }
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 md:px-0">
       <PageHeader 
         title="Inspection Details" 
         showBackButton={true}
         rightElement={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9">
