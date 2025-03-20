@@ -9,39 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      extended_profiles: {
-        Row: {
-          bio: string | null
-          created_at: string | null
-          department: string | null
-          employee_id: string | null
-          id: string
-          location: string | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          bio?: string | null
-          created_at?: string | null
-          department?: string | null
-          employee_id?: string | null
-          id?: string
-          location?: string | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          bio?: string | null
-          created_at?: string | null
-          department?: string | null
-          employee_id?: string | null
-          id?: string
-          location?: string | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       inspection_checkpoints: {
         Row: {
           created_at: string | null
@@ -257,8 +224,8 @@ export type Database = {
           employee_id: string | null
           full_name: string | null
           id: string
-          location: string | null
           role: Database["public"]["Enums"]["app_role"] | null
+          site_name: string | null
           updated_at: string | null
         }
         Insert: {
@@ -269,8 +236,8 @@ export type Database = {
           employee_id?: string | null
           full_name?: string | null
           id: string
-          location?: string | null
           role?: Database["public"]["Enums"]["app_role"] | null
+          site_name?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -281,8 +248,8 @@ export type Database = {
           employee_id?: string | null
           full_name?: string | null
           id?: string
-          location?: string | null
           role?: Database["public"]["Enums"]["app_role"] | null
+          site_name?: string | null
           updated_at?: string | null
         }
         Relationships: []

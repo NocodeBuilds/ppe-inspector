@@ -55,7 +55,7 @@ const EditProfile = () => {
           <ProfileForm
             fullName={formData.fullName}
             employeeId={formData.employeeId}
-            location={formData.location}
+            siteName={formData.siteName}  // Updated from location to siteName
             department={formData.department}
             bio={formData.bio}
             onChange={handleInputChange}

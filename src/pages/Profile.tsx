@@ -147,9 +147,9 @@ const Profile = () => {
                   <div className="flex items-start">
                     <MapPin className="h-5 w-5 mr-3 text-muted-foreground" />
                     <div>
-                      <p className="text-sm font-medium">Location</p>
+                      <p className="text-sm font-medium">Site Name</p>
                       <p className="text-sm text-muted-foreground">
-                        {profile.location || 'Not set'}
+                        {profile.site_name || 'Not set'}
                       </p>
                     </div>
                   </div>
