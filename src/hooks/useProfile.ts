@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase, Profile } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -66,12 +65,12 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
     },
     { enabled: !!userId }
   );
-    }
-  };
   
   return {
     profile,
     isLoading,
-    refreshProfile
+    refreshProfile: async () => {
+      await refetch();
+    }
   };
 };
