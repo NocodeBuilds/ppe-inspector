@@ -136,7 +136,10 @@ const InspectionHistoryView: React.FC = () => {
       ) : (
         <>
           {inspections && inspections.length > 0 ? (
-            <InspectionList inspections={inspections} />
+            <InspectionList 
+              inspections={inspections} 
+              isLoading={isLoading}
+            />
           ) : (
             <div className="text-center py-12">
               <h3 className="text-lg font-medium mb-2">No inspections found</h3>
