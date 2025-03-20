@@ -22,12 +22,13 @@ export const isIOS = (): boolean => {
          (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 };
 
-// Set up PWA meta tags
+// Set up PWA meta tags with better compatibility
 export const setupPWAMetaTags = (): void => {
   try {
     const metaTags = [
       { name: 'theme-color', content: '#111111' },
       { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'mobile-web-app-capable', content: 'yes' },
       { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }
     ];
     
@@ -62,12 +63,24 @@ export const setupPWAMetaTags = (): void => {
 
 /**
  * Registers the service worker for offline capabilities
+ * with better error handling
  */
 export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
   if ('serviceWorker' in navigator) {
     try {
       console.log('Registering service worker...');
-      const registration = await navigator.serviceWorker.register('/service-worker.js');
+      
+      // Check if service worker is already registered to avoid conflicts
+      const existingRegistration = await navigator.serviceWorker.getRegistration();
+      if (existingRegistration) {
+        console.log('Service worker already registered, using existing one');
+        return existingRegistration;
+      }
+      
+      const registration = await navigator.serviceWorker.register('/service-worker.js', {
+        scope: '/'
+      });
+      
       console.log('ServiceWorker registration successful with scope: ', registration.scope);
       
       // Set up service worker update handling
@@ -130,40 +143,40 @@ const notifyUpdate = (): void => {
 };
 
 /**
- * Initialize all PWA features
+ * Initialize all PWA features with better error handling and timeouts
  */
 export const initializePWA = async (): Promise<void> => {
-  const PWA_INIT_TIMEOUT = 3000; // 3 seconds
+  const PWA_INIT_TIMEOUT = 2000; // 2 seconds - reduced from 3
   let timeoutId: number;
   
-  try {
-    // Create a promise that rejects after timeout
-    const timeoutPromise = new Promise<void>((_, reject) => {
+  return new Promise((resolve, reject) => {
+    try {
+      // Create a promise that resolves after timeout
       timeoutId = window.setTimeout(() => {
         console.warn('PWA initialization timed out, continuing with app startup');
-        reject(new Error('PWA initialization timed out'));
+        resolve(); // Resolve instead of reject to prevent app from breaking
       }, PWA_INIT_TIMEOUT);
-    });
-    
-    // Setup meta tags
-    setupPWAMetaTags();
-    
-    // Race between initialization and timeout
-    await Promise.race([
-      registerServiceWorker(),
-      timeoutPromise
-    ]);
-  } catch (error) {
-    console.error('Error during PWA initialization, continuing with app startup:', error);
-  } finally {
-    // Clear timeout to prevent memory leaks
-    clearTimeout(timeoutId!);
-    
-    // Log status
-    if (isRunningAsStandalone()) {
-      console.log('App is running in standalone mode (installed)');
+      
+      // Setup meta tags
+      setupPWAMetaTags();
+      
+      // Register service worker with proper error handling
+      registerServiceWorker()
+        .then(() => {
+          clearTimeout(timeoutId);
+          resolve();
+        })
+        .catch(error => {
+          console.error('Error during service worker registration:', error);
+          clearTimeout(timeoutId);
+          resolve(); // Still resolve to not break the app
+        });
+    } catch (error) {
+      console.error('Error during PWA initialization:', error);
+      clearTimeout(timeoutId!);
+      resolve(); // Still resolve to not break the app
     }
-  }
+  });
 };
 
 /**
