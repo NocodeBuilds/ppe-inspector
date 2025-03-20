@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -181,76 +180,50 @@ const InspectionHistory = () => {
   };
   
   return (
-    <Card className="backdrop-blur-sm bg-background/80 border-border/50">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center">
-          <Calendar className="mr-2 h-5 w-5" />
-          Inspection History
-        </CardTitle>
-        <CardDescription>
-          View and filter all completed inspections
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="px-2 py-1">
-                Total: {filteredInspections.length}
-              </Badge>
-              <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-1">
-                Pass: {filteredInspections.filter(i => i.overall_result?.toLowerCase() === 'pass').length}
-              </Badge>
-              <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 px-2 py-1">
-                Fail: {filteredInspections.filter(i => i.overall_result?.toLowerCase() === 'fail').length}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Select value={timeframe} onValueChange={setTimeframe}>
-                <SelectTrigger className="h-8 w-full sm:w-[130px]">
-                  <SelectValue placeholder="Timeframe" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="week">Past Week</SelectItem>
-                  <SelectItem value="month">Past Month</SelectItem>
-                  <SelectItem value="year">Past Year</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleExportExcel}
-                disabled={isExporting || filteredInspections.length === 0}
-                className="h-8"
-              >
-                <FileSpreadsheet className="h-4 w-4 mr-1" />
-                Excel
-              </Button>
-              
-              <Button 
-                size="sm" 
-                onClick={handleExportPDF}
-                disabled={isExporting || filteredInspections.length === 0}
-                className="h-8"
-              >
-                <Download className="h-4 w-4 mr-1" />
-                PDF
-              </Button>
-            </div>
-          </div>
-          
-          <InspectionHistoryTable 
-            inspections={filteredInspections}
-            isLoading={isLoading}
-            onViewDetails={handleViewDetails}
-            onFilterChange={handleFilterChange}
-          />
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-6 px-4 md:px-0">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Inspection History</h2>
+        <Button variant="outline" size="sm" onClick={handleExportExcel} className="flex items-center">
+          <FileSpreadsheet className="h-4 w-4 mr-2" />
+          Export to Excel
+        </Button>
+      </div>
+      
+      <Select value={filter} onValueChange={setFilter} className="w-full md:w-auto">
+        <SelectTrigger aria-label="Filter inspections">
+          <Filter className="mr-2" />
+          <SelectValue placeholder="Filter by result" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All</SelectItem>
+          <SelectItem value="pass">Pass</SelectItem>
+          <SelectItem value="fail">Fail</SelectItem>
+        </SelectContent>
+      </Select>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredInspections.map((inspection) => (
+          <Card key={inspection.id} className="p-4">
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">{inspection.ppe_items.type}</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">Serial: {inspection.ppe_items.serial_number}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between items-center">
+                <p className="text-sm">{inspection.date}</p>
+                <Badge variant={inspection.overall_result === 'pass' ? 'success' : 'error'}>
+                  {inspection.overall_result.toUpperCase()}
+                </Badge>
+              </div>
+              <div className="text-sm">
+                <p>Inspector: {inspection.profiles.full_name}</p>
+                <p>Notes: {inspection.notes || 'No notes provided'}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 };
 
