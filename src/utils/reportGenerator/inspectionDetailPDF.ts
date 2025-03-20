@@ -57,10 +57,10 @@ const getHAlign = (align: string): HAlignType => {
   }
 };
 
-// Helper function to convert number array to Color type
-const getColor = (color: number[]): Color => {
+// Helper function to ensure the color array has 3 elements (RGB)
+const getColor = (color: number[]): [number, number, number] => {
   if (color.length === 3) {
-    return [color[0], color[1], color[2]] as [number, number, number];
+    return [color[0], color[1], color[2]];
   }
   // Default black color
   return [0, 0, 0];
@@ -216,13 +216,13 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
           halign: 'center',
           valign: 'middle',
           fontStyle: cp.photo_url ? 'normal' : 'italic',
-          textColor: cp.photo_url ? [0, 0, 0] : [150, 150, 150]
+          textColor: cp.photo_url ? [0, 0, 0] as [number, number, number] : [150, 150, 150] as [number, number, number]
         }
       };
       
       let resultText = cp.passed === null ? 'NA' : cp.passed ? 'PASS' : 'FAIL';
-      let resultColor = cp.passed === null ? [100, 100, 100] : 
-                       cp.passed ? [0, 128, 0] : [255, 0, 0];
+      let resultColor: [number, number, number] = cp.passed === null ? [100, 100, 100] : 
+                     cp.passed ? [0, 128, 0] : [255, 0, 0];
       
       checkpointRows.push([
         { content: (i + 1).toString(), styles: { halign: 'center', valign: 'middle' } },
@@ -294,8 +294,8 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   doc.text("FINAL INSPECTION RESULT", margin.left, finalY + 15);
   
   const resultText = inspection.overall_result || 'N/A';
-  const resultColor = !inspection.overall_result ? [100, 100, 100] : 
-                     inspection.overall_result.toLowerCase() === 'pass' ? [0, 128, 0] : [255, 0, 0];
+  const resultColor: [number, number, number] = !inspection.overall_result ? [100, 100, 100] : 
+                   inspection.overall_result.toLowerCase() === 'pass' ? [0, 128, 0] : [255, 0, 0];
   
   // Final result table with signature space
   const finalResultData: RowInput[] = [

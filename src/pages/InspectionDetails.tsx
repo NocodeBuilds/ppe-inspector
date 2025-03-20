@@ -53,10 +53,14 @@ interface InspectionDetails {
   notes: string | null;
   signature_url: string | null;
   inspector_name: string;
+  inspector_id: string;
   ppe_type: string;
   ppe_serial: string;
   ppe_brand: string;
   ppe_model: string;
+  site_name: string;
+  manufacturing_date: string;
+  expiry_date: string;
   checkpoints: InspectionCheckpoint[];
 }
 
@@ -90,8 +94,9 @@ const InspectionDetails = () => {
           overall_result,
           notes,
           signature_url,
+          inspector_id,
           profiles(full_name),
-          ppe_items(type, serial_number, brand, model_number)
+          ppe_items(type, serial_number, brand, model_number, manufacturing_date, expiry_date)
         `)
         .eq('id', inspectionId)
         .single();
@@ -130,11 +135,15 @@ const InspectionDetails = () => {
         overall_result: inspectionData.overall_result,
         notes: inspectionData.notes,
         signature_url: inspectionData.signature_url,
+        inspector_id: inspectionData.inspector_id || '',
         inspector_name: inspectionData.profiles?.full_name || 'Unknown',
         ppe_type: inspectionData.ppe_items?.type || 'Unknown',
         ppe_serial: inspectionData.ppe_items?.serial_number || 'Unknown',
         ppe_brand: inspectionData.ppe_items?.brand || 'Unknown',
         ppe_model: inspectionData.ppe_items?.model_number || 'Unknown',
+        site_name: 'Unknown Site',
+        manufacturing_date: inspectionData.ppe_items?.manufacturing_date || 'N/A',
+        expiry_date: inspectionData.ppe_items?.expiry_date || 'N/A',
         checkpoints: formattedCheckpoints,
       };
       

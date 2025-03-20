@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -57,10 +56,11 @@ const ManualInspection = () => {
     
     try {
       // First, check if PPE with serial number exists
-      const existingPPE = await getPPEBySerialNumber(values.serialNumber);
+      const ppeItems = await getPPEBySerialNumber(values.serialNumber);
       
-      if (existingPPE) {
-        // If it exists, start inspection for this PPE
+      if (ppeItems && ppeItems.length > 0) {
+        // If it exists, start inspection for the first matching PPE item
+        const existingPPE = ppeItems[0];
         navigate(`/inspect/${existingPPE.id}`);
         return;
       }
@@ -73,12 +73,12 @@ const ManualInspection = () => {
       }
       
       const newPPE = await createPPE({
-        serialNumber: values.serialNumber,
+        serial_number: values.serialNumber,
         type: values.type as PPEType,
         brand: values.brand || "",
-        modelNumber: values.modelNumber || "",
-        manufacturingDate: values.manufacturingDate || "",
-        expiryDate: values.expiryDate || "",
+        model_number: values.modelNumber || "",
+        manufacturing_date: values.manufacturingDate || "",
+        expiry_date: values.expiryDate || "",
       });
       
       if (newPPE) {
