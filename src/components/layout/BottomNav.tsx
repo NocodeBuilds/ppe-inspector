@@ -25,8 +25,8 @@ const BottomNav = () => {
       icon: <Home size={20} />,
     },
     {
-      name: 'Reports',
-      path: '/reports',
+      name: 'Analytics',
+      path: '/analytics',
       icon: <BarChart3 size={20} />,
     },
     {

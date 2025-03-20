@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,117 +64,6 @@ interface InspectionDetails {
   checkpoints: InspectionCheckpoint[];
 }
 
-// Set up API endpoint handler for inspection details
-// This will be used by the InspectionList component to get complete data for PDF generation
-// Handler function is exported for reuse
-export const fetchInspectionDetailsById = async (id: string): Promise<InspectionDetails | null> => {
-  try {
-    // Fetch the inspection record
-    const { data: inspectionData, error: inspectionError } = await supabase
-      .from('inspections')
-      .select(`
-        id,
-        date,
-        type,
-        overall_result,
-        notes,
-        signature_url,
-        inspector_id,
-        profiles(full_name, site_name),
-        ppe_items(type, serial_number, brand, model_number, manufacturing_date, expiry_date)
-      `)
-      .eq('id', id)
-      .single();
-    
-    if (inspectionError) throw inspectionError;
-    
-    if (!inspectionData) {
-      throw new Error('Inspection not found');
-    }
-    
-    // Fetch the checkpoint results
-    const { data: checkpointsData, error: checkpointsError } = await supabase
-      .from('inspection_results')
-      .select(`
-        id,
-        passed,
-        notes,
-        photo_url,
-        inspection_checkpoints(id, description)
-      `)
-      .eq('inspection_id', id);
-    
-    if (checkpointsError) throw checkpointsError;
-    
-    // Format the checkpoints
-    const formattedCheckpoints: InspectionCheckpoint[] = checkpointsData?.map(result => ({
-      id: result.id,
-      description: result.inspection_checkpoints?.description || 'Unknown checkpoint',
-      passed: result.passed,
-      notes: result.notes,
-      photo_url: result.photo_url,
-    })) || [];
-    
-    // Build the detailed inspection object
-    const detailedInspection: InspectionDetails = {
-      id: inspectionData.id,
-      date: inspectionData.date,
-      type: inspectionData.type,
-      overall_result: inspectionData.overall_result,
-      notes: inspectionData.notes,
-      signature_url: inspectionData.signature_url,
-      inspector_id: inspectionData.inspector_id || '',
-      inspector_name: inspectionData.profiles?.full_name || 'Unknown',
-      ppe_type: inspectionData.ppe_items?.type || 'Unknown',
-      ppe_serial: inspectionData.ppe_items?.serial_number || 'Unknown',
-      ppe_brand: inspectionData.ppe_items?.brand || 'Unknown',
-      ppe_model: inspectionData.ppe_items?.model_number || 'Unknown',
-      site_name: inspectionData.profiles?.site_name || 'Unknown Site',
-      manufacturing_date: inspectionData.ppe_items?.manufacturing_date || 'N/A',
-      expiry_date: inspectionData.ppe_items?.expiry_date || 'N/A',
-      checkpoints: formattedCheckpoints,
-    };
-    
-    return detailedInspection;
-  } catch (error) {
-    console.error('Error fetching inspection details:', error);
-    return null;
-  }
-};
-
-// Create a mock API endpoint for the InspectionList component to use
-if (typeof window !== 'undefined') {
-  window.fetch = async function(input: RequestInfo | URL, init?: RequestInit) {
-    const url = input.toString();
-    
-    // Handle the inspection detail API endpoint
-    if (url.startsWith('/api/inspections/')) {
-      const id = url.split('/').pop();
-      if (id) {
-        const inspectionDetails = await fetchInspectionDetailsById(id);
-        if (inspectionDetails) {
-          return {
-            ok: true,
-            json: async () => inspectionDetails,
-          } as Response;
-        } else {
-          return {
-            ok: false,
-            status: 404,
-            statusText: 'Not Found',
-          } as Response;
-        }
-      }
-    }
-    
-    // For all other requests, call the original fetch
-    return originalFetch(input, init);
-  } as typeof fetch;
-  
-  // Store the original fetch
-  const originalFetch = window.fetch;
-}
-
 const InspectionDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -197,13 +85,69 @@ const InspectionDetails = () => {
       setIsLoading(true);
       setError(null);
       
-      const inspectionDetails = await fetchInspectionDetailsById(inspectionId);
+      const { data: inspectionData, error: inspectionError } = await supabase
+        .from('inspections')
+        .select(`
+          id,
+          date,
+          type,
+          overall_result,
+          notes,
+          signature_url,
+          inspector_id,
+          profiles(full_name, site_name),
+          ppe_items(type, serial_number, brand, model_number, manufacturing_date, expiry_date)
+        `)
+        .eq('id', inspectionId)
+        .single();
       
-      if (!inspectionDetails) {
+      if (inspectionError) throw inspectionError;
+      
+      if (!inspectionData) {
         throw new Error('Inspection not found');
       }
       
-      setInspection(inspectionDetails);
+      const { data: checkpointsData, error: checkpointsError } = await supabase
+        .from('inspection_results')
+        .select(`
+          id,
+          passed,
+          notes,
+          photo_url,
+          inspection_checkpoints(id, description)
+        `)
+        .eq('inspection_id', inspectionId);
+      
+      if (checkpointsError) throw checkpointsError;
+      
+      const formattedCheckpoints: InspectionCheckpoint[] = checkpointsData?.map(result => ({
+        id: result.id,
+        description: result.inspection_checkpoints?.description || 'Unknown checkpoint',
+        passed: result.passed,
+        notes: result.notes,
+        photo_url: result.photo_url,
+      })) || [];
+      
+      const detailedInspection: InspectionDetails = {
+        id: inspectionData.id,
+        date: inspectionData.date,
+        type: inspectionData.type,
+        overall_result: inspectionData.overall_result,
+        notes: inspectionData.notes,
+        signature_url: inspectionData.signature_url,
+        inspector_id: inspectionData.inspector_id || '',
+        inspector_name: inspectionData.profiles?.full_name || 'Unknown',
+        ppe_type: inspectionData.ppe_items?.type || 'Unknown',
+        ppe_serial: inspectionData.ppe_items?.serial_number || 'Unknown',
+        ppe_brand: inspectionData.ppe_items?.brand || 'Unknown',
+        ppe_model: inspectionData.ppe_items?.model_number || 'Unknown',
+        site_name: inspectionData.profiles?.site_name || 'Unknown Site',
+        manufacturing_date: inspectionData.ppe_items?.manufacturing_date || 'N/A',
+        expiry_date: inspectionData.ppe_items?.expiry_date || 'N/A',
+        checkpoints: formattedCheckpoints,
+      };
+      
+      setInspection(detailedInspection);
     } catch (error: any) {
       console.error('Error fetching inspection details:', error);
       setError(error.message || 'Failed to load inspection details');
@@ -357,8 +301,8 @@ const InspectionDetails = () => {
         <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
         <h2 className="text-xl font-bold mb-2">Error Loading Inspection</h2>
         <p className="text-muted-foreground mb-6">{error || 'Inspection not found'}</p>
-        <Button onClick={() => navigate('/reports?tab=history')}>
-          Back to Inspection History
+        <Button onClick={() => navigate('/flagged')}>
+          Back to Flagged Issues
         </Button>
       </div>
     );

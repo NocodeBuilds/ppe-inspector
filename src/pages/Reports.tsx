@@ -5,12 +5,11 @@ import {
   Download, 
   FileText, 
   Calendar,
-  FileSpreadsheet,
-  ClipboardList
+  FileSpreadsheet
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRoleAccess } from '@/hooks/useAuth';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '@/hooks/useNotifications';
 import ReportCard from '@/components/reports/ReportCard';
 import ReportSkeleton from '@/components/reports/ReportSkeleton';
@@ -24,12 +23,9 @@ import {
 } from '@/utils/exportUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import EquipmentLifecycleTracker from '@/components/reports/EquipmentLifecycleTracker';
-import InspectionHistoryView from '@/components/inspections/InspectionHistoryView';
 
 const ReportsPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const defaultTab = searchParams.get('tab') || 'ppe';
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const [activeTab, setActiveTab] = useState('ppe');
   const [isGenerating, setIsGenerating] = useState(false);
   const [inspectionCount, setInspectionCount] = useState(0);
   const [ppeCount, setPpeCount] = useState(0);
@@ -52,11 +48,6 @@ const ReportsPage = () => {
     fetchStatistics();
     fetchRecentItems();
   }, [isAdmin, isUser, navigate]);
-  
-  useEffect(() => {
-    // Update URL when tab changes for better navigation/sharing
-    setSearchParams({ tab: activeTab });
-  }, [activeTab, setSearchParams]);
   
   const fetchStatistics = async () => {
     try {
@@ -191,10 +182,9 @@ const ReportsPage = () => {
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-3 mb-6">
+        <TabsList className="grid grid-cols-2 mb-6">
           <TabsTrigger value="ppe">PPE Inventory</TabsTrigger>
           <TabsTrigger value="inspections">Inspections</TabsTrigger>
-          <TabsTrigger value="history">Inspection History</TabsTrigger>
         </TabsList>
         
         {isLoading ? (
@@ -240,16 +230,6 @@ const ReportsPage = () => {
                 onGenerateExcel={() => handleExportExcel('inspections')}
                 isGenerating={isGenerating}
               />
-            </TabsContent>
-            
-            <TabsContent value="history">
-              <div className="p-1">
-                <div className="flex items-center mb-4">
-                  <ClipboardList className="mr-2 h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Inspection Records</h2>
-                </div>
-                <InspectionHistoryView />
-              </div>
             </TabsContent>
           </>
         )}

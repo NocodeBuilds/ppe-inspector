@@ -1,4 +1,3 @@
-
 import React, { memo, Suspense, useEffect, useState, createContext, useContext } from 'react';
 import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
@@ -80,6 +79,7 @@ const MainLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, isLoading, signOut } = useAuth();
+  const { isAdmin } = useRoleAccess();
   
   const [showBackButton, setShowBackButton] = useState(false);
   const [backTo, setBackTo] = useState<string | number>(-1);
