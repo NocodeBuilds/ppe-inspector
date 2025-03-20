@@ -12,7 +12,78 @@ interface ScannerInitializerProps {
 }
 
 /**
- * Component responsible for initializing and managing the HTML5 QR scanner
+ * Compoconst ScannerInitializer: React.FC<ScannerInitializerProps> = ({
+   scannerContainerId,
+   onScanSuccess,
+   onScanError,
+   onScannerStart,
+   onScannerError,
+   selectedDeviceId,
+   forceBackCamera = true
+ }) => {
+   const scannerRef = useRef<Html5Qrcode | null>(null);
+   const isMountedRef = useRef(true);
+   const [isInitializing, setIsInitializing] = useState(false);
+ 
+   // Safely clean up the scanner
+   const cleanupScanner = useCallback(() => {
+     if (scannerRef.current) {
+       try {
+         console.log('Stopping scanner...');
+         scannerRef.current.stop().catch(() => {
+           console.error('Failed to stop the scanner');
+         });
+       } catch (error) {
+         console.error('Error during scanner cleanup:', error);
+       }
+     }
+   }, []);
+ 
+   // Initialize the scanner
+   useEffect(() => {
+     if (isMountedRef.current) {
+       // Ensure scannerContainerId is valid
+       if (!scannerContainerId) {
+         console.error('Scanner container ID is not defined');
+         return;
+       }
+ 
+       setIsInitializing(true);
+       const scanner = new Html5Qrcode(scannerContainerId, {
+         formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+         useBarCodeDetectorIfSupported: true,
+       });
+ 
+       scanner.start(
+         { deviceId: { exact: selectedDeviceId || '' } },
+         {
+           fps: 10,
+           qrbox: { width: 250, height: 250 },
+           aspectRatio: 1.0,
+           disableFlip: forceBackCamera,
+         },
+         onScanSuccess,
+         onScanError
+       ).then(() => {
+         onScannerStart(scanner);
+         scannerRef.current = scanner;
+       }).catch(onScannerError).finally(() => {
+         setIsInitializing(false);
+       });
+ 
+       return () => {
+         cleanupScanner();
+         isMountedRef.current = false;
+       };
+     }
+   }, [scannerContainerId, selectedDeviceId, forceBackCamera, onScanSuccess, onScanError, onScannerStart, onScannerError, cleanupScanner]);
+ 
+   return (
+     <div id={scannerContainerId}>
+       {isInitializing && <p>Initializing scanner...</p>}
+     </div>
+   );
+ };nent responsible for initializing and managing the HTML5 QR scanner
  * Improved with better state management and error handling
  */
 const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
