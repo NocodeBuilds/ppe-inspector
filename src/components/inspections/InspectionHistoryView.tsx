@@ -8,10 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { AlertCircle, FileText, Download, RefreshCw } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
+import { format } from 'date-fns';
 import PageHeader from '@/components/common/PageHeader';
 import InspectionsSkeleton from './InspectionsSkeleton';
-import { InspectionList } from './InspectionList';
+import InspectionList from './InspectionList';
 
 type FilterType = {
   type: InspectionType | 'all';
@@ -39,13 +39,16 @@ const InspectionHistoryView: React.FC = () => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
+  const formatDate = (date: Date): string => {
+    return format(date, 'yyyy-MM-dd');
+  };
+
   const validInspectionTypes: (InspectionType | 'all')[] = ['all', 'pre-use', 'monthly', 'quarterly'];
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-8">
       <PageHeader 
         title="Inspection History" 
-        description="View and filter all equipment inspections"
         icon={<FileText className="h-6 w-6" />}
       />
 
@@ -88,16 +91,16 @@ const InspectionHistoryView: React.FC = () => {
         <div className="w-full sm:w-auto">
           <DatePicker 
             placeholder="From Date"
-            value={filters.dateFrom ? new Date(filters.dateFrom) : undefined}
-            onChange={(date) => handleFilterChange('dateFrom', date ? formatDate(date) : null)}
+            date={filters.dateFrom ? new Date(filters.dateFrom) : undefined}
+            setDate={(date) => handleFilterChange('dateFrom', date ? formatDate(date) : null)}
           />
         </div>
 
         <div className="w-full sm:w-auto">
           <DatePicker 
             placeholder="To Date"
-            value={filters.dateTo ? new Date(filters.dateTo) : undefined} 
-            onChange={(date) => handleFilterChange('dateTo', date ? formatDate(date) : null)}
+            date={filters.dateTo ? new Date(filters.dateTo) : undefined}
+            setDate={(date) => handleFilterChange('dateTo', date ? formatDate(date) : null)}
           />
         </div>
 

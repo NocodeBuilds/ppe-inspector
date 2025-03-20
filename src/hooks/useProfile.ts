@@ -33,7 +33,13 @@ export const useProfile = (userId?: string | null): UseProfileResult => {
       
       if (error) throw error;
       
-      setProfile(data);
+      if (data) {
+        // Adding the email property to satisfy the Profile type
+        setProfile({
+          ...data,
+          email: null // Setting default email to null since it's required by the Profile type
+        });
+      }
     } catch (err: any) {
       console.error('Error loading profile:', err);
       setError(err.message || 'Error loading user profile');

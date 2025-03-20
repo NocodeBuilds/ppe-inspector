@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-type DatePickerProps = {
-  date: Date | undefined;
+export type DatePickerProps = {
+  date?: Date | undefined;
   setDate: (date: Date | undefined) => void;
   className?: string;
   placeholder?: string;
