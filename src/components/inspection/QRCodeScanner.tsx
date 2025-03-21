@@ -8,6 +8,12 @@ import ScannerViewfinder from './ScannerViewfinder';
 import EnhancedErrorBoundary from '../error/EnhancedErrorBoundary';
 import { motion } from 'framer-motion';
 
+// Define the CameraDevice type that html5-qrcode returns
+interface CameraDevice {
+  id: string;
+  label: string;
+}
+
 interface QRCodeScannerProps {
   onResult: (result: string) => void;
   onClose: () => void;
@@ -16,7 +22,7 @@ interface QRCodeScannerProps {
 const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cameraList, setCameraList] = useState<MediaDeviceInfo[]>([]);
+  const [cameraList, setCameraList] = useState<CameraDevice[]>([]);
   const [currentCamera, setCurrentCamera] = useState<string | null>(null);
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
