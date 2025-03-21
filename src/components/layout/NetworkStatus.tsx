@@ -1,60 +1,68 @@
 
 import React from 'react';
 import { useNetwork } from '@/hooks/useNetwork';
-import { useOfflineSync } from '@/hooks/useOfflineSync';
-import { Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import SyncStatusIndicator from '@/components/ui/sync-status-indicator';
+import { CloudOff, WifiOff, CheckCircle2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
-interface NetworkStatusProps {
-  className?: string;
-}
+const NetworkStatus: React.FC = () => {
+  const { isOnline, wasOffline, resetWasOffline } = useNetwork();
 
-/**
- * Component that displays the current network status and pending sync operations
- */
-export const NetworkStatus: React.FC<NetworkStatusProps> = ({ className = '' }) => {
-  const { isOnline, wasOffline } = useNetwork();
-  const { pendingActionsCount, syncOfflineData } = useOfflineSync();
-  
-  // Only show when offline or recently reconnected with pending actions
-  if (isOnline && (!wasOffline || pendingActionsCount === 0)) {
-    return null;
+  // Only show reconnection status for 5 seconds
+  React.useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (wasOffline && isOnline) {
+      timer = setTimeout(() => {
+        resetWasOffline();
+      }, 5000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [wasOffline, isOnline, resetWasOffline]);
+
+  if (!isOnline) {
+    return (
+      <Alert 
+        variant="destructive"
+        className="fixed bottom-20 left-0 right-0 mx-auto w-[90%] max-w-md z-50 shadow-lg border-destructive"
+      >
+        <WifiOff className="h-4 w-4" />
+        <AlertTitle className="flex items-center gap-2">
+          Offline
+          <Badge variant="destructive" size="sm">No Connection</Badge>
+        </AlertTitle>
+        <AlertDescription>
+          You are currently offline. Some features may be limited until your connection is restored.
+        </AlertDescription>
+      </Alert>
+    );
   }
-  
-  return (
-    <div className={`fixed top-0 left-0 right-0 z-50 p-2 bg-background border-b flex items-center justify-between ${className}`}>
-      <div className="flex items-center gap-2">
-        {isOnline ? (
-          <>
-            <Wifi className="h-4 w-4 text-success" />
-            <span className="text-sm font-medium">Back online</span>
-          </>
-        ) : (
-          <>
-            <WifiOff className="h-4 w-4 text-destructive" />
-            <span className="text-sm font-medium">Offline mode</span>
-          </>
-        )}
-      </div>
-      
-      {pendingActionsCount > 0 && (
-        <div className="flex items-center gap-2">
-          <Badge 
-            variant="outline" 
-            className="gap-1 items-center cursor-pointer hover:bg-muted"
-            onClick={() => isOnline && syncOfflineData(true)}
-          >
-            <AlertCircle className="h-3 w-3" />
-            <span>
-              {pendingActionsCount} {pendingActionsCount === 1 ? 'change' : 'changes'} pending
-            </span>
-          </Badge>
-          <SyncStatusIndicator />
-        </div>
-      )}
-    </div>
-  );
+
+  if (wasOffline && isOnline) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 50 }}
+        className="fixed bottom-20 left-0 right-0 mx-auto w-[90%] max-w-md z-50"
+      >
+        <Alert className="bg-green-500/10 border-green-500 text-green-700 dark:text-green-400 shadow-lg">
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertTitle className="flex items-center gap-2">
+            Back Online
+            <Badge variant="success" size="sm">Connected</Badge>
+          </AlertTitle>
+          <AlertDescription className="text-green-700 dark:text-green-400">
+            Your connection has been restored. All features are now available.
+          </AlertDescription>
+        </Alert>
+      </motion.div>
+    );
+  }
+
+  return null;
 };
 
 export default NetworkStatus;
