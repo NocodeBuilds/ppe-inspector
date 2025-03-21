@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -136,6 +135,11 @@ const App = () => {
                       <Route path="inspect/new" element={<ManualInspection />} />
                       <Route path="inspect/:ppeId" element={<InspectionForm />} />
                       <Route path="inspection/:id" element={<InspectionDetails />} />
+                      <Route path="analytics" element={
+                        <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
+                          <Analytics />
+                        </RoleProtectedRoute>
+                      } />
                       <Route path="reports" element={
                         <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
                           <ReportsPage />
