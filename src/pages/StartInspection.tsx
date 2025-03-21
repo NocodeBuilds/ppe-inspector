@@ -1,11 +1,9 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { QrCode, ChevronRight, Scan, Search } from 'lucide-react';
-import QRCodeScanner from '@/components/inspection/QRCodeScanner';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { usePPEData } from '@/hooks/usePPEData';
@@ -14,11 +12,11 @@ import { PPEItem } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import PageHeader from '@/components/common/PageHeader';
+import QRCodeScanner from '@/components/inspection/QRCodeScanner';
 
 const StartInspection = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [serialNumber, setSerialNumber] = useState('');
-  const [scanning, setScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [multiplePPE, setMultiplePPE] = useState<PPEItem[]>([]);
@@ -26,13 +24,7 @@ const StartInspection = () => {
   const { toast } = useToast();
   const { getPPEBySerialNumber } = usePPEData();
 
-  const handleCloseScanner = () => {
-    setShowScanner(false);
-    setScanning(false);
-  };
-
   const handleScanResult = async (result: string) => {
-    setScanning(false);
     setShowScanner(false);
     
     try {
@@ -102,14 +94,8 @@ const StartInspection = () => {
       variant: 'default'
     });
     
-    // Navigate to the inspection form with the PPE ID - Fixed route path
+    // Navigate to the inspection form with the PPE ID
     navigate(`/inspect/${ppe.id}`);
-  };
-
-  const handleScanError = (error: string) => {
-    console.error('Scanner error:', error);
-    setScanning(false);
-    setShowScanner(false);
   };
 
   const handleManualSearch = (e: React.FormEvent) => {
@@ -229,17 +215,19 @@ const StartInspection = () => {
         </>
       )}
       
+      {/* QR Scanner Dialog */}
       <Dialog open={showScanner} onOpenChange={setShowScanner}>
-        <DialogContent className="max-w-md p-0">
+        <DialogContent className="max-w-md p-0 h-[90vh] max-h-[600px]">
           {showScanner && (
             <QRCodeScanner
               onResult={handleScanResult}
-              onError={handleScanError}
+              onClose={() => setShowScanner(false)}
             />
           )}
         </DialogContent>
       </Dialog>
       
+      {/* PPE Selection Dialog */}
       <PPESelectionDialog
         ppeItems={multiplePPE}
         isOpen={multiplePPE.length > 0}

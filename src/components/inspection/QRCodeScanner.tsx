@@ -1,201 +1,242 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { X } from 'lucide-react'; // Replacing HeroIcon with Lucide (which is already installed)
+import { X, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useNotifications } from '@/hooks/useNotifications';
-import ScannerPermissionRequest from './ScannerPermissionRequest';
-import ScannerError from './ScannerError';
 import ScannerViewfinder from './ScannerViewfinder';
-import ScannerHeader from './scanner/ScannerHeader';
-import ScannerControls from './scanner/ScannerControls';
-import ScannerInitializer from './scanner/ScannerInitializer';
 import EnhancedErrorBoundary from '../error/EnhancedErrorBoundary';
+import { motion } from 'framer-motion';
 
 interface QRCodeScannerProps {
   onResult: (result: string) => void;
-  onError: (error: string) => void;
+  onClose: () => void;
 }
 
-const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onError }) => {
-  const [scanning, setScanning] = useState(false);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const scannerContainerRef = useRef<HTMLDivElement | null>(null);
+const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
+  const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [permissionDenied, setPermissionDenied] = useState(false);
-  const [hasScanned, setHasScanned] = useState(false);
-  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [cameraList, setCameraList] = useState<MediaDeviceInfo[]>([]);
+  const [currentCamera, setCurrentCamera] = useState<string | null>(null);
+  
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { showNotification } = useNotifications();
-  const isMountedRef = useRef(true);
 
+  // Initialize scanner on mount
   useEffect(() => {
-    const initializeScanner = async () => {
+    let mounted = true;
+    
+    const initScanner = async () => {
       try {
-        setScanning(true);
-        const html5QrCode = new Html5Qrcode("qr-reader");
-        scannerRef.current = html5QrCode;
-
-        const config = {
-          fps: 10,
-          qrbox: {
-            width: 250,
-            height: 250,
-          },
-        };
-
-        // Use static method to get cameras
-        const cameraList = await Html5Qrcode.getCameras();
+        if (!scannerContainerRef.current) return;
         
-        if (cameraList.length === 0) {
-          throw new Error("No cameras found on this device.");
-        }
-
-        const backCamera = cameraList.find(
-          (camera) => camera.label.toLowerCase().includes("back")
-        );
-
-        const cameraId = backCamera ? backCamera.id : cameraList[0].id;
-
-        await html5QrCode.start(
-          cameraId,
-          config,
-          (decodedText, decodedResult) => {
-            console.log(`Code matched = ${decodedText}`, decodedResult);
-            onResult(decodedText);
-          },
-          (errorMessage) => {
-            console.warn(`Code scan error = ${errorMessage}`);
+        // Create scanner instance
+        const scanner = new Html5Qrcode('qr-scanner-container');
+        scannerRef.current = scanner;
+        
+        // Get available cameras
+        const devices = await Html5Qrcode.getCameras();
+        if (mounted) {
+          setCameraList(devices);
+          
+          // Select back camera by default if available
+          const backCamera = devices.find(
+            camera => camera.label.toLowerCase().includes('back')
+          );
+          
+          const cameraId = backCamera ? backCamera.id : devices[0]?.id;
+          setCurrentCamera(cameraId || null);
+          
+          if (cameraId) {
+            startScanner(cameraId);
+          } else if (devices.length === 0) {
+            setError('No cameras found on this device');
           }
-        );
-
-        console.log("Scanner started successfully");
-      } catch (err: any) {
-        console.error("Error initializing scanner:", err);
-        setError(err.message || "Failed to initialize scanner.");
-        onError(err.message || "Failed to initialize scanner.");
+        }
+      } catch (err) {
+        if (mounted) {
+          console.error('Camera initialization error:', err);
+          setError('Failed to initialize camera. Please ensure camera permissions are granted.');
+        }
       }
     };
-
-    initializeScanner();
-
+    
+    initScanner();
+    
+    // Cleanup function
     return () => {
+      mounted = false;
       stopScanner();
     };
-  }, [onResult, onError]);
+  }, []);
 
-  const stopScanner = async () => {
-    if (scannerRef.current) {
+  const startScanner = async (deviceId: string) => {
+    if (!scannerRef.current) return;
+    
+    try {
+      setError(null);
+      
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1,
+      };
+      
+      await scannerRef.current.start(
+        deviceId,
+        config,
+        (decodedText) => {
+          handleQrCodeScan(decodedText);
+        },
+        (errorMessage) => {
+          // This is just for qr detection errors, not critical
+          console.log('QR scan process:', errorMessage);
+        }
+      );
+      
+      setIsScanning(true);
+    } catch (err: any) {
+      console.error('Error starting scanner:', err);
+      setError(err.message || 'Failed to start scanner');
+      setIsScanning(false);
+    }
+  };
+
+  const stopScanner = () => {
+    if (scannerRef.current && isScanning) {
       try {
-        await scannerRef.current.stop();
-        console.log("Scanner stopped successfully");
-      } catch (err: any) {
-        console.error("Error stopping QR scanner:", err);
-      }
-      finally{
-        setScanning(false);
+        scannerRef.current.stop()
+          .then(() => {
+            setIsScanning(false);
+          })
+          .catch((err) => {
+            console.error('Error stopping scanner:', err);
+          });
+      } catch (err) {
+        console.error('Exception when stopping scanner:', err);
       }
     }
   };
 
-  const handleRetry = async () => {
-    setPermissionDenied(false);
-    setError(null);
-    setHasScanned(false);
+  const handleQrCodeScan = (decodedText: string) => {
+    console.log('QR code scanned:', decodedText);
     stopScanner();
-  };
-
-  const handleCancel = () => {
-    stopScanner();
-    onError("Scanning cancelled");
+    
+    // Only call the result handler if we have a valid string
+    if (decodedText && typeof decodedText === 'string') {
+      onResult(decodedText);
+    }
   };
 
   const switchCamera = async () => {
-    if (availableDevices.length <= 1) {
+    if (cameraList.length <= 1) {
       toast({
         title: 'Camera Switch',
         description: 'No additional cameras available on this device',
-        variant: 'default',
       });
       return;
     }
     
-    const currentIndex = availableDevices.findIndex(device => device.deviceId === selectedDeviceId);
-    const nextIndex = (currentIndex + 1) % availableDevices.length;
-    const nextDeviceId = availableDevices[nextIndex].deviceId;
-    
-    console.log(`Switching camera from ${currentIndex} to ${nextIndex}`);
-    
     await stopScanner();
     
-    setSelectedDeviceId(nextDeviceId);
+    // Find the next camera in the list
+    const currentIndex = cameraList.findIndex(camera => camera.id === currentCamera);
+    const nextIndex = (currentIndex + 1) % cameraList.length;
+    const nextCameraId = cameraList[nextIndex].id;
+    
+    setCurrentCamera(nextCameraId);
+    startScanner(nextCameraId);
+    
+    toast({
+      title: 'Camera Switched',
+      description: `Now using: ${cameraList[nextIndex].label.split('(')[0].trim()}`,
+    });
   };
 
   return (
     <EnhancedErrorBoundary component="QRCodeScanner">
-      <div className="w-full max-w-md mx-auto">
-        <ScannerHeader onClose={handleCancel} />
+      <motion.div 
+        className="relative h-full w-full flex flex-col"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        {/* Header with close button */}
+        <div className="flex justify-between items-center p-4 bg-background/80 backdrop-blur-sm border-b">
+          <h2 className="text-lg font-semibold">Scan QR Code</h2>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => {
+              stopScanner();
+              onClose();
+            }}
+            aria-label="Close scanner"
+          >
+            <X size={18} />
+          </Button>
+        </div>
         
-        {permissionDenied ? (
-          <ScannerPermissionRequest onRetry={handleRetry} />
-        ) : error ? (
-          <ScannerError error={error} onRetry={handleRetry} onCancel={handleCancel} />
-        ) : (
-          <div className="relative border-2 border-primary rounded-lg overflow-hidden bg-black aspect-square">
-            <div 
-              id="qr-reader" 
-              ref={scannerContainerRef}
-              className="w-full h-full"
-            />
-            
-            {!error && !hasScanned && (
-              <ScannerInitializer 
-                scannerContainerId="qr-reader"
-                onScanSuccess={(decodedText) => {
-                  console.log("QR code scanned:", decodedText);
-                  onResult(decodedText);
-                }}
-                onScanError={(errorMessage) => {
-                  console.warn(`Code scan error = ${errorMessage}`);
-                }}
-                onScannerStart={(scanner) => {
-                  scannerRef.current = scanner;
-                  setScanning(true);
-                  setError(null);
-                }}
-                onScannerError={(err) => {
-                  console.error("Error initializing scanner:", err);
-                  setError(err.message || "Failed to initialize scanner.");
-                  onError(err.message || "Failed to initialize scanner.");
-                }}
-                selectedDeviceId={selectedDeviceId}
-              />
+        {/* Scanner container */}
+        <div className="relative flex-1 bg-black">
+          {/* The actual scanner element */}
+          <div 
+            id="qr-scanner-container" 
+            ref={scannerContainerRef}
+            className="w-full h-full"
+          ></div>
+          
+          {/* Error message */}
+          {error && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-4">
+              <div className="bg-background rounded-lg p-4 max-w-xs text-center">
+                <p className="text-destructive mb-4">{error}</p>
+                <Button 
+                  onClick={() => {
+                    setError(null);
+                    if (currentCamera) startScanner(currentCamera);
+                  }}
+                >
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {/* Scanner viewfinder overlay */}
+          {isScanning && !error && <ScannerViewfinder />}
+        </div>
+        
+        {/* Footer with controls */}
+        <div className="p-4 border-t bg-background/80 backdrop-blur-sm">
+          <div className="flex gap-2 justify-center">
+            {cameraList.length > 1 && (
+              <Button
+                variant="outline"
+                onClick={switchCamera}
+                disabled={!isScanning}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw size={16} />
+                Switch Camera
+              </Button>
             )}
             
-            {scanning && !hasScanned && <ScannerViewfinder />}
+            <Button
+              variant="destructive"
+              onClick={() => {
+                stopScanner();
+                onClose();
+              }}
+              className="flex items-center gap-2"
+            >
+              <X size={16} />
+              Cancel
+            </Button>
           </div>
-        )}
-        
-        <ScannerControls 
-          onCancel={handleCancel}
-          onSwitchCamera={switchCamera}
-          hasMultipleCameras={availableDevices.length > 1}
-          isScanning={scanning}
-          hasScanned={hasScanned}
-        />
-        
-        <button
-          type="button"
-          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-          onClick={() => {
-            stopScanner();
-            onError("Scanning cancelled");
-          }}
-        >
-          <X className="h-6 w-6" aria-hidden="true" />
-        </button>
-      </div>
+        </div>
+      </motion.div>
     </EnhancedErrorBoundary>
   );
 };
