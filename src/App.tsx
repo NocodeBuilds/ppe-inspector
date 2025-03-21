@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -9,7 +10,7 @@ import { ThemeProvider } from "./components/ThemeToggler";
 import { initializePWA } from "./utils/pwaUtils";
 import EnhancedErrorBoundary from "./components/error/EnhancedErrorBoundary";
 import RoleProtectedRoute from "./components/auth/RoleProtectedRoute";
-import { NetworkStatusListener } from "./hooks/useNetwork";
+import NetworkStatusListener from "./components/layout/NetworkStatusListener";
 import NetworkStatus from "./components/layout/NetworkStatus";
 
 // Pages with no lazy loading to prevent flashing
@@ -133,7 +134,8 @@ const App = () => {
                       <Route path="edit-profile" element={<EditProfile />} />
                       <Route path="start-inspection" element={<StartInspection />} />
                       <Route path="inspect/new" element={<ManualInspection />} />
-                      <Route path="/inspection/:id" element={<InspectionDetails />} />
+                      <Route path="inspect/:ppeId" element={<InspectionForm />} />
+                      <Route path="inspection/:id" element={<InspectionDetails />} />
                       <Route path="reports" element={
                         <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
                           <ReportsPage />

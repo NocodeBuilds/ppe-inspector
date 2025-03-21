@@ -1,342 +1,145 @@
 
-import { useState, useCallback } from 'react';
-import { useSupabaseQuery, useSupabaseMutation } from '@/hooks/useSupabaseQuery';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { PPEItem, PPEStatus } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from './useAuth';
+import { useToast } from './use-toast';
+import { PPEType } from '@/types/index';
 
-export type CreatePPEParams = {
-  brand: string;
-  type: string;
+interface PPECreateInput {
   serial_number: string;
+  type: PPEType;
+  brand: string;
   model_number: string;
   manufacturing_date: string;
   expiry_date: string;
   imageFile?: File;
-};
+}
 
-/**
- * Unified hook for PPE data operations
- * Combines functionality from usePPEQueries, usePPEMutations, and usePPEData
- */
-export function usePPE() {
-  const { toast } = useToast();
-  const { user } = useAuth();
+interface PPEItem {
+  id: string;
+  serial_number: string;
+  type: string;
+  brand: string;
+  model_number: string;
+  manufacturing_date: string;
+  expiry_date: string;
+  status: string;
+  image_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const usePPE = () => {
+  const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  // QUERY FUNCTIONS
-  
-  // Query to fetch all PPE items
-  const {
-    data: ppeItems,
-    isLoading: isLoadingPPE,
-    refetch: refetchPPE,
-    isError: ppeError
-  } = useSupabaseQuery<PPEItem[]>(
-    ['ppe-items'],
-    async () => {
-      const { data, error } = await supabase
-        .from('ppe_items')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as PPEItem[];
-    }
-  );
-
-  // Get PPE by serial number - optimized to handle partial matches
-  const getPPEBySerialNumber = useCallback(async (serialNumber: string): Promise<PPEItem[]> => {
-    try {
-      console.log(`Searching for PPE with serial number pattern: ${serialNumber}`);
-      
-      // Normalize the serial number by trimming whitespace
-      const normalizedSerial = serialNumber.trim();
-      
-      // First try exact match
-      const { data: exactMatch, error: exactError } = await supabase
-        .from('ppe_items')
-        .select('*')
-        .eq('serial_number', normalizedSerial)
-        .maybeSingle();
-      
-      if (exactError) {
-        console.error('Database error when searching by exact serial number:', exactError);
-      } else if (exactMatch) {
-        console.log('Found exact match for serial number:', exactMatch);
-        return [exactMatch] as PPEItem[];
-      }
-      
-      // If exact match didn't yield results, try pattern matching
-      console.log('No exact match found, trying pattern match');
-      const { data, error } = await supabase
-        .from('ppe_items')
-        .select('*')
-        .ilike('serial_number', `%${normalizedSerial}%`);
-      
-      if (error) {
-        console.error('Database error when searching by serial number pattern:', error);
-        throw error;
-      }
-      
-      console.log(`Found ${data?.length || 0} PPE items matching serial number pattern`);
-      return data as PPEItem[];
-    } catch (error: any) {
-      console.error('Error fetching PPE by serial number:', error);
+  /**
+   * Create a new PPE item
+   */
+  const createPPE = async (data: PPECreateInput): Promise<PPEItem | null> => {
+    if (!user) {
       toast({
-        title: 'Error',
-        description: `Failed to fetch PPE data: ${error.message}`,
-        variant: 'destructive',
-      });
-      return [];
-    }
-  }, [toast]);
-
-  // Get PPE by ID - improved to handle both UUIDs and serial numbers
-  const getPPEById = useCallback(async (id: string): Promise<PPEItem | null> => {
-    try {
-      // First check if the ID is a valid UUID
-      let isUUID = true;
-      try {
-        // Simple UUID validation check
-        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-          isUUID = false;
-        }
-      } catch {
-        isUUID = false;
-      }
-
-      let data;
-      let error;
-
-      if (isUUID) {
-        // If it's a UUID, search by ID
-        const result = await supabase
-          .from('ppe_items')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
-          
-        data = result.data;
-        error = result.error;
-      } else {
-        // If it's not a UUID, search by serial number
-        const result = await supabase
-          .from('ppe_items')
-          .select('*')
-          .eq('serial_number', id)
-          .maybeSingle();
-          
-        data = result.data;
-        error = result.error;
-      }
-
-      if (error) throw error;
-      return data;
-    } catch (error: any) {
-      console.error('Error getting PPE by ID:', error);
-      toast({
-        title: 'Error',
-        description: `Failed to fetch PPE data: ${error.message}`,
+        title: 'Authentication Required',
+        description: 'You must be logged in to create PPE items',
         variant: 'destructive',
       });
       return null;
     }
-  }, [toast]);
 
-  // MUTATION FUNCTIONS
+    setIsLoading(true);
+    let imageUrl = null;
 
-  // Upload and compress image
-  const uploadPPEImage = async (file: File, ppeId: string): Promise<string | null> => {
-    if (!file || !ppeId) return null;
-    
-    setIsUploading(true);
     try {
-      // Create a filename with PPE ID and timestamp
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `${ppeId}-${Date.now()}.${fileExt}`;
-      const filePath = `ppe-images/${fileName}`;
-      
-      // Upload the file
-      const { error: uploadError } = await supabase.storage
-        .from('ppe-images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-      
-      if (uploadError) throw uploadError;
-      
-      // Get the public URL
-      const { data } = supabase.storage
-        .from('ppe-images')
-        .getPublicUrl(filePath);
-      
-      return data.publicUrl;
+      // Upload image if provided
+      if (data.imageFile) {
+        setIsUploading(true);
+        const filePath = `ppe/${user.id}/${Date.now()}-${data.imageFile.name}`;
+        
+        const { data: fileData, error: uploadError } = await supabase.storage
+          .from('ppe_images')
+          .upload(filePath, data.imageFile);
+
+        if (uploadError) {
+          throw new Error(`Error uploading image: ${uploadError.message}`);
+        }
+
+        const { data: urlData } = await supabase.storage
+          .from('ppe_images')
+          .getPublicUrl(filePath);
+
+        imageUrl = urlData.publicUrl;
+        setIsUploading(false);
+      }
+
+      // Insert PPE data
+      const { data: ppeData, error: ppeError } = await supabase
+        .from('ppe_items')
+        .insert({
+          serial_number: data.serial_number,
+          type: data.type,
+          brand: data.brand,
+          model_number: data.model_number,
+          manufacturing_date: data.manufacturing_date,
+          expiry_date: data.expiry_date,
+          image_url: imageUrl,
+          created_by: user.id,
+          status: 'active',
+        })
+        .select()
+        .single();
+
+      if (ppeError) {
+        throw new Error(`Error creating PPE: ${ppeError.message}`);
+      }
+
+      toast({
+        title: 'PPE Created',
+        description: `${data.type} has been successfully created`,
+      });
+
+      return ppeData;
     } catch (error: any) {
-      console.error('Error uploading image:', error);
+      console.error('Error in createPPE:', error);
       toast({
         title: 'Error',
-        description: `Failed to upload image: ${error.message}`,
+        description: error.message || 'Failed to create PPE item',
         variant: 'destructive',
       });
       return null;
     } finally {
+      setIsLoading(false);
       setIsUploading(false);
     }
   };
 
-  // Mutation to update PPE status
-  const updatePPEStatusMutation = useSupabaseMutation<{ id: string }, { id: string, status: PPEStatus }>(
-    async ({ id, status }) => {
-      const { data, error } = await supabase
-        .from('ppe_items')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    {
-      onSuccess: () => {
-        toast({
-          title: 'Success',
-          description: 'PPE status updated successfully'
-        });
-        refetchPPE();
-      },
-      onError: (error: any) => {
-        toast({
-          title: 'Error',
-          description: `Failed to update PPE status: ${error.message}`,
-          variant: 'destructive',
-        });
-      },
-      invalidateQueries: [['ppe-items']]
-    }
-  );
-
-  // Mutation to create a new PPE item
-  const createPPEMutation = useSupabaseMutation<PPEItem, CreatePPEParams & { imageFile?: File }>(
-    async (ppeData) => {
-      const { imageFile, ...ppeItem } = ppeData;
-      
-      if (!user?.id) {
-        throw new Error('User must be logged in to create PPE items');
-      }
-      
-      // Check if expiry date is valid
-      const expiryDate = new Date(ppeItem.expiry_date);
-      const currentDate = new Date();
-      
-      // Calculate status based on expiry date
-      const status: PPEStatus = expiryDate < currentDate ? 'expired' : 'active';
-      
-      // Calculate next inspection date (3 months from today)
-      const nextInspection = new Date();
-      nextInspection.setMonth(nextInspection.getMonth() + 3);
-      
-      // First, create the PPE item with all required fields
-      const { data, error } = await supabase
-        .from('ppe_items')
-        .insert({
-          brand: ppeItem.brand,
-          type: ppeItem.type,
-          serial_number: ppeItem.serial_number,
-          model_number: ppeItem.model_number,
-          manufacturing_date: ppeItem.manufacturing_date,
-          expiry_date: ppeItem.expiry_date,
-          created_by: user.id,
-          status: status,
-          next_inspection: nextInspection.toISOString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      // Then, if there's an image file, upload it and update the PPE item
-      if (imageFile && data.id) {
-        const imageUrl = await uploadPPEImage(imageFile, data.id);
-        
-        if (imageUrl) {
-          const { data: updatedData, error: updateError } = await supabase
-            .from('ppe_items')
-            .update({ image_url: imageUrl })
-            .eq('id', data.id)
-            .select()
-            .single();
-          
-          if (updateError) throw updateError;
-          return updatedData;
-        }
-      }
-      
-      return data;
-    },
-    {
-      onSuccess: () => {
-        toast({
-          title: 'Success',
-          description: 'PPE item created successfully'
-        });
-        refetchPPE();
-      },
-      onError: (error: any) => {
-        toast({
-          title: 'Error',
-          description: `Failed to create PPE item: ${error.message}`,
-          variant: 'destructive',
-        });
-      },
-      invalidateQueries: [['ppe-items']]
-    }
-  );
-
-  // Direct create PPE function (compatible with older usePPEData interface)
-  const createPPE = async (params: CreatePPEParams) => {
+  /**
+   * Get PPE by serial number
+   */
+  const getPPEBySerialNumber = async (serialNumber: string): Promise<PPEItem[]> => {
     try {
-      const result = await createPPEMutation.mutateAsync(params);
-      return result;
-    } catch (error) {
-      // Error is already handled in mutation
+      const { data, error } = await supabase
+        .from('ppe_items')
+        .select('*')
+        .ilike('serial_number', serialNumber)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw new Error(`Error fetching PPE: ${error.message}`);
+      }
+
+      return data || [];
+    } catch (error: any) {
+      console.error('Error in getPPEBySerialNumber:', error);
       throw error;
     }
   };
 
-  // Direct update PPE status function (compatible with older interface)
-  const updatePPEStatus = async ({ id, status }: { id: string; status: PPEStatus }) => {
-    try {
-      const result = await updatePPEStatusMutation.mutateAsync({ id, status });
-      return result;
-    } catch (error) {
-      // Error is already handled in mutation
-      throw error;
-    }
-  };
-  
   return {
-    // Query results
-    ppeItems,
-    isLoadingPPE,
-    ppeError,
-    refetchPPE,
-    
-    // Query functions
-    getPPEBySerialNumber,
-    getPPEById,
-    
-    // Mutation functions
+    isLoading,
+    isUploading,
     createPPE,
-    updatePPEStatus,
-    uploadPPEImage,
-    
-    // State
-    isUploading
+    getPPEBySerialNumber,
   };
-}
+};

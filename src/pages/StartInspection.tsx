@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -101,7 +102,7 @@ const StartInspection = () => {
       variant: 'default'
     });
     
-    // Navigate to the inspection form with the PPE ID
+    // Navigate to the inspection form with the PPE ID - Fixed route path
     navigate(`/inspect/${ppe.id}`);
   };
 

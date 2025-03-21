@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,15 +15,24 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { usePPE } from '@/hooks/usePPE';
 import { standardPPETypes } from '@/components/equipment/ConsolidatedPPETypeFilter';
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 // Define form schema
 const formSchema = z.object({
   serialNumber: z.string().min(1, "Serial number is required"),
-  type: z.string().optional(),
-  brand: z.string().optional(),
-  modelNumber: z.string().optional(),
-  manufacturingDate: z.string().optional(),
-  expiryDate: z.string().optional(),
+  type: z.string().min(1, "PPE type is required"),
+  brand: z.string().min(1, "Brand is required"),
+  modelNumber: z.string().min(1, "Model number is required"),
+  manufacturingDate: z.date({
+    required_error: "Manufacturing date is required",
+  }),
+  expiryDate: z.date({
+    required_error: "Expiry date is required",
+  }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -35,7 +45,7 @@ const ManualInspection = () => {
   const [error, setError] = useState<string | null>(null);
   const { createPPE, getPPEBySerialNumber } = usePPE();
 
-  // Initialize form
+  // Initialize form with default dates
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -43,8 +53,8 @@ const ManualInspection = () => {
       type: "",
       brand: "",
       modelNumber: "",
-      manufacturingDate: "",
-      expiryDate: "",
+      manufacturingDate: new Date(),
+      expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
     }
   });
 
@@ -76,8 +86,8 @@ const ManualInspection = () => {
         type: values.type as PPEType,
         brand: values.brand || "",
         model_number: values.modelNumber || "",
-        manufacturing_date: values.manufacturingDate || "",
-        expiry_date: values.expiryDate || "",
+        manufacturing_date: values.manufacturingDate.toISOString(),
+        expiry_date: values.expiryDate.toISOString(),
       });
       
       if (newPPE) {
@@ -123,35 +133,152 @@ const ManualInspection = () => {
                   </FormItem>
                 )}
               />
+              
               {/* PPE Details */}
-              <div className="bg-muted/50 p-4 rounded-md">
-                <h3 className="text-sm font-medium mb-3">If creating new PPE, fill the details below:</h3>
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>PPE Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <div className="bg-muted/50 p-4 rounded-md space-y-4">
+                <h3 className="text-sm font-medium mb-3">PPE Details</h3>
+                
+                {/* PPE Type */}
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PPE Type*</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select PPE type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {standardPPETypes.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Brand */}
+                <FormField
+                  control={form.control}
+                  name="brand"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Brand*</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter brand name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Model Number */}
+                <FormField
+                  control={form.control}
+                  name="modelNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Model Number*</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter model number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Manufacturing Date */}
+                <FormField
+                  control={form.control}
+                  name="manufacturingDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Manufacturing Date*</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select PPE type" />
-                            </SelectTrigger>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
                           </FormControl>
-                          <SelectContent>
-                            {standardPPETypes.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Expiry Date */}
+                <FormField
+                  control={form.control}
+                  name="expiryDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Expiry Date*</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date < new Date()
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               {error && (
