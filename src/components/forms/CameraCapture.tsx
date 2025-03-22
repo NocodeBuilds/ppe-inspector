@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,17 +8,14 @@ import CardOverlay from '@/components/ui/card-overlay';
 interface CameraCaptureProps {
   onImageCapture: (file: File) => void;
   existingImage?: File | null;
-  autoSubmit?: boolean;
 }
 
 const CameraCapture: React.FC<CameraCaptureProps> = ({
   onImageCapture,
-  existingImage,
-  autoSubmit = false
+  existingImage
 }) => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [capturedImage, setCapturedImage] = useState<File | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraTimeout, setCameraTimeout] = useState<NodeJS.Timeout | null>(null);
   
@@ -26,6 +24,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   
   useEffect(() => {
+    // Clean up on unmount
     return () => {
       stopCamera();
     };
@@ -45,6 +44,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       videoRef.current.srcObject = null;
     }
     
+    // Clear any existing timeout
     if (cameraTimeout) {
       clearTimeout(cameraTimeout);
       setCameraTimeout(null);
@@ -57,28 +57,31 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     setIsCameraOpen(true);
     setIsCapturing(true);
     setCameraError(null);
-    setCapturedImage(null);
     
     console.log("CameraCapture: Starting camera");
     
+    // Set a timeout to prevent getting stuck in loading state
     const timeout = setTimeout(() => {
       console.log("CameraCapture: Camera initialization timed out");
       if (isCapturing) {
         setCameraError("Camera initialization timed out. Please try again.");
         setIsCapturing(false);
       }
-    }, 10000);
+    }, 10000); // 10 second timeout
     
     setCameraTimeout(timeout);
     
     try {
+      // Check if browser supports getUserMedia
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Your browser does not support camera access');
       }
       
+      // Try to get a stream with back camera if possible
       let stream: MediaStream;
       
       try {
+        // First try with environment-facing camera
         console.log("CameraCapture: Trying with environment facing camera");
         stream = await navigator.mediaDevices.getUserMedia({
           video: { 
@@ -89,11 +92,13 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         });
       } catch (err) {
         console.log("CameraCapture: Environment facing failed, trying default camera", err);
+        // If that fails, try with default camera
         stream = await navigator.mediaDevices.getUserMedia({
           video: true
         });
       }
       
+      // Store the stream ref
       streamRef.current = stream;
       
       if (videoRef.current) {
@@ -106,6 +111,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
               await videoRef.current.play();
               console.log("CameraCapture: Video playback started");
               
+              // Clear the timeout since camera initialized successfully
               if (cameraTimeout) {
                 clearTimeout(cameraTimeout);
                 setCameraTimeout(null);
@@ -139,6 +145,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
 
       setCameraError(errorMessage);
       
+      // Clear the timeout
       if (cameraTimeout) {
         clearTimeout(cameraTimeout);
         setCameraTimeout(null);
@@ -150,6 +157,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         description: errorMessage
       });
     } finally {
+      // Ensure isCapturing is set to false if it hasn't been already
       setTimeout(() => {
         if (isCapturing) {
           setIsCapturing(false);
@@ -173,31 +181,32 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         throw new Error('Could not get canvas context');
       }
       
+      // Set canvas size to match video dimensions
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       
+      // Draw video frame to canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
+      // Convert canvas content to blob
       canvas.toBlob((blob) => {
         if (!blob) {
           throw new Error('Failed to create image blob');
         }
         
+        // Create a File object from the blob
         const fileName = `ppe_photo_${new Date().getTime()}.jpg`;
         const file = new File([blob], fileName, { type: 'image/jpeg' });
         
-        setCapturedImage(file);
+        // Close camera and pass image data
+        stopCamera();
+        setIsCameraOpen(false);
+        onImageCapture(file);
         
-        if (autoSubmit) {
-          stopCamera();
-          setIsCameraOpen(false);
-          onImageCapture(file);
-          
-          toast({
-            title: 'Photo Captured',
-            description: 'Image has been captured successfully'
-          });
-        }
+        toast({
+          title: 'Photo Captured',
+          description: 'Image has been captured successfully'
+        });
       }, 'image/jpeg', 0.8);
     } catch (error: any) {
       console.error('Error capturing photo:', error);
@@ -211,24 +220,6 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     }
   };
   
-  const confirmCapture = () => {
-    if (capturedImage) {
-      stopCamera();
-      setIsCameraOpen(false);
-      onImageCapture(capturedImage);
-      
-      toast({
-        title: 'Photo Confirmed',
-        description: 'Image has been saved successfully'
-      });
-    }
-  };
-  
-  const retakePhoto = () => {
-    setCapturedImage(null);
-    startCamera();
-  };
-
   return (
     <div>
       <div className="flex items-center gap-3">
@@ -293,21 +284,25 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
               
               <canvas ref={canvasRef} className="hidden" />
               
-              <div className="flex justify-center gap-2">
-                {capturedImage ? (
-                  <>
-                    <Button onClick={confirmCapture}>Confirm Photo</Button>
-                    <Button variant="outline" onClick={retakePhoto}>Retake</Button>
-                  </>
-                ) : (
-                  <>
-                    <Button onClick={capturePhoto} disabled={isCapturing}>Capture</Button>
-                    <Button variant="outline" onClick={() => {
-                      stopCamera();
-                      setIsCameraOpen(false);
-                    }}>Cancel</Button>
-                  </>
-                )}
+              <div className="flex justify-between">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    stopCamera();
+                    setIsCameraOpen(false);
+                  }}
+                >
+                  <X size={16} className="mr-2" />
+                  Cancel
+                </Button>
+                
+                <Button 
+                  onClick={capturePhoto}
+                  disabled={isCapturing || !streamRef.current}
+                >
+                  <Camera size={16} className="mr-2" />
+                  Capture
+                </Button>
               </div>
             </>
           )}
