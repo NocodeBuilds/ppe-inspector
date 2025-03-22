@@ -1,36 +1,31 @@
-
 import { z } from 'zod';
 import { PPEType } from '@/integrations/supabase/client';
 
 export const addPPEFormSchema = z.object({
-  serialNumber: z.string()
-    .min(3, { message: 'Serial number must be at least 3 characters' })
-    .max(50, { message: 'Serial number must be 50 characters or less' }),
+  type: z.string()
+    .min(1, { message: 'PPE type is required' }),
   
-  type: z.string({ required_error: 'PPE type is required' }),
+  serialNumber: z.string()
+    .min(1, { message: 'Serial number is required' }),
   
   brand: z.string()
-    .min(2, { message: 'Brand must be at least 2 characters' })
-    .max(50, { message: 'Brand must be 50 characters or less' }),
+    .min(1, { message: 'Brand is required' }),
   
   modelNumber: z.string()
-    .min(2, { message: 'Model number must be at least 2 characters' })
-    .max(50, { message: 'Model number must be 50 characters or less' }),
+    .min(1, { message: 'Model number is required' }),
   
-  manufacturingDate: z.date({ required_error: 'Manufacturing date is required' }),
-  
-  expiryDate: z.date({ required_error: 'Expiry date is required' })
-    .refine(date => date > new Date(), {
-      message: 'Expiry date must be in the future',
-    }),
+  manufacturingDate: z.string()
+    .min(1, { message: 'Manufacturing date is required' }),
 });
 
 export type AddPPEFormValues = z.infer<typeof addPPEFormSchema>;
 
-export const defaultFormValues: Partial<AddPPEFormValues> = {
+export const defaultFormValues: AddPPEFormValues = {
+  type: '',
   serialNumber: '',
   brand: '',
   modelNumber: '',
+  manufacturingDate: '',
 };
 
 // PPE types standardized across the application
