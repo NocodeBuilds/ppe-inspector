@@ -809,7 +809,7 @@ const InspectionForm = () => {
               <Button
                 type="button"
                 variant={overallResult === 'pass' ? 'default' : 'outline'}
-                className={overallResult === 'pass' ? 'bg-success hover:bg-success/90' : ''}
+                className={overallResult === 'pass' ? '!bg-green-500 hover:!bg-green-600 text-white' : ''}
                 onClick={() => setOverallResult('pass')}
               >
                 <Check size={16} className="mr-2" />
@@ -819,7 +819,7 @@ const InspectionForm = () => {
               <Button
                 type="button"
                 variant={overallResult === 'fail' ? 'default' : 'outline'}
-                className={overallResult === 'fail' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                className={overallResult === 'fail' ? '!bg-red-500 hover:!bg-red-600 text-white' : ''}
                 onClick={() => setOverallResult('fail')}
               >
                 <X size={16} className="mr-2" />
