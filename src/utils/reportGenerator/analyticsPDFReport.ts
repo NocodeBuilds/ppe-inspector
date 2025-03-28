@@ -1,187 +1,209 @@
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { formatInspectionDate } from '@/utils/inspectionUtils';
-
-interface AnalyticsData {
-  ppeStatusCounts: {
-    active: number;
-    expired: number;
-    maintenance: number;
-    flagged: number;
-  };
-  inspectionTypeCounts: {
-    'pre-use': number;
-    'monthly': number;
-    'quarterly': number;
-  };
-  inspectionResultCounts: {
-    pass: number;
-    fail: number;
-  };
-  ppeTypeDistribution: Record<string, number>;
-  upcomingInspections: {
-    id: string;
-    serial_number: string;
-    type: string;
-    next_inspection: string;
-    days_remaining: number;
-  }[];
-  expiringItems: {
-    id: string;
-    serial_number: string;
-    type: string;
-    expiry_date: string;
-    days_remaining: number;
-  }[];
-}
+import { format } from 'date-fns';
 
 /**
- * Generate a PDF analytics report
+ * Generate a PDF report with analytics data
+ * @param analyticsData Object containing analytics data
  */
-export const generateAnalyticsReport = (data: AnalyticsData) => {
-  const doc = new jsPDF();
-  
-  // Add title
-  doc.setFontSize(18);
-  doc.text('PPE Report', 14, 22);
-  
-  // Add generation date
-  doc.setFontSize(10);
-  doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
-  
-  // PPE Status Summary
-  doc.setFontSize(14);
-  doc.text('PPE Status Summary', 14, 40);
-  
-  autoTable(doc, {
-    head: [['Status', 'Count']],
-    body: [
-      ['Active', data.ppeStatusCounts.active.toString()],
-      ['Expired', data.ppeStatusCounts.expired.toString()],
-      ['Maintenance', data.ppeStatusCounts.maintenance.toString()],
-      ['Flagged', data.ppeStatusCounts.flagged.toString()],
-      ['Total', (
-        data.ppeStatusCounts.active + 
-        data.ppeStatusCounts.expired + 
-        data.ppeStatusCounts.maintenance + 
-        data.ppeStatusCounts.flagged
-      ).toString()]
-    ],
-    startY: 45,
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-    alternateRowStyles: { fillColor: [240, 240, 240] }
+export const generateAnalyticsReportPDF = async (analyticsData: any): Promise<void> => {
+  // Create a new PDF document
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true
   });
+
+  // Set document properties
+  doc.setProperties({
+    title: 'PPE Analytics Report',
+    subject: 'Analytics data for PPE management',
+    creator: 'PPE Management System',
+    author: 'System Generated'
+  });
+
+  // Add title and date
+  doc.setFontSize(16);
+  doc.text('PPE ANALYTICS REPORT', doc.internal.pageSize.width / 2, 20, { align: 'center' });
+  
+  doc.setFontSize(10);
+  doc.text(`Generated on: ${format(new Date(), 'dd-MM-yyyy HH:mm')}`, doc.internal.pageSize.width / 2, 27, { align: 'center' });
+
+  let yPosition = 35;
   
   // PPE Type Distribution
-  doc.setFontSize(14);
-  let y = (doc as any).lastAutoTable.finalY + 15;
-  doc.text('PPE Type Distribution', 14, y);
+  if (analyticsData?.ppeTypeDistribution) {
+    doc.setFontSize(12);
+    doc.text('PPE Type Distribution', 14, yPosition);
+    
+    const typeData = Object.entries(analyticsData.ppeTypeDistribution).map(([type, count]) => [
+      type,
+      count
+    ]);
+    
+    autoTable(doc, {
+      startY: yPosition + 5,
+      head: [['PPE Type', 'Count']],
+      body: typeData,
+      theme: 'grid',
+      headStyles: { fillColor: [66, 133, 244], textColor: [255, 255, 255] },
+      styles: { fontSize: 8 }
+    });
+    
+    yPosition = (doc as any).lastAutoTable.finalY + 10;
+  }
   
-  const typeData = Object.entries(data.ppeTypeDistribution).map(([type, count]) => [type, count.toString()]);
+  // PPE Status Counts
+  if (analyticsData?.ppeStatusCounts) {
+    if (yPosition > 180) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    
+    doc.setFontSize(12);
+    doc.text('PPE Status Overview', 14, yPosition);
+    
+    const statusData = [
+      ['Active', analyticsData.ppeStatusCounts.active || 0],
+      ['Expired', analyticsData.ppeStatusCounts.expired || 0],
+      ['Maintenance', analyticsData.ppeStatusCounts.maintenance || 0],
+      ['Flagged', analyticsData.ppeStatusCounts.flagged || 0]
+    ];
+    
+    autoTable(doc, {
+      startY: yPosition + 5,
+      head: [['Status', 'Count']],
+      body: statusData,
+      theme: 'grid',
+      headStyles: { fillColor: [66, 133, 244], textColor: [255, 255, 255] },
+      styles: { fontSize: 8 }
+    });
+    
+    yPosition = (doc as any).lastAutoTable.finalY + 10;
+  }
   
-  autoTable(doc, {
-    head: [['PPE Type', 'Count']],
-    body: typeData,
-    startY: y + 5,
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-    alternateRowStyles: { fillColor: [240, 240, 240] }
-  });
+  // Inspection Type Counts
+  if (analyticsData?.inspectionTypeCounts) {
+    if (yPosition > 180) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    
+    doc.setFontSize(12);
+    doc.text('Inspection Type Distribution', 14, yPosition);
+    
+    const inspectionData = [
+      ['Pre-use', analyticsData.inspectionTypeCounts['pre-use'] || 0],
+      ['Monthly', analyticsData.inspectionTypeCounts['monthly'] || 0],
+      ['Quarterly', analyticsData.inspectionTypeCounts['quarterly'] || 0]
+    ];
+    
+    autoTable(doc, {
+      startY: yPosition + 5,
+      head: [['Inspection Type', 'Count']],
+      body: inspectionData,
+      theme: 'grid',
+      headStyles: { fillColor: [66, 133, 244], textColor: [255, 255, 255] },
+      styles: { fontSize: 8 }
+    });
+    
+    yPosition = (doc as any).lastAutoTable.finalY + 10;
+  }
   
-  // Inspection Summary
-  doc.setFontSize(14);
-  y = (doc as any).lastAutoTable.finalY + 15;
-  doc.text('Inspection Summary', 14, y);
-  
-  autoTable(doc, {
-    head: [['Category', 'Count']],
-    body: [
-      ['Pre-use Inspections', data.inspectionTypeCounts['pre-use'].toString()],
-      ['Monthly Inspections', data.inspectionTypeCounts['monthly'].toString()],
-      ['Quarterly Inspections', data.inspectionTypeCounts['quarterly'].toString()],
-      ['Total Inspections', (
-        data.inspectionTypeCounts['pre-use'] + 
-        data.inspectionTypeCounts['monthly'] + 
-        data.inspectionTypeCounts['quarterly']
-      ).toString()],
-      ['Passed Inspections', data.inspectionResultCounts.pass.toString()],
-      ['Failed Inspections', data.inspectionResultCounts.fail.toString()]
-    ],
-    startY: y + 5,
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-    alternateRowStyles: { fillColor: [240, 240, 240] }
-  });
-  
-  // Check if we need to add a new page
-  if ((doc as any).lastAutoTable.finalY > 200) {
-    doc.addPage();
-    y = 20;
-  } else {
-    y = (doc as any).lastAutoTable.finalY + 15;
+  // Inspection Result Counts
+  if (analyticsData?.inspectionResultCounts) {
+    if (yPosition > 180) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    
+    doc.setFontSize(12);
+    doc.text('Inspection Results Overview', 14, yPosition);
+    
+    const resultData = [
+      ['Pass', analyticsData.inspectionResultCounts.pass || 0],
+      ['Fail', analyticsData.inspectionResultCounts.fail || 0]
+    ];
+    
+    autoTable(doc, {
+      startY: yPosition + 5,
+      head: [['Result', 'Count']],
+      body: resultData,
+      theme: 'grid',
+      headStyles: { fillColor: [66, 133, 244], textColor: [255, 255, 255] },
+      styles: { fontSize: 8 }
+    });
+    
+    yPosition = (doc as any).lastAutoTable.finalY + 10;
   }
   
   // Upcoming Inspections
-  doc.setFontSize(14);
-  doc.text('Upcoming Inspections', 14, y);
-  
-  if (data.upcomingInspections.length > 0) {
-    const upcomingData = data.upcomingInspections.map(item => [
-      item.serial_number,
+  if (analyticsData?.upcomingInspections && analyticsData.upcomingInspections.length > 0) {
+    if (yPosition > 140) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    
+    doc.setFontSize(12);
+    doc.text('Upcoming Inspections (Next 30 Days)', 14, yPosition);
+    
+    const upcomingData = analyticsData.upcomingInspections.map((item: any) => [
       item.type,
-      formatInspectionDate(item.next_inspection),
-      item.days_remaining.toString()
+      item.serial_number,
+      format(new Date(item.next_inspection), 'dd-MM-yyyy'),
+      item.days_remaining
     ]);
     
     autoTable(doc, {
-      head: [['Serial #', 'Type', 'Inspection Date', 'Days Left']],
+      startY: yPosition + 5,
+      head: [['PPE Type', 'Serial Number', 'Due Date', 'Days Remaining']],
       body: upcomingData,
-      startY: y + 5,
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-      alternateRowStyles: { fillColor: [240, 240, 240] }
+      theme: 'grid',
+      headStyles: { fillColor: [66, 133, 244], textColor: [255, 255, 255] },
+      styles: { fontSize: 8 }
     });
-  } else {
-    doc.setFontSize(10);
-    doc.text('No upcoming inspections', 14, y + 10);
-    y += 20;
-  }
-  
-  // Check if we need to add a new page
-  if ((doc as any).lastAutoTable?.finalY > 200) {
-    doc.addPage();
-    y = 20;
-  } else {
-    y = ((doc as any).lastAutoTable?.finalY || y + 20) + 15;
+    
+    yPosition = (doc as any).lastAutoTable.finalY + 10;
   }
   
   // Expiring Items
-  doc.setFontSize(14);
-  doc.text('Expiring PPE Items', 14, y);
-  
-  if (data.expiringItems.length > 0) {
-    const expiringData = data.expiringItems.map(item => [
-      item.serial_number,
+  if (analyticsData?.expiringItems && analyticsData.expiringItems.length > 0) {
+    if (yPosition > 140) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    
+    doc.setFontSize(12);
+    doc.text('Expiring PPE Items (Next 30 Days)', 14, yPosition);
+    
+    const expiringData = analyticsData.expiringItems.map((item: any) => [
       item.type,
-      formatInspectionDate(item.expiry_date),
-      item.days_remaining.toString()
+      item.serial_number,
+      format(new Date(item.expiry_date), 'dd-MM-yyyy'),
+      item.days_remaining
     ]);
     
     autoTable(doc, {
-      head: [['Serial #', 'Type', 'Expiry Date', 'Days Left']],
+      startY: yPosition + 5,
+      head: [['PPE Type', 'Serial Number', 'Expiry Date', 'Days Remaining']],
       body: expiringData,
-      startY: y + 5,
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-      alternateRowStyles: { fillColor: [240, 240, 240] }
+      theme: 'grid',
+      headStyles: { fillColor: [66, 133, 244], textColor: [255, 255, 255] },
+      styles: { fontSize: 8 }
     });
-  } else {
-    doc.setFontSize(10);
-    doc.text('No expiring items', 14, y + 10);
   }
   
-  // Download the PDF
-  doc.save('ppe-report.pdf');
+  // Add page numbers
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width - 20, doc.internal.pageSize.height - 10);
+  }
+  
+  // Save the PDF
+  const filename = `analytics_report_${format(new Date(), 'yyyyMMdd')}.pdf`;
+  doc.save(filename);
 };

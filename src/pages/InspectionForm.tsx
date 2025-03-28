@@ -17,6 +17,7 @@ import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionD
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
 import { cn } from '@/lib/utils';
 import { getStandardCheckpoints } from '@/services/checkpointService';
+import { StandardInspectionData } from '@/utils/reportGenerator/reportDataFormatter';
 
 const toPPEType = (typeString: string) => {
   const validTypes = [
@@ -539,7 +540,7 @@ const InspectionForm = () => {
     }
   };
   
-  const handlePDFDownload = async (data: StandardInspectionData) => {
+  const handlePDFDownload = async (data: StandardInspectionData): Promise<void> => {
     try {
       await generateInspectionDetailPDF(data);
       toast({
@@ -556,7 +557,7 @@ const InspectionForm = () => {
     }
   };
   
-  const handleExcelDownload = async (data: StandardInspectionData) => {
+  const handleExcelDownload = async (data: StandardInspectionData): Promise<void> => {
     try {
       await generateInspectionExcelReport(data);
       toast({
@@ -573,7 +574,7 @@ const InspectionForm = () => {
     }
   };
   
-  const handleWhatsAppShare = () => {
+  const handleWhatsAppShare = async (): Promise<void> => {
     try {
       const message = 
         `Inspection Report\n` +
@@ -600,7 +601,7 @@ const InspectionForm = () => {
     }
   };
   
-  const handleEmailShare = () => {
+  const handleEmailShare = async (): Promise<void> => {
     try {
       const subject = `Inspection Report - ${ppeItem?.type} (${ppeItem?.serialNumber})`;
       

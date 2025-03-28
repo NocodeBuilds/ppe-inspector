@@ -1,11 +1,12 @@
+
 import { PPEItem } from '@/types';
 import { generatePPEReport } from './reportGenerator/ppePDFReport';
 import { generateInspectionsReport } from './reportGenerator/inspectionsPDFReport';
-import { generateAnalyticsReport } from './reportGenerator/analyticsPDFReport';
+import { generateAnalyticsReportPDF } from './reportGenerator/analyticsPDFReport';
 import { generateSinglePPEReport, generateBatchPPEReport } from './reportGenerator/enhancedPDFReport';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { fetchCompleteInspectionData } from './reportGenerator/reportDataFormatter';
+import { fetchCompleteInspectionData, StandardInspectionData } from './reportGenerator/reportDataFormatter';
 
 // Cache to avoid re-fetching the same data
 const reportCache = new Map<string, {data: any, timestamp: number}>();
@@ -35,7 +36,7 @@ export const generateInspectionReport = async (inspectionId: string): Promise<vo
     });
 
     const cacheKey = `inspection_report_${inspectionId}`;
-    let inspectionData = getFromCache(cacheKey);
+    let inspectionData = getFromCache<StandardInspectionData | null>(cacheKey);
 
     if (!inspectionData) {
       inspectionData = await fetchCompleteInspectionData(supabase, inspectionId);
@@ -411,7 +412,7 @@ export const generateAnalyticsReport = async (): Promise<void> => {
     }
     
     // Generate the report
-    await generateAnalyticsReport(analyticsData);
+    await generateAnalyticsReportPDF(analyticsData);
     
     toast({
       title: 'Report Generated',
