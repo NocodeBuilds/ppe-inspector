@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ interface CheckpointItemProps {
   onNotesChange: (notes: string) => void;
   onPhotoCapture: (photoUrl: string) => void;
   onPhotoDelete: () => void;
+  disabled?: boolean;
 }
 
 // Function to compress and resize images to reduce storage requirements
@@ -71,6 +71,7 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
   onNotesChange,
   onPhotoCapture,
   onPhotoDelete,
+  disabled,
 }) => {
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -291,7 +292,11 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         
         <CheckpointOptions 
           passed={passed}
-          onStatusChange={onPassedChange}
+          onStatusChange={(value) => {
+            console.log("CheckpointItem: Status change requested:", { value });
+            onPassedChange(value);
+          }}
+          disabled={disabled}
         />
       </div>
       

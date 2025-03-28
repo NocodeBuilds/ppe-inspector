@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Check, X, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface CheckpointOptionsProps {
   passed: boolean | null;
@@ -13,20 +14,22 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
   onStatusChange,
   disabled = false
 }) => {
-  console.log("CheckpointOptions rendered with passed:", passed);
+  useEffect(() => {
+    console.log("CheckpointOptions state updated:", { passed });
+  }, [passed]);
   
   const handlePassClick = () => {
-    console.log("Pass button clicked, current state:", passed, "changing to:", true);
+    console.log("Pass button clicked, changing to:", true);
     onStatusChange(true);
   };
   
   const handleFailClick = () => {
-    console.log("Fail button clicked, current state:", passed, "changing to:", false);
+    console.log("Fail button clicked, changing to:", false);
     onStatusChange(false);
   };
   
   const handleNAClick = () => {
-    console.log("N/A button clicked, current state:", passed, "changing to:", null);
+    console.log("N/A button clicked, changing to:", null);
     onStatusChange(null);
   };
   
@@ -35,8 +38,13 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
       <Button
         type="button"
         size="sm"
-        variant={passed === true ? "default" : "outline"}
-        className={passed === true ? "!bg-green-500 hover:!bg-green-600" : ""}
+        variant="outline"
+        className={cn(
+          "border transition-colors duration-200",
+          passed === true 
+            ? "!bg-green-500 hover:!bg-green-600 !border-green-600 text-white ring-green-400" 
+            : "hover:bg-green-50 hover:text-green-600 hover:border-green-400"
+        )}
         onClick={handlePassClick}
         disabled={disabled}
       >
@@ -47,8 +55,13 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
       <Button
         type="button"
         size="sm"
-        variant={passed === false ? "default" : "outline"}
-        className={passed === false ? "!bg-red-500 hover:!bg-red-600" : ""}
+        variant="outline"
+        className={cn(
+          "border transition-colors duration-200",
+          passed === false 
+            ? "!bg-red-500 hover:!bg-red-600 !border-red-600 text-white ring-red-400" 
+            : "hover:bg-red-50 hover:text-red-600 hover:border-red-400"
+        )}
         onClick={handleFailClick}
         disabled={disabled}
       >
@@ -59,8 +72,13 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
       <Button
         type="button"
         size="sm"
-        variant={passed === null ? "default" : "outline"}
-        className={passed === null ? "!bg-gray-500 hover:!bg-gray-600" : ""}
+        variant="outline"
+        className={cn(
+          "border transition-colors duration-200",
+          passed === null 
+            ? "!bg-gray-500 hover:!bg-gray-600 !border-gray-600 text-white ring-gray-400" 
+            : "hover:bg-gray-100 hover:text-gray-600 hover:border-gray-400"
+        )}
         onClick={handleNAClick}
         disabled={disabled}
       >

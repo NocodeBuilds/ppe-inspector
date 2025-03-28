@@ -7,15 +7,16 @@ import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { InspectionCheckpoint } from '@/types';
 import CheckpointItem from '@/components/inspection/CheckpointItem';
 import SignatureCanvas from '@/components/inspection/SignatureCanvas';
-import { getStandardCheckpoints } from '@/services/checkpointService';
-import { useAuth } from '@/hooks/useAuth';
 import InspectionSuccessDialog from '@/components/inspection/InspectionSuccessDialog';
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
+import { cn } from '@/lib/utils';
+import { getStandardCheckpoints } from '@/services/checkpointService';
 
 const toPPEType = (typeString: string) => {
   const validTypes = [
@@ -595,7 +596,7 @@ const InspectionForm = () => {
         `PPE: ${ppeItem?.type} (${ppeItem?.serialNumber})\n` +
         `Date: ${new Date().toLocaleDateString()}\n` +
         `Result: ${overallResult?.toUpperCase() || 'UNKNOWN'}\n` +
-        `Inspector: ${user?.user_metadata?.full_name || 'Unknown'}\n`;
+        `Inspector: ${user?.user_metadata?.full_name || 'Unknown Inspector'}\n`;
       
       const encodedMessage = encodeURIComponent(message);
       
@@ -624,7 +625,7 @@ const InspectionForm = () => {
         `PPE: ${ppeItem?.type} (${ppeItem?.serialNumber})\n` +
         `Date: ${new Date().toLocaleDateString()}\n` +
         `Result: ${overallResult?.toUpperCase() || 'UNKNOWN'}\n` +
-        `Inspector: ${user?.user_metadata?.full_name || 'Unknown'}\n`;
+        `Inspector: ${user?.user_metadata?.full_name || 'Unknown Inspector'}\n`;
       
       const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       
@@ -785,8 +786,8 @@ const InspectionForm = () => {
                   key={checkpoint.id}
                   id={checkpoint.id}
                   description={checkpoint.description}
-                  passed={results[checkpoint.id]?.passed || null}
-                  notes={results[checkpoint.id]?.notes || ''}
+                  passed={results[checkpoint.id]?.passed ?? null}
+                  notes={results[checkpoint.id]?.notes ?? ''}
                   photoUrl={results[checkpoint.id]?.photoUrl}
                   onPassedChange={(value) => handleResultChange(checkpoint.id, value)}
                   onNotesChange={(value) => handleNotesChange(checkpoint.id, value)}
@@ -808,8 +809,13 @@ const InspectionForm = () => {
             <div className="flex gap-3">
               <Button
                 type="button"
-                variant={overallResult === 'pass' ? 'default' : 'outline'}
-                className={overallResult === 'pass' ? '!bg-green-500 hover:!bg-green-600 text-white' : ''}
+                variant="outline"
+                className={cn(
+                  "border transition-colors duration-200",
+                  overallResult === 'pass' 
+                    ? "!bg-green-500 hover:!bg-green-600 !border-green-600 text-white ring-green-400" 
+                    : "hover:bg-green-50 hover:text-green-600 hover:border-green-400"
+                )}
                 onClick={() => setOverallResult('pass')}
               >
                 <Check size={16} className="mr-2" />
@@ -818,8 +824,13 @@ const InspectionForm = () => {
               
               <Button
                 type="button"
-                variant={overallResult === 'fail' ? 'default' : 'outline'}
-                className={overallResult === 'fail' ? '!bg-red-500 hover:!bg-red-600 text-white' : ''}
+                variant="outline"
+                className={cn(
+                  "border transition-colors duration-200",
+                  overallResult === 'fail' 
+                    ? "!bg-red-500 hover:!bg-red-600 !border-red-600 text-white ring-red-400" 
+                    : "hover:bg-red-50 hover:text-red-600 hover:border-red-400"
+                )}
                 onClick={() => setOverallResult('fail')}
               >
                 <X size={16} className="mr-2" />
