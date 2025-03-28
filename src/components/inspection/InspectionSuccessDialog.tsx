@@ -1,31 +1,124 @@
-
 import React, { useState } from 'react';
-import { FileText, Download, MessageSquare, Mail, Home, Plus, WifiOff, FileSpreadsheet } from 'lucide-react';
+import { 
+  FileText, 
+  FileSpreadsheet, 
+  Share2, 
+  Home, 
+  Plus, 
+  WifiOff, 
+  MessageSquare, 
+  Mail,
+  Cloud,
+  Download,
+  Check
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { useNetwork } from '@/hooks/useNetwork';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from '@/lib/utils';
 import LogoIcon from '../common/LogoIcon';
+
+type ReportFormat = 'pdf' | 'excel';
+type ShareMethod = 'whatsapp' | 'email' | 'onedrive' | 'gdrive';
+type ActionType = ReportFormat | ShareMethod;
+
+interface ActionConfig {
+  id: ActionType;
+  label: string;
+  icon: React.ReactNode;
+  action: () => Promise<void>;
+  requiresNetwork?: boolean;
+  color?: string;
+}
 
 interface InspectionSuccessDialogProps {
   isOpen: boolean;
   onClose: () => void;
   inspectionId: string;
   ppeId: string;
-  onPDFDownload: () => void;
-  onExcelDownload: () => void;
-  onWhatsAppShare: () => void;
-  onEmailShare: () => void;
+  onPDFDownload: () => Promise<void>;
+  onExcelDownload: () => Promise<void>;
+  onWhatsAppShare: () => Promise<void>;
+  onEmailShare: () => Promise<void>;
 }
+
+const downloadActions: ActionConfig[] = [
+  {
+    id: 'pdf',
+    label: 'PDF',
+    icon: <FileText className="h-7 w-7" />,
+    action: () => Promise.resolve(),
+    color: 'text-red-400 hover:text-red-300'
+  },
+  {
+    id: 'excel',
+    label: 'Excel',
+    icon: <FileSpreadsheet className="h-7 w-7" />,
+    action: () => Promise.resolve(),
+    color: 'text-green-400 hover:text-green-300'
+  }
+];
+
+const createShareActions = (
+  shareFormat: ReportFormat,
+  onPDFDownload: () => Promise<void>,
+  onExcelDownload: () => Promise<void>,
+  onWhatsAppShare: () => Promise<void>,
+  onEmailShare: () => Promise<void>
+): ActionConfig[] => [
+  {
+    id: 'whatsapp',
+    label: 'WhatsApp',
+    icon: <MessageSquare className="h-7 w-7" />,
+    action: async () => {
+      await (shareFormat === 'pdf' ? onPDFDownload : onExcelDownload)();
+      await onWhatsAppShare();
+    },
+    requiresNetwork: true,
+    color: 'text-green-400 hover:text-green-300'
+  },
+  {
+    id: 'email',
+    label: 'Email',
+    icon: <Mail className="h-7 w-7" />,
+    action: async () => {
+      await (shareFormat === 'pdf' ? onPDFDownload : onExcelDownload)();
+      await onEmailShare();
+    },
+    requiresNetwork: true,
+    color: 'text-blue-400 hover:text-blue-300'
+  },
+  {
+    id: 'onedrive',
+    label: 'OneDrive',
+    icon: <Cloud className="h-7 w-7" />,
+    action: async () => {
+      await (shareFormat === 'pdf' ? onPDFDownload : onExcelDownload)();
+      toast({
+        title: "Coming Soon",
+        description: "OneDrive sharing will be available soon",
+      });
+    },
+    requiresNetwork: true,
+    color: 'text-sky-400 hover:text-sky-300'
+  },
+  {
+    id: 'gdrive',
+    label: 'Google Drive',
+    icon: <Cloud className="h-7 w-7" />,
+    action: async () => {
+      await (shareFormat === 'pdf' ? onPDFDownload : onExcelDownload)();
+      toast({
+        title: "Coming Soon",
+        description: "Google Drive sharing will be available soon",
+      });
+    },
+    requiresNetwork: true,
+    color: 'text-yellow-400 hover:text-yellow-300'
+  }
+];
 
 const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
   isOpen,
@@ -38,47 +131,79 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
   onEmailShare
 }) => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<ActionType | null>(null);
   const { isOnline } = useNetwork();
-  const [shareFormat, setShareFormat] = useState<string>("pdf");
-  
-  console.log('InspectionSuccessDialog rendered with isOpen:', isOpen, 'isOnline:', isOnline);
+  const [shareFormat, setShareFormat] = useState<ReportFormat>('pdf');
+  const [selectedFormat, setSelectedFormat] = useState<ReportFormat>('pdf');
 
-  const handleAction = async (
-    action: () => void | Promise<void>, 
-    actionName: string,
-    requiresNetwork: boolean = false
-  ) => {
-    setIsLoading(actionName);
+  const currentDownloadActions = downloadActions.map(action => ({
+    ...action,
+    action: action.id === 'pdf' ? onPDFDownload : onExcelDownload
+  }));
+
+  const currentShareActions = createShareActions(
+    selectedFormat,
+    onPDFDownload,
+    onExcelDownload,
+    onWhatsAppShare,
+    onEmailShare
+  );
+
+  const queueOfflineAction = async (actionId: ActionType) => {
+    if (!('serviceWorker' in navigator) || !('SyncManager' in window)) {
+      toast({
+        title: "Offline Sync Not Available",
+        description: "Your browser doesn't support background sync. Please try again when online.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const syncManager = (registration as any).sync;
+      
+      if (syncManager) {
+        await syncManager.register(`offline-action-${actionId}`);
+        toast({
+          title: "Queued for Sync",
+          description: "This action will be performed when you're back online",
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to queue offline action:", error);
+      toast({
+        title: "Sync Failed",
+        description: "Could not queue the action for offline sync",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAction = async (config: ActionConfig) => {
+    const { id, action, requiresNetwork } = config;
+    setIsLoading(id);
     
     try {
       if (requiresNetwork && !isOnline) {
         toast({
           title: "Offline Mode",
-          description: "This action requires an internet connection. It will be queued for when you're back online.",
+          description: "This action requires an internet connection",
           variant: "default",
         });
-        
-        if ('serviceWorker' in navigator && 'SyncManager' in window) {
-          const registration = await navigator.serviceWorker.ready;
-          
-          if ('sync' in registration) {
-            // Properly type the registration object to access the sync property
-            const syncManager = (registration as unknown as { sync: { register: (tag: string) => Promise<void> } }).sync;
-            await syncManager.register('sync-offline-reports');
-            
-            toast({
-              title: "Queued for Sync",
-              description: "This action will be performed when you're back online",
-              variant: "default",
-            });
-          }
-        }
+        await queueOfflineAction(id);
       } else {
         await action();
+        if (id === 'whatsapp' || id === 'email') {
+          toast({
+            title: `Shared via ${id === 'whatsapp' ? 'WhatsApp' : 'Email'}`,
+            description: `Report shared in ${selectedFormat.toUpperCase()} format`,
+          });
+        }
       }
     } catch (error) {
-      console.error(`Error during ${actionName}:`, error);
+      console.error(`Error during ${id}:`, error);
       toast({
         title: "Action Failed",
         description: `There was an error performing this action. ${isOnline ? '' : 'You might be offline.'}`,
@@ -88,176 +213,143 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
       setIsLoading(null);
     }
   };
-  
-  const handleShareWithFormat = async (shareMethod: 'whatsapp' | 'email') => {
-    setIsLoading(shareMethod);
+
+  const handleNavigate = (path: string) => {
+    onClose();
+    navigate(path);
+  };
+
+  const renderActionButton = (config: ActionConfig) => {
+    const { id, label, icon, requiresNetwork, color } = config;
+    const isActive = isLoading === id;
     
-    try {
-      if (shareFormat === 'pdf') {
-        await onPDFDownload();
-      } else {
-        await onExcelDownload();
-      }
-      
-      if (shareMethod === 'whatsapp') {
-        await onWhatsAppShare();
-      } else {
-        await onEmailShare();
-      }
-      
-      toast({
-        title: `Shared via ${shareMethod === 'whatsapp' ? 'WhatsApp' : 'Email'}`,
-        description: `Report shared in ${shareFormat.toUpperCase()} format`,
-      });
-    } catch (error) {
-      console.error(`Error during ${shareMethod} sharing:`, error);
-      toast({
-        title: "Share Failed",
-        description: `Could not share via ${shareMethod === 'whatsapp' ? 'WhatsApp' : 'Email'}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(null);
-    }
+    return (
+      <button 
+        key={id}
+        onClick={() => {
+          if (id === 'pdf' || id === 'excel') {
+            setSelectedFormat(id as ReportFormat);
+          }
+          handleAction(config);
+        }}
+        disabled={isLoading !== null || (requiresNetwork && !isOnline)}
+        className={cn(
+          "group relative flex flex-col items-center justify-center p-4 rounded-lg",
+          "transition-all duration-200",
+          "hover:bg-zinc-800/50",
+          "disabled:opacity-50 disabled:cursor-not-allowed",
+          "focus:outline-none focus:ring-2 focus:ring-green-500/20",
+          isActive && "bg-green-500/10"
+        )}
+      >
+        <div className={cn(
+          "relative transition-transform duration-200",
+          "group-hover:scale-110",
+          color || "text-zinc-400",
+          isActive && "text-green-400"
+        )}>
+          {icon}
+          {isActive && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-current border-t-transparent" />
+            </div>
+          )}
+        </div>
+        <span className={cn(
+          "mt-2 text-sm font-medium transition-colors duration-200",
+          isActive ? "text-green-400" : "text-zinc-400 group-hover:text-zinc-300"
+        )}>
+          {isLoading === id ? (
+            id === 'pdf' || id === 'excel' ? 'Downloading...' : 'Sharing...'
+          ) : (
+            label
+          )}
+        </span>
+      </button>
+    );
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md bg-zinc-900 text-white border-zinc-800">
-        <DialogHeader>
-          <div className="flex justify-center mb-2">
-            <LogoIcon size="sm" withText />
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 p-0">
+        <div className="relative min-h-[32rem]">
+          {/* Success Animation */}
+          <div className="absolute inset-0 flex items-center justify-center -mt-16">
+            <div className="w-32 h-32 rounded-full bg-green-500/10 flex items-center justify-center animate-pulse">
+              <Check className="w-16 h-16 text-green-500" />
+            </div>
           </div>
-          <DialogTitle className="text-xl text-white text-center">Inspection Submitted Successfully!</DialogTitle>
-          <DialogDescription className="text-gray-400 text-center">
-            Choose a format to download or share the inspection report.
-            {!isOnline && (
-              <div className="mt-2 flex items-center justify-center text-amber-400">
-                <WifiOff className="h-4 w-4 mr-2" />
-                <span>You're currently offline. Some features may be limited.</span>
+          
+          <div className="relative z-10 p-8">
+            {/* Logo Section */}
+            <div className="flex justify-center mb-10">
+              <LogoIcon size="lg" className="h-24 w-24" />
+            </div>
+
+            <DialogHeader className="space-y-3">
+              <DialogTitle className="text-3xl font-bold text-white text-center">
+                Inspection Complete!
+              </DialogTitle>
+              <DialogDescription className="text-lg text-zinc-400 text-center">
+                Download or share your report
+                {!isOnline && (
+                  <div className="mt-4 flex items-center justify-center text-amber-400 bg-amber-500/10 p-3 rounded-lg">
+                    <WifiOff className="h-5 w-5 mr-2" />
+                    <span>You're currently offline</span>
+                  </div>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-10">
+              <div className="space-y-8">
+                <div>
+                  <h3 className="text-sm font-medium text-zinc-400 mb-4 flex items-center">
+                    <Download className="h-4 w-4 mr-2 text-zinc-500" />
+                    Download as:
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {currentDownloadActions.map(renderActionButton)}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-zinc-400 mb-4 flex items-center">
+                    <Share2 className="h-4 w-4 mr-2 text-zinc-500" />
+                    Share via:
+                  </h3>
+                  <div className="grid grid-cols-4 gap-4">
+                    {currentShareActions.map(renderActionButton)}
+                  </div>
+                </div>
               </div>
-            )}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <Tabs defaultValue="download" className="w-full">
-          <TabsList className="grid grid-cols-2 w-full mb-4">
-            <TabsTrigger value="download">Download</TabsTrigger>
-            <TabsTrigger value="share">Share</TabsTrigger>
-          </TabsList>
-          
-          <div data-value="download" className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            </div>
+
+            <div className="flex gap-4 mt-8">
               <Button 
                 variant="outline" 
-                className="w-full justify-start text-white border-zinc-800 hover:bg-zinc-800" 
-                onClick={() => handleAction(onPDFDownload, "pdf")}
+                className="flex-1 bg-zinc-800/50 border-zinc-700 hover:bg-zinc-700 text-white py-6" 
+                onClick={() => handleNavigate('/')}
                 disabled={isLoading !== null}
               >
-                {isLoading === "pdf" ? (
-                  <span className="animate-pulse">Generating...</span>
-                ) : (
-                  <>
-                    <FileText className="mr-2 h-5 w-5" />
-                    PDF Format
-                  </>
-                )}
+                <Home className="mr-2 h-5 w-5" />
+                Home
               </Button>
               <Button 
-                variant="outline" 
-                className="w-full justify-start text-white border-zinc-800 hover:bg-zinc-800" 
-                onClick={() => handleAction(onExcelDownload, "excel")}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white py-6"
+                onClick={() => handleNavigate('/start-inspection')}
                 disabled={isLoading !== null}
               >
-                {isLoading === "excel" ? (
-                  <span className="animate-pulse">Generating...</span>
-                ) : (
-                  <>
-                    <FileSpreadsheet className="mr-2 h-5 w-5" />
-                    Excel Format
-                  </>
-                )}
+                <Plus className="mr-2 h-5 w-5" />
+                New Inspection
               </Button>
             </div>
           </div>
-          
-          <div data-value="share" className="space-y-4">
-            <div className="mb-4">
-              <label className="text-sm text-gray-400 mb-2 block">Select Format to Share</label>
-              <Select 
-                defaultValue="pdf" 
-                onValueChange={setShareFormat}
-                disabled={isLoading !== null}
-              >
-                <SelectTrigger className="w-full bg-zinc-800 border-zinc-700">
-                  <SelectValue placeholder="Select format" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pdf">PDF Format</SelectItem>
-                  <SelectItem value="excel">Excel Format</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <Button 
-                variant="outline" 
-                className="w-full justify-start text-white border-zinc-800 hover:bg-zinc-800" 
-                onClick={() => handleShareWithFormat('whatsapp')}
-                disabled={isLoading !== null || !isOnline}
-              >
-                {isLoading === "whatsapp" ? (
-                  <span className="animate-pulse">Sharing...</span>
-                ) : (
-                  <>
-                    <MessageSquare className="mr-2 h-5 w-5" />
-                    WhatsApp
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start text-white border-zinc-800 hover:bg-zinc-800" 
-                onClick={() => handleShareWithFormat('email')}
-                disabled={isLoading !== null || !isOnline}
-              >
-                {isLoading === "email" ? (
-                  <span className="animate-pulse">Sharing...</span>
-                ) : (
-                  <>
-                    <Mail className="mr-2 h-5 w-5" />
-                    Email
-                  </>
-                )}
-              </Button>
-            </div>
-            
-            {!isOnline && (
-              <p className="text-xs text-amber-400 text-center">
-                Sharing requires an internet connection
-              </p>
-            )}
-          </div>
-        </Tabs>
-        
-        <div className="flex justify-between mt-2">
-          <Button 
-            variant="outline" 
-            className="border-zinc-800 hover:bg-zinc-800 text-white" 
-            onClick={() => navigate('/')}
-            disabled={isLoading !== null}
-          >
-            <Home className="mr-2 h-4 w-4" />
-            Home
-          </Button>
-          <Button 
-            onClick={() => navigate('/start-inspection')}
-            className="bg-green-500 hover:bg-green-600 text-white"
-            disabled={isLoading !== null}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Inspection
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
