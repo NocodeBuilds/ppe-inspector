@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
@@ -11,10 +10,17 @@ interface InspectionDetail {
   notes: string | null;
   signature_url: string | null;
   inspector_name: string;
+  inspector_id: string;
+  inspector_employee_id: string;
+  inspector_department: string;
+  inspector_role: string;
   ppe_type: string;
   ppe_serial: string;
   ppe_brand: string;
   ppe_model: string;
+  site_name: string;
+  manufacturing_date: string;
+  expiry_date: string;
   checkpoints: {
     id: string;
     description: string;
@@ -44,21 +50,18 @@ export const generateInspectionExcelReport = async (inspection: InspectionDetail
     // Create header rows with merged cells
     const headerRows = [
       ['', inspection.ppe_type.toUpperCase() + ' INSPECTION CHECKLIST', '', ''],
-      ['', '', 'Doc. No:', 'ABCD'],
-      ['', '', 'Approval Date:', format(new Date(), 'dd.MM.yyyy')],
+      ['', '', 'Doc. No:', inspection.id],
+      ['', '', 'Approval Date:', format(new Date(inspection.date), 'dd.MM.yyyy')],
       ['', '', '', ''],
     ];
     
-    // Get site name from inspector's location
-    const siteName = inspection.inspector_name || "Example Site";
-    
-    // Create equipment details section - updated structure
+    // Create equipment details section
     const equipmentRows = [
       ['EQUIPMENT DETAILS', '', '', ''],
-      ['SITE NAME:', siteName, 'INSPECTION DATE:', format(new Date(inspection.date), 'dd.MM.yyyy')],
+      ['SITE NAME:', inspection.site_name, 'INSPECTION DATE:', format(new Date(inspection.date), 'dd.MM.yyyy')],
       ['PPE TYPE:', inspection.ppe_type.toUpperCase(), 'SERIAL NUMBER:', inspection.ppe_serial],
       ['MAKE (BRAND):', inspection.ppe_brand, 'MODEL NUMBER:', inspection.ppe_model],
-      ['MANUFACTURING DATE:', 'N/A', 'EXPIRY DATE:', 'N/A'],
+      ['MANUFACTURING DATE:', inspection.manufacturing_date, 'EXPIRY DATE:', inspection.expiry_date],
       ['', '', '', ''],
     ];
     
@@ -79,8 +82,8 @@ export const generateInspectionExcelReport = async (inspection: InspectionDetail
     const inspectorRows = [
       ['', '', '', ''],
       ['INSPECTOR DETAILS', '', '', ''],
-      ['EMPLOYEE NAME:', inspection.inspector_name, 'EMPLOYEE ID:', ''],
-      ['ROLE:', 'Inspector', 'DEPARTMENT:', 'Safety'],
+      ['EMPLOYEE NAME:', inspection.inspector_name, 'EMPLOYEE ID:', inspection.inspector_employee_id],
+      ['ROLE:', inspection.inspector_role, 'DEPARTMENT:', inspection.inspector_department],
       ['', '', '', ''],
     ];
     
@@ -88,9 +91,9 @@ export const generateInspectionExcelReport = async (inspection: InspectionDetail
     const resultRows = [
       ['FINAL INSPECTION RESULT', '', '', ''],
       ['OVERALL RESULT:', inspection.overall_result.toUpperCase(), 'DATE:', format(new Date(inspection.date), 'dd.MM.yyyy')],
+      ['NOTES:', inspection.notes || 'No additional notes', '', ''],
       ['', '', '', ''],
       ['Inspector Signature', '', '', ''],
-      ['', '', '', ''],
       ['', '', '', ''],
     ];
     
@@ -104,65 +107,19 @@ export const generateInspectionExcelReport = async (inspection: InspectionDetail
       ...resultRows,
     ];
     
-    // Create worksheet from data
+    // Create worksheet
     const ws = XLSX.utils.aoa_to_sheet(allRows);
-    
-    // Set column widths
     ws['!cols'] = wscols;
-    
-    // Set merged cells for better formatting
-    ws['!merges'] = [
-      // Header merges
-      { s: { r: 0, c: 1 }, e: { r: 0, c: 2 } },  // Title
-      
-      // Equipment details header
-      { s: { r: 4, c: 0 }, e: { r: 4, c: 3 } },
-      
-      // Checkpoints header
-      { s: { r: 10, c: 0 }, e: { r: 10, c: 3 } },
-      
-      // Inspector details header
-      { s: { r: 11 + inspection.checkpoints.length + 1, c: 0 }, 
-        e: { r: 11 + inspection.checkpoints.length + 1, c: 3 } },
-      
-      // Final result header
-      { s: { r: 11 + inspection.checkpoints.length + 6, c: 0 }, 
-        e: { r: 11 + inspection.checkpoints.length + 6, c: 3 } },
-      
-      // Signature field
-      { s: { r: 11 + inspection.checkpoints.length + 9, c: 0 }, 
-        e: { r: 11 + inspection.checkpoints.length + 9, c: 3 } },
-    ];
     
     // Add worksheet to workbook
     XLSX.utils.book_append_sheet(wb, ws, 'Inspection Report');
     
-    // Apply cell styling
-    // Note: Basic Excel doesn't support full styling like PDF, but we can add basic formatting
+    // Generate Excel file
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     
-    // Generate filename
-    const filename = `inspection_${inspection.ppe_serial}_${format(new Date(inspection.date), 'yyyyMMdd')}.xlsx`;
-    
-    // Get network status to determine download method
-    const isOnline = navigator.onLine;
-    console.log(`Generating Excel report with network status: ${isOnline ? 'online' : 'offline'}`);
-    
-    try {
-      // First try using the standard XLSX.writeFile (works in online mode)
-      XLSX.writeFile(wb, filename);
-      console.log('Excel report generated successfully using standard method');
-    } catch (writeError) {
-      console.log('Falling back to Blob download for offline mode:', writeError);
-      
-      // Fallback for offline mode - convert to blob and use saveAs
-      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/octet-stream' });
-      saveAs(blob, filename);
-      console.log('Excel report generated successfully using Blob fallback');
-    }
-    
-    return;
-    
+    // Save file
+    saveAs(data, `inspection_report_${inspection.id}_${format(new Date(inspection.date), 'yyyyMMdd')}.xlsx`);
   } catch (error) {
     console.error('Error generating Excel report:', error);
     throw error;

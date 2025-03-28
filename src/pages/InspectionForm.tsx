@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Delete, Info, Loader2, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,14 +9,49 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { InspectionCheckpoint } from '@/types';
 import CheckpointItem from '@/components/inspection/CheckpointItem';
 import SignatureCanvas from '@/components/inspection/SignatureCanvas';
 import { getStandardCheckpoints } from '@/services/checkpointService';
-import { useAuth } from '@/hooks/useAuth';
 import InspectionSuccessDialog from '@/components/inspection/InspectionSuccessDialog';
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
+
+interface UserProfile {
+  site_name: string | null;
+  department: string | null;
+  employee_role: string | null;
+  Full_name: string | null;
+  employee_id: string | null;
+}
+
+interface PPEItem {
+  id: string;
+  serialNumber: string;
+  type: string;
+  brand: string;
+  modelNumber: string;
+  siteName: string;
+  manufacturingDate: string;
+  expiryDate: string;
+}
+
+interface DbProfile {
+  user_id: string;
+  site_name: string | null;
+  department: string | null;
+  Employee_Role: string | null;
+  Full_name: string | null;
+  employee_id: string | null;
+}
+
+interface InspectionCheckpoint {
+  id: string;
+  description: string;
+  passed: boolean;
+  notes: string;
+  required?: boolean;
+  ppeType?: string;
+}
 
 const toPPEType = (typeString: string) => {
   const validTypes = [
@@ -40,8 +76,10 @@ const mapDbCheckpointToAppCheckpoint = (dbCheckpoint: any): InspectionCheckpoint
   return {
     id: dbCheckpoint.id,
     description: dbCheckpoint.description,
-    ppeType: dbCheckpoint.ppe_type,
+    passed: false,
+    notes: '',
     required: true,
+    ppeType: dbCheckpoint.ppe_type
   };
 };
 
@@ -51,14 +89,9 @@ const InspectionForm = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   
-  const [ppeItem, setPpeItem] = useState<{
-    id: string;
-    serialNumber: string;
-    type: string;
-    brand: string;
-    modelNumber: string;
-  } | null>(null);
-  
+  const [ppeItem, setPpeItem] = useState<PPEItem | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
   const [inspectionType, setInspectionType] = useState<'pre-use' | 'monthly' | 'quarterly'>('pre-use');
   const [checkpoints, setCheckpoints] = useState<InspectionCheckpoint[]>([]);
   const [results, setResults] = useState<Record<string, { passed: boolean | null; notes: string; photoUrl?: string }>>({});
@@ -88,32 +121,89 @@ const InspectionForm = () => {
       setIsLoading(false);
     }
   }, [ppeId]);
-  
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserProfile(user.id);
+    }
+  }, [user?.id]);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      type ProfileResponse = {
+        site_name: string | null;
+        department: string | null;
+        Employee_Role: string | null;
+        Full_name: string | null;
+        employee_id: string | null;
+      };
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('site_name,department,Employee_Role,Full_name,employee_id')
+        .eq('user_id', userId)
+        .single<ProfileResponse>();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        setUserProfile(null);
+        return;
+      }
+
+      if (!data) {
+        console.log('No profile found');
+        setUserProfile(null);
+        return;
+      }
+
+      const userProfile: UserProfile = {
+        site_name: data.site_name,
+        department: data.department,
+        employee_role: data.Employee_Role,
+        Full_name: data.Full_name,
+        employee_id: data.employee_id
+      };
+
+      setUserProfile(userProfile);
+      console.log('Profile data fetched:', data);
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      setUserProfile(null);
+    }
+  };
+
   const fetchPPEItem = async (id: string) => {
     try {
       setIsLoading(true);
       setPpeError(null);
       
-      const { data, error } = await supabase
+      const { data: ppeData, error: ppeError } = await supabase
         .from('ppe_items')
-        .select('*')
+        .select('id, serial_number, type, brand, model_number, manufacturing_date, expiry_date')
         .eq('id', id)
         .single();
+
+      if (ppeError) throw ppeError;
       
-      if (error) throw error;
-      
-      if (data) {
+      if (ppeData) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('site_name')
+          .eq('user_id', user?.id)
+          .single();
+        
         setPpeItem({
-          id: data.id,
-          serialNumber: data.serial_number,
-          type: toPPEType(data.type),
-          brand: data.brand,
-          modelNumber: data.model_number,
+          id: ppeData.id,
+          serialNumber: ppeData.serial_number,
+          type: toPPEType(ppeData.type),
+          brand: ppeData.brand,
+          modelNumber: ppeData.model_number,
+          siteName: profileData?.site_name || 'Unknown Site',
+          manufacturingDate: ppeData.manufacturing_date || 'N/A',
+          expiryDate: ppeData.expiry_date || 'N/A'
         });
         
-        await fetchCheckpoints(data.type);
-      } else {
-        throw new Error('PPE item not found');
+        await fetchCheckpoints(ppeData.type);
       }
     } catch (error: any) {
       console.error('Error fetching PPE item:', error);
@@ -126,7 +216,7 @@ const InspectionForm = () => {
     try {
       const { data: existingCheckpoints, error } = await supabase
         .from('inspection_checkpoints')
-        .select('*')
+        .select('id, description, ppe_type')
         .eq('ppe_type', ppeType);
         
       if (error) {
@@ -161,7 +251,7 @@ const InspectionForm = () => {
         const { data: insertedCheckpoints, error: insertError } = await supabase
           .from('inspection_checkpoints')
           .insert(checkpointsToInsert)
-          .select();
+          .select('id, description, ppe_type');
           
         if (insertError) {
           console.error('Error inserting checkpoints:', insertError);
@@ -190,8 +280,8 @@ const InspectionForm = () => {
         const tempCheckpoints = standardCheckpoints.map(cp => ({
           id: crypto.randomUUID(),
           description: cp.description,
-          ppeType: ppeType,
-          required: true
+          passed: false,
+          notes: ''
         }));
         
         setCheckpoints(tempCheckpoints);
@@ -378,139 +468,68 @@ const InspectionForm = () => {
   };
   
   const handleSubmit = async () => {
-    if (!validateForm()) return;
-    if (!user) {
-      toast({
-        title: 'Authentication Required',
-        description: 'You must be logged in to submit inspections',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setHasNetworkError(false);
+    if (!user) return;
     
     try {
-      const inspectionTypeEnum = inspectionType as "pre-use" | "monthly" | "quarterly";
-      
-      saveFormToLocalStorage();
-      
-      console.log('Submitting inspection with data:', {
-        ppe_id: ppeItem?.id,
-        type: inspectionTypeEnum,
-        overall_result: overallResult,
-        checkpoint_ids: Object.keys(results),
-      });
-      
-      const { data: inspection, error: inspectionError } = await supabase
-        .from('inspections')
-        .insert({
-          ppe_id: ppeItem?.id,
-          type: inspectionTypeEnum,
-          date: new Date().toISOString(),
-          overall_result: overallResult || 'pass',
-          notes: notes,
-          signature_url: signature,
-          inspector_id: user.id,
-        })
-        .select('id')
-        .single();
-      
-      if (inspectionError) {
-        console.error("Inspection insert error:", inspectionError);
-        throw inspectionError;
-      }
-      
-      console.log('Inspection created with ID:', inspection.id);
-      
-      const resultsToInsert = Object.entries(results).map(([checkpointId, result]) => ({
-        inspection_id: inspection.id,
-        checkpoint_id: checkpointId,
-        passed: result.passed,
-        notes: result.notes,
-        photo_url: result.photoUrl,
-      }));
-      
-      console.log('Inserting inspection results:', resultsToInsert);
-      
-      const { error: resultsError } = await supabase
-        .from('inspection_results')
-        .insert(resultsToInsert);
-      
-      if (resultsError) {
-        console.error("Results insert error:", resultsError);
-        throw resultsError;
-      }
+      setIsSubmitting(true);
       
       const now = new Date();
-      let nextInspectionDate: Date;
-      
-      switch (inspectionType) {
-        case 'monthly':
-          nextInspectionDate = new Date(now);
-          nextInspectionDate.setMonth(now.getMonth() + 1);
-          break;
-        case 'quarterly':
-          nextInspectionDate = new Date(now);
-          nextInspectionDate.setMonth(now.getMonth() + 3);
-          break;
-        case 'pre-use':
-        default:
-          nextInspectionDate = new Date(now);
-          nextInspectionDate.setDate(now.getDate() + 7);
-          break;
-      }
-      
-      const newStatus = overallResult === 'pass' ? 'active' : 'flagged';
-      
-      const { error: ppeUpdateError } = await supabase
-        .from('ppe_items')
-        .update({
-          last_inspection: now.toISOString(),
-          next_inspection: nextInspectionDate.toISOString(),
-          status: newStatus,
-        })
-        .eq('id', ppeItem?.id);
-      
-      if (ppeUpdateError) throw ppeUpdateError;
-      
-      const checkpointDetails = checkpoints.map(cp => ({
-        id: cp.id,
-        description: cp.description,
-        passed: results[cp.id]?.passed,
-        notes: results[cp.id]?.notes,
-        photo_url: results[cp.id]?.photoUrl,
-      }));
-      
-      const submittedData = {
+      const inspectionRecord = {
+        ppe_id: ppeItem?.id,
+        type: inspectionType,
+        date: now.toISOString(),
+        overall_result: overallResult || 'pass',
+        notes: notes,
+        signature_url: signature,
+        inspector_id: user.id,
+        inspector_name: userProfile?.Full_name || user?.user_metadata?.name || 'Unknown Inspector',
+        inspector_employee_id: userProfile?.employee_id || 'Unknown ID',
+        inspector_role: userProfile?.employee_role || 'Unknown Role',
+        site_name: userProfile?.site_name || 'Unknown Site'
+      };
+
+      const { data: inspection, error: inspectionError } = await supabase
+        .from('inspections')
+        .insert(inspectionRecord)
+        .select('id')
+        .single();
+
+      if (inspectionError) throw inspectionError;
+
+      const inspectionData = {
         id: inspection.id,
         date: now.toISOString(),
         type: inspectionType,
         overall_result: overallResult || 'pass',
         notes: notes,
         signature_url: signature,
-        inspector_name: user.user_metadata?.full_name || 'Unknown Inspector',
+        inspector_name: userProfile?.Full_name || user?.user_metadata?.name || 'Unknown Inspector',
+        inspector_id: user?.id || '',
+        inspector_employee_id: userProfile?.employee_id || 'Unknown ID',
+        inspector_role: userProfile?.employee_role || 'Unknown Role',
         ppe_type: ppeItem?.type || 'Unknown',
         ppe_serial: ppeItem?.serialNumber || 'Unknown',
         ppe_brand: ppeItem?.brand || 'Unknown',
         ppe_model: ppeItem?.modelNumber || 'Unknown',
-        checkpoints: checkpointDetails
+        site_name: userProfile?.site_name || 'Unknown Site',
+        manufacturing_date: ppeItem?.manufacturingDate || 'N/A',
+        expiry_date: ppeItem?.expiryDate || 'N/A',
+        checkpoints: checkpoints.map(cp => ({
+          id: cp.id,
+          description: cp.description,
+          passed: cp.passed || false,
+          notes: cp.notes || ''
+        }))
       };
-      
-      console.log('Setting submitted inspection data:', submittedData);
-      setSubmittedInspectionData(submittedData);
+
+      console.log('User profile:', userProfile);
+      console.log('Inspection data for reports:', inspectionData);
+
+      setSubmittedInspectionData(inspectionData);
       setSubmittedInspectionId(inspection.id);
-      
-      queryClient.invalidateQueries({ queryKey: ['ppe-items'] });
-      queryClient.invalidateQueries({ queryKey: ['upcoming-inspections'] });
-      
-      toast({
-        title: 'Inspection Completed',
-        description: 'The inspection has been successfully recorded',
-      });
-      
       setShowSuccessDialog(true);
+      setIsSubmitting(false);
+
     } catch (error: any) {
       console.error('Error submitting inspection:', error);
       
@@ -539,63 +558,25 @@ const InspectionForm = () => {
   };
   
   const handlePDFDownload = async () => {
-    try {
-      if (submittedInspectionData) {
-        await generateInspectionDetailPDF(submittedInspectionData);
-        toast({
-          title: 'PDF Generated',
-          description: 'Inspection report has been downloaded as PDF',
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Inspection data not available',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      toast({
-        title: 'PDF Generation Failed',
-        description: 'Could not generate PDF report',
-        variant: 'destructive',
-      });
+    if (submittedInspectionData) {
+      await generateInspectionDetailPDF(submittedInspectionData);
     }
   };
-  
+
   const handleExcelDownload = async () => {
-    try {
-      if (submittedInspectionData) {
-        await generateInspectionExcelReport(submittedInspectionData);
-        toast({
-          title: 'Excel Generated',
-          description: 'Inspection report has been downloaded as Excel',
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Inspection data not available',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Excel generation error:', error);
-      toast({
-        title: 'Excel Generation Failed',
-        description: 'Could not generate Excel report',
-        variant: 'destructive',
-      });
+    if (submittedInspectionData) {
+      await generateInspectionExcelReport(submittedInspectionData);
     }
   };
   
-  const handleWhatsAppShare = () => {
+  const handleWhatsAppShare = async () => {
     try {
       const message = 
         `Inspection Report\n` +
         `PPE: ${ppeItem?.type} (${ppeItem?.serialNumber})\n` +
         `Date: ${new Date().toLocaleDateString()}\n` +
         `Result: ${overallResult?.toUpperCase() || 'UNKNOWN'}\n` +
-        `Inspector: ${user?.user_metadata?.full_name || 'Unknown'}\n`;
+        `Inspector: ${user?.user_metadata?.full_name || 'Unknown Inspector'}\n`;
       
       const encodedMessage = encodeURIComponent(message);
       
@@ -613,9 +594,10 @@ const InspectionForm = () => {
         variant: 'destructive',
       });
     }
+    return Promise.resolve();
   };
   
-  const handleEmailShare = () => {
+  const handleEmailShare = async () => {
     try {
       const subject = `Inspection Report - ${ppeItem?.type} (${ppeItem?.serialNumber})`;
       
@@ -624,7 +606,7 @@ const InspectionForm = () => {
         `PPE: ${ppeItem?.type} (${ppeItem?.serialNumber})\n` +
         `Date: ${new Date().toLocaleDateString()}\n` +
         `Result: ${overallResult?.toUpperCase() || 'UNKNOWN'}\n` +
-        `Inspector: ${user?.user_metadata?.full_name || 'Unknown'}\n`;
+        `Inspector: ${user?.user_metadata?.full_name || 'Unknown Inspector'}\n`;
       
       const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       
@@ -642,6 +624,17 @@ const InspectionForm = () => {
         variant: 'destructive',
       });
     }
+    return Promise.resolve();
+  };
+  
+  const handleNavigateHome = async () => {
+    navigate('/');
+    return Promise.resolve();
+  };
+
+  const handleNewInspection = async () => {
+    navigate('/inspection/start');
+    return Promise.resolve();
   };
   
   if (isLoading) {
@@ -656,7 +649,7 @@ const InspectionForm = () => {
     return (
       <div className="text-center my-12">
         <p className="text-destructive mb-4">{ppeError}</p>
-        <Button onClick={() => navigate(-1)}>Go Back</Button>
+        <Button onClick={handleNavigateHome}>Go Back</Button>
       </div>
     );
   }
@@ -668,7 +661,7 @@ const InspectionForm = () => {
           variant="ghost" 
           size="sm"
           className="mr-2"
-          onClick={() => navigate(-1)}
+          onClick={handleNavigateHome}
         >
           <ArrowLeft size={18} />
         </Button>
@@ -689,6 +682,18 @@ const InspectionForm = () => {
           <div>
             <p className="text-muted-foreground">Model</p>
             <p>{ppeItem?.modelNumber}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Site Name</p>
+            <p>{ppeItem?.siteName}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Manufacturing Date</p>
+            <p>{ppeItem?.manufacturingDate}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Expiry Date</p>
+            <p>{ppeItem?.expiryDate}</p>
           </div>
         </div>
       </Card>
@@ -950,19 +955,46 @@ const InspectionForm = () => {
         )}
       </div>
       
-      <InspectionSuccessDialog
-        isOpen={showSuccessDialog}
-        onClose={() => {
-          setShowSuccessDialog(false);
-          navigate(`/equipment/${ppeItem?.id}`);
-        }}
-        inspectionId={submittedInspectionId || ''}
-        ppeId={ppeItem?.id || ''}
-        onPDFDownload={handlePDFDownload}
-        onExcelDownload={handleExcelDownload}
-        onWhatsAppShare={handleWhatsAppShare}
-        onEmailShare={handleEmailShare}
-      />
+      {showSuccessDialog && submittedInspectionId && (
+        <InspectionSuccessDialog
+          isOpen={showSuccessDialog}
+          onClose={() => setShowSuccessDialog(false)}
+          inspectionId={submittedInspectionId || ''}
+          ppeId={ppeId || ''}
+          inspectionData={submittedInspectionData || {
+            id: '',
+            date: '',
+            type: '',
+            overall_result: '',
+            notes: null,
+            signature_url: null,
+            inspector_name: '',
+            inspector_id: '',
+            inspector_employee_id: '',
+            inspector_role: '',
+            ppe_type: '',
+            ppe_serial: '',
+            ppe_brand: '',
+            ppe_model: '',
+            site_name: '',
+            manufacturing_date: '',
+            expiry_date: '',
+            checkpoints: []
+          }}
+          onPDFDownload={async () => {
+            if (!submittedInspectionData) return;
+            console.log('Generating PDF with data:', submittedInspectionData);
+            await generateInspectionDetailPDF(submittedInspectionData);
+          }}
+          onExcelDownload={async () => {
+            if (!submittedInspectionData) return;
+            console.log('Generating Excel with data:', submittedInspectionData);
+            await generateInspectionExcelReport(submittedInspectionData);
+          }}
+          onWhatsAppShare={() => Promise.resolve()}
+          onEmailShare={() => Promise.resolve()}
+        />
+      )}
     </div>
   );
 };

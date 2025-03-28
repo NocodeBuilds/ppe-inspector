@@ -33,11 +33,40 @@ interface ActionConfig {
   color?: string;
 }
 
+interface InspectionDetail {
+  id: string;
+  date: string;
+  type: string;
+  overall_result: string;
+  notes: string | null;
+  signature_url: string | null;
+  inspector_name: string;
+  inspector_id: string;
+  inspector_employee_id: string;
+  inspector_department: string;
+  inspector_role: string;
+  ppe_type: string;
+  ppe_serial: string;
+  ppe_brand: string;
+  ppe_model: string;
+  site_name: string;
+  manufacturing_date: string;
+  expiry_date: string;
+  checkpoints: {
+    id: string;
+    description: string;
+    passed: boolean | null;
+    notes: string | null;
+    photo_url: string | null;
+  }[];
+}
+
 interface InspectionSuccessDialogProps {
   isOpen: boolean;
   onClose: () => void;
   inspectionId: string;
   ppeId: string;
+  inspectionData: InspectionDetail;
   onPDFDownload: () => Promise<void>;
   onExcelDownload: () => Promise<void>;
   onWhatsAppShare: () => Promise<void>;
@@ -125,6 +154,7 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
   onClose,
   inspectionId,
   ppeId,
+  inspectionData,
   onPDFDownload,
   onExcelDownload,
   onWhatsAppShare,
@@ -133,12 +163,21 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<ActionType | null>(null);
   const { isOnline } = useNetwork();
-  const [shareFormat, setShareFormat] = useState<ReportFormat>('pdf');
   const [selectedFormat, setSelectedFormat] = useState<ReportFormat>('pdf');
+
+  // Log inspection data for debugging
+  console.log('InspectionSuccessDialog - inspectionData:', inspectionData);
 
   const currentDownloadActions = downloadActions.map(action => ({
     ...action,
-    action: action.id === 'pdf' ? onPDFDownload : onExcelDownload
+    action: async () => {
+      console.log('Downloading report with data:', inspectionData);
+      if (action.id === 'pdf') {
+        await onPDFDownload();
+      } else {
+        await onExcelDownload();
+      }
+    }
   }));
 
   const currentShareActions = createShareActions(

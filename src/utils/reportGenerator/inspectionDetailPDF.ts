@@ -13,6 +13,9 @@ interface InspectionDetail {
   signature_url: string | null;
   inspector_name: string;
   inspector_id: string;
+  inspector_employee_id: string;
+  inspector_department: string;
+  inspector_role: string;
   ppe_type: string;
   ppe_serial: string;
   ppe_brand: string;
@@ -155,13 +158,13 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
       { content: "EMPLOYEE NAME:", styles: { fontStyle: 'bold' } },
       { content: inspection.inspector_name },
       { content: "EMPLOYEE ID:", styles: { fontStyle: 'bold' } },
-      { content: inspection.inspector_id || "N/A" }
+      { content: inspection.inspector_employee_id || "N/A" }
     ],
     [
       { content: "ROLE:", styles: { fontStyle: 'bold' } },
-      { content: "Inspector" },
+      { content: inspection.inspector_role },
       { content: "DEPARTMENT:", styles: { fontStyle: 'bold' } },
-      { content: "Safety" }
+      { content: inspection.inspector_department }
     ]
   ];
 
