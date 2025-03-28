@@ -24,6 +24,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [cameraList, setCameraList] = useState<CameraDevice[]>([]);
   const [currentCamera, setCurrentCamera] = useState<string | null>(null);
+  const [hasProcessedResult, setHasProcessedResult] = useState(false);
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
@@ -82,6 +83,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
     
     try {
       setError(null);
+      setHasProcessedResult(false);
       
       const config = {
         fps: 10,
@@ -126,7 +128,11 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
   };
 
   const handleQrCodeScan = (decodedText: string) => {
+    // Prevent processing the same result multiple times
+    if (hasProcessedResult) return;
+    
     console.log('QR code scanned:', decodedText);
+    setHasProcessedResult(true);
     stopScanner();
     
     // Only call the result handler if we have a valid string

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -20,11 +21,16 @@ const StartInspection = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [multiplePPE, setMultiplePPE] = useState<PPEItem[]>([]);
+  const [processingQRCode, setProcessingQRCode] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { getPPEBySerialNumber } = usePPEData();
 
   const handleScanResult = async (result: string) => {
+    // Prevent multiple scan processing
+    if (processingQRCode) return;
+    
+    setProcessingQRCode(true);
     setShowScanner(false);
     
     try {
@@ -43,6 +49,8 @@ const StartInspection = () => {
         description: error instanceof Error ? error.message : 'Failed to process QR code',
         variant: 'destructive'
       });
+    } finally {
+      setProcessingQRCode(false);
     }
   };
 
@@ -95,6 +103,7 @@ const StartInspection = () => {
     });
     
     // Navigate to the inspection form with the PPE ID
+    console.log('Navigating to inspection form with PPE ID:', ppe.id);
     navigate(`/inspect/${ppe.id}`);
   };
 
@@ -128,6 +137,7 @@ const StartInspection = () => {
                 variant="ghost" 
                 className="w-full justify-between p-6"
                 onClick={() => setShowScanner(true)}
+                disabled={processingQRCode}
               >
                 <div className="flex items-center">
                   <div className="bg-primary/10 p-3 rounded-lg mr-4">
@@ -216,7 +226,14 @@ const StartInspection = () => {
       )}
       
       {/* QR Scanner Dialog */}
-      <Dialog open={showScanner} onOpenChange={setShowScanner}>
+      <Dialog 
+        open={showScanner} 
+        onOpenChange={(open) => {
+          if (!processingQRCode) {
+            setShowScanner(open);
+          }
+        }}
+      >
         <DialogContent className="max-w-md p-0 h-[90vh] max-h-[600px]">
           {showScanner && (
             <QRCodeScanner
