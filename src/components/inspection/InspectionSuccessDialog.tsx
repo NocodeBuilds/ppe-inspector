@@ -271,12 +271,23 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
 
   return (
     <Dialog 
-      open={isOpen} 
+      open={isOpen}
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (open) {
+          onClose();
+        }
       }}
+      modal={true}
     >
-      <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 p-0">
+      <DialogContent 
+        className="sm:max-w-md bg-zinc-900 border-zinc-800 p-0"
+        onPointerDownOutside={(e) => {
+          e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+        }}
+      >
         <div className="relative min-h-[32rem]">
           {/* Success Animation */}
           <div className="absolute inset-0 flex items-center justify-center -mt-16">
