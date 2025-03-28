@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   FileSpreadsheet, 
@@ -19,6 +19,8 @@ import { toast } from '@/hooks/use-toast';
 import { useNetwork } from '@/hooks/useNetwork';
 import { cn } from '@/lib/utils';
 import LogoIcon from '../common/LogoIcon';
+import { supabase } from '@/integrations/supabase/client';
+import { fetchCompleteInspectionData, StandardInspectionData } from '@/utils/reportGenerator/reportDataFormatter';
 
 type ReportFormat = 'pdf' | 'excel';
 type ShareMethod = 'whatsapp' | 'email' | 'onedrive' | 'gdrive';
@@ -38,87 +40,11 @@ interface InspectionSuccessDialogProps {
   onClose: () => void;
   inspectionId: string;
   ppeId: string;
-  onPDFDownload: () => Promise<void>;
-  onExcelDownload: () => Promise<void>;
+  onPDFDownload: (data: StandardInspectionData) => Promise<void>;
+  onExcelDownload: (data: StandardInspectionData) => Promise<void>;
   onWhatsAppShare: () => Promise<void>;
   onEmailShare: () => Promise<void>;
 }
-
-const downloadActions: ActionConfig[] = [
-  {
-    id: 'pdf',
-    label: 'PDF',
-    icon: <FileText className="h-7 w-7" />,
-    action: () => Promise.resolve(),
-    color: 'text-red-400 hover:text-red-300'
-  },
-  {
-    id: 'excel',
-    label: 'Excel',
-    icon: <FileSpreadsheet className="h-7 w-7" />,
-    action: () => Promise.resolve(),
-    color: 'text-green-400 hover:text-green-300'
-  }
-];
-
-const createShareActions = (
-  shareFormat: ReportFormat,
-  onPDFDownload: () => Promise<void>,
-  onExcelDownload: () => Promise<void>,
-  onWhatsAppShare: () => Promise<void>,
-  onEmailShare: () => Promise<void>
-): ActionConfig[] => [
-  {
-    id: 'whatsapp',
-    label: 'WhatsApp',
-    icon: <MessageSquare className="h-7 w-7" />,
-    action: async () => {
-      await (shareFormat === 'pdf' ? onPDFDownload : onExcelDownload)();
-      await onWhatsAppShare();
-    },
-    requiresNetwork: true,
-    color: 'text-green-400 hover:text-green-300'
-  },
-  {
-    id: 'email',
-    label: 'Email',
-    icon: <Mail className="h-7 w-7" />,
-    action: async () => {
-      await (shareFormat === 'pdf' ? onPDFDownload : onExcelDownload)();
-      await onEmailShare();
-    },
-    requiresNetwork: true,
-    color: 'text-blue-400 hover:text-blue-300'
-  },
-  {
-    id: 'onedrive',
-    label: 'OneDrive',
-    icon: <Cloud className="h-7 w-7" />,
-    action: async () => {
-      await (shareFormat === 'pdf' ? onPDFDownload : onExcelDownload)();
-      toast({
-        title: "Coming Soon",
-        description: "OneDrive sharing will be available soon",
-      });
-    },
-    requiresNetwork: true,
-    color: 'text-sky-400 hover:text-sky-300'
-  },
-  {
-    id: 'gdrive',
-    label: 'Google Drive',
-    icon: <Cloud className="h-7 w-7" />,
-    action: async () => {
-      await (shareFormat === 'pdf' ? onPDFDownload : onExcelDownload)();
-      toast({
-        title: "Coming Soon",
-        description: "Google Drive sharing will be available soon",
-      });
-    },
-    requiresNetwork: true,
-    color: 'text-yellow-400 hover:text-yellow-300'
-  }
-];
 
 const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
   isOpen,
@@ -133,21 +59,160 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<ActionType | null>(null);
   const { isOnline } = useNetwork();
-  const [shareFormat, setShareFormat] = useState<ReportFormat>('pdf');
   const [selectedFormat, setSelectedFormat] = useState<ReportFormat>('pdf');
+  const [inspectionData, setInspectionData] = useState<StandardInspectionData | null>(null);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
-  const currentDownloadActions = downloadActions.map(action => ({
-    ...action,
-    action: action.id === 'pdf' ? onPDFDownload : onExcelDownload
-  }));
+  useEffect(() => {
+    if (isOpen && inspectionId) {
+      fetchInspectionData();
+    }
+  }, [isOpen, inspectionId]);
 
-  const currentShareActions = createShareActions(
-    selectedFormat,
-    onPDFDownload,
-    onExcelDownload,
-    onWhatsAppShare,
-    onEmailShare
-  );
+  const fetchInspectionData = async () => {
+    try {
+      setIsDataLoading(true);
+      const data = await fetchCompleteInspectionData(supabase, inspectionId);
+      setInspectionData(data);
+    } catch (error) {
+      console.error('Error fetching inspection data:', error);
+      toast({
+        title: 'Data Loading Error',
+        description: 'Could not load inspection details',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDataLoading(false);
+    }
+  };
+
+  const downloadActions: ActionConfig[] = [
+    {
+      id: 'pdf',
+      label: 'PDF',
+      icon: <FileText className="h-7 w-7" />,
+      action: async () => {
+        if (!inspectionData) {
+          toast({
+            title: 'Missing Data',
+            description: 'Inspection data not available',
+            variant: 'destructive',
+          });
+          return;
+        }
+        await onPDFDownload(inspectionData);
+      },
+      color: 'text-red-400 hover:text-red-300'
+    },
+    {
+      id: 'excel',
+      label: 'Excel',
+      icon: <FileSpreadsheet className="h-7 w-7" />,
+      action: async () => {
+        if (!inspectionData) {
+          toast({
+            title: 'Missing Data',
+            description: 'Inspection data not available',
+            variant: 'destructive',
+          });
+          return;
+        }
+        await onExcelDownload(inspectionData);
+      },
+      color: 'text-green-400 hover:text-green-300'
+    }
+  ];
+
+  const createShareActions = (
+    shareFormat: ReportFormat
+  ): ActionConfig[] => [
+    {
+      id: 'whatsapp',
+      label: 'WhatsApp',
+      icon: <MessageSquare className="h-7 w-7" />,
+      action: async () => {
+        if (!inspectionData) {
+          toast({
+            title: 'Missing Data',
+            description: 'Inspection data not available',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        await (shareFormat === 'pdf' ? onPDFDownload(inspectionData) : onExcelDownload(inspectionData));
+        await onWhatsAppShare();
+      },
+      requiresNetwork: true,
+      color: 'text-green-400 hover:text-green-300'
+    },
+    {
+      id: 'email',
+      label: 'Email',
+      icon: <Mail className="h-7 w-7" />,
+      action: async () => {
+        if (!inspectionData) {
+          toast({
+            title: 'Missing Data',
+            description: 'Inspection data not available',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        await (shareFormat === 'pdf' ? onPDFDownload(inspectionData) : onExcelDownload(inspectionData));
+        await onEmailShare();
+      },
+      requiresNetwork: true,
+      color: 'text-blue-400 hover:text-blue-300'
+    },
+    {
+      id: 'onedrive',
+      label: 'OneDrive',
+      icon: <Cloud className="h-7 w-7" />,
+      action: async () => {
+        if (!inspectionData) {
+          toast({
+            title: 'Missing Data',
+            description: 'Inspection data not available',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        await (shareFormat === 'pdf' ? onPDFDownload(inspectionData) : onExcelDownload(inspectionData));
+        toast({
+          title: "Coming Soon",
+          description: "OneDrive sharing will be available soon",
+        });
+      },
+      requiresNetwork: true,
+      color: 'text-sky-400 hover:text-sky-300'
+    },
+    {
+      id: 'gdrive',
+      label: 'Google Drive',
+      icon: <Cloud className="h-7 w-7" />,
+      action: async () => {
+        if (!inspectionData) {
+          toast({
+            title: 'Missing Data',
+            description: 'Inspection data not available',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        await (shareFormat === 'pdf' ? onPDFDownload(inspectionData) : onExcelDownload(inspectionData));
+        toast({
+          title: "Coming Soon",
+          description: "Google Drive sharing will be available soon",
+        });
+      },
+      requiresNetwork: true,
+      color: 'text-yellow-400 hover:text-yellow-300'
+    }
+  ];
 
   const queueOfflineAction = async (actionId: ActionType) => {
     if (!('serviceWorker' in navigator) || !('SyncManager' in window)) {
@@ -269,6 +334,8 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
     );
   };
 
+  const currentShareActions = createShareActions(selectedFormat);
+
   return (
     <Dialog 
       open={isOpen}
@@ -314,6 +381,12 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
                     <span>You're currently offline</span>
                   </div>
                 )}
+                {isDataLoading && (
+                  <div className="mt-4 flex items-center justify-center text-blue-400 bg-blue-500/10 p-3 rounded-lg">
+                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                    <span>Loading inspection data...</span>
+                  </div>
+                )}
               </DialogDescription>
             </DialogHeader>
 
@@ -325,7 +398,7 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
                     Download as:
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
-                    {currentDownloadActions.map(renderActionButton)}
+                    {downloadActions.map(renderActionButton)}
                   </div>
                 </div>
 
@@ -346,7 +419,7 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
                 variant="outline" 
                 className="flex-1 bg-zinc-800/50 border-zinc-700 hover:bg-zinc-700 text-white py-6" 
                 onClick={() => handleNavigate('/')}
-                disabled={isLoading !== null}
+                disabled={isLoading !== null || isDataLoading}
               >
                 <Home className="mr-2 h-5 w-5" />
                 Home
@@ -354,7 +427,7 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
               <Button 
                 className="flex-1 bg-green-500 hover:bg-green-600 text-white py-6"
                 onClick={() => handleNavigate('/start-inspection')}
-                disabled={isLoading !== null}
+                disabled={isLoading !== null || isDataLoading}
               >
                 <Plus className="mr-2 h-5 w-5" />
                 New Inspection

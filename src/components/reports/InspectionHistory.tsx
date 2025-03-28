@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +18,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { exportInspectionsToExcel } from '@/utils/exportUtils';
 import { generateInspectionsDateReport } from '@/utils/reportGeneratorService';
 import { Badge } from '@/components/ui/badge';
+import { fetchCompleteInspectionData } from '@/utils/reportGenerator/reportDataFormatter';
+import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
+import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
 
 const InspectionHistory = () => {
   const [inspections, setInspections] = useState<any[]>([]);
@@ -52,7 +54,6 @@ const InspectionHistory = () => {
       
       if (error) throw error;
       
-      // Format inspections data
       const formattedInspections = data.map(item => ({
         id: item.id,
         date: item.date,
@@ -81,7 +82,6 @@ const InspectionHistory = () => {
   const applyFilters = () => {
     let filtered = [...inspections];
     
-    // Apply result/type filter
     if (filter === 'pass' || filter === 'fail') {
       filtered = filtered.filter(i => 
         i.overall_result?.toLowerCase() === filter
@@ -92,7 +92,6 @@ const InspectionHistory = () => {
       );
     }
     
-    // Apply timeframe filter
     if (timeframe !== 'all') {
       const now = new Date();
       let startDate = new Date();
@@ -172,8 +171,35 @@ const InspectionHistory = () => {
     }
   };
   
-  const handleViewDetails = (id: string) => {
-    navigate(`/inspection/${id}`);
+  const handleViewDetails = async (id: string) => {
+    try {
+      const inspectionData = await fetchCompleteInspectionData(supabase, id);
+      
+      if (inspectionData) {
+        const confirmDownload = window.confirm('Do you want to download this inspection report?');
+        if (confirmDownload) {
+          const format = window.confirm('Click OK for PDF or Cancel for Excel');
+          if (format) {
+            await generateInspectionDetailPDF(inspectionData);
+            toast({
+              title: 'PDF Generated',
+              description: 'Inspection report has been downloaded as PDF',
+            });
+          } else {
+            await generateInspectionExcelReport(inspectionData);
+            toast({
+              title: 'Excel Generated',
+              description: 'Inspection report has been downloaded as Excel',
+            });
+          }
+        }
+      } else {
+        navigate(`/inspection/${id}`);
+      }
+    } catch (error) {
+      console.error('Error generating report from history:', error);
+      navigate(`/inspection/${id}`);
+    }
   };
   
   const handleFilterChange = (newFilter: string) => {

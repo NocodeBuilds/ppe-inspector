@@ -1,4 +1,3 @@
-
 import { PPEItem } from '@/types';
 import { generatePPEReport } from './reportGenerator/ppePDFReport';
 import { generateInspectionsReport } from './reportGenerator/inspectionsPDFReport';
@@ -6,6 +5,7 @@ import { generateAnalyticsReport } from './reportGenerator/analyticsPDFReport';
 import { generateSinglePPEReport, generateBatchPPEReport } from './reportGenerator/enhancedPDFReport';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { fetchCompleteInspectionData } from './reportGenerator/reportDataFormatter';
 
 // Cache to avoid re-fetching the same data
 const reportCache = new Map<string, {data: any, timestamp: number}>();
@@ -22,6 +22,51 @@ const getFromCache = <T>(cacheKey: string): T | null => {
     }
   }
   return null;
+};
+
+/**
+ * Generate a PDF report for a specific inspection by ID
+ */
+export const generateInspectionReport = async (inspectionId: string): Promise<void> => {
+  try {
+    toast({
+      title: 'Generating Report',
+      description: 'Please wait while we generate your report...',
+    });
+
+    const cacheKey = `inspection_report_${inspectionId}`;
+    let inspectionData = getFromCache(cacheKey);
+
+    if (!inspectionData) {
+      inspectionData = await fetchCompleteInspectionData(supabase, inspectionId);
+      
+      if (!inspectionData) {
+        throw new Error('Could not fetch inspection data');
+      }
+      
+      // Cache the result
+      reportCache.set(cacheKey, {
+        data: inspectionData,
+        timestamp: Date.now()
+      });
+    }
+
+    // Import dynamically to reduce initial load time
+    const { generateInspectionDetailPDF } = await import('./reportGenerator/inspectionDetailPDF');
+    await generateInspectionDetailPDF(inspectionData);
+
+    toast({
+      title: 'Report Generated',
+      description: 'The inspection report has been downloaded',
+    });
+  } catch (error) {
+    console.error('Error generating inspection report:', error);
+    toast({
+      title: 'Report Generation Failed',
+      description: 'Could not generate the inspection report',
+      variant: 'destructive',
+    });
+  }
 };
 
 /**
@@ -143,158 +188,6 @@ export const generatePPEItemReport = async (ppeId: string): Promise<void> => {
 };
 
 /**
- * Generate a PDF report for a specific item with its inspection data
- */
-export const generatePPEInspectionReport = async (ppeId: string, inspectionId?: string): Promise<void> => {
-  try {
-    // Show user feedback
-    toast({
-      title: 'Generating Detailed Report',
-      description: 'Please wait while we prepare your comprehensive report...',
-    });
-    
-    // Fetch PPE item data
-    const { data: ppeData, error: ppeError } = await supabase
-      .from('ppe_items')
-      .select('*')
-      .eq('id', ppeId)
-      .single();
-    
-    if (ppeError) throw ppeError;
-    
-    // Map database item to PPEItem type
-    const ppeItem: PPEItem = {
-      id: ppeData.id,
-      serialNumber: ppeData.serial_number,
-      type: ppeData.type,
-      brand: ppeData.brand,
-      modelNumber: ppeData.model_number,
-      manufacturingDate: ppeData.manufacturing_date,
-      expiryDate: ppeData.expiry_date,
-      status: ppeData.status,
-      imageUrl: ppeData.image_url,
-      nextInspection: ppeData.next_inspection,
-      createdAt: ppeData.created_at,
-      updatedAt: ppeData.updated_at
-    };
-    
-    let inspectionData: any = undefined;
-    
-    // Get inspection data if inspectionId is provided
-    if (inspectionId) {
-      // Fetch inspection details
-      const { data: inspectionDetails, error: inspectionError } = await supabase
-        .from('inspections')
-        .select(`
-          id, date, type, overall_result, notes, signature_url,
-          profiles:inspector_id (full_name)
-        `)
-        .eq('id', inspectionId)
-        .single();
-      
-      if (inspectionError) throw inspectionError;
-      
-      // Fetch checkpoint results for this inspection
-      const { data: checkpointResults, error: checkpointError } = await supabase
-        .from('inspection_results')
-        .select(`
-          id, passed, notes, photo_url,
-          checkpoint:checkpoint_id (id, description)
-        `)
-        .eq('inspection_id', inspectionId);
-      
-      if (checkpointError) throw checkpointError;
-      
-      // Format the checkpoint data
-      const formattedCheckpoints = checkpointResults.map((result: any) => ({
-        id: result.id,
-        checkpointId: result.checkpoint?.id,
-        description: result.checkpoint?.description || 'Unknown checkpoint',
-        passed: result.passed,
-        notes: result.notes,
-        photoUrl: result.photo_url
-      }));
-      
-      // Prepare inspection data
-      inspectionData = {
-        id: inspectionDetails.id,
-        date: inspectionDetails.date,
-        type: inspectionDetails.type,
-        inspector_name: inspectionDetails.profiles?.full_name || 'Unknown',
-        result: inspectionDetails.overall_result,
-        notes: inspectionDetails.notes,
-        signatureUrl: inspectionDetails.signature_url,
-        checkpoints: formattedCheckpoints
-      };
-    } else {
-      // If no inspection ID provided, get the latest inspection
-      const { data: latestInspection, error: latestError } = await supabase
-        .from('inspections')
-        .select(`
-          id, date, type, overall_result, notes, signature_url,
-          profiles:inspector_id (full_name)
-        `)
-        .eq('ppe_id', ppeId)
-        .order('date', { ascending: false })
-        .limit(1)
-        .single();
-      
-      if (!latestError && latestInspection) {
-        // Fetch checkpoint results for the latest inspection
-        const { data: checkpointResults, error: checkpointError } = await supabase
-          .from('inspection_results')
-          .select(`
-            id, passed, notes, photo_url,
-            checkpoint:checkpoint_id (id, description)
-          `)
-          .eq('inspection_id', latestInspection.id);
-        
-        if (!checkpointError && checkpointResults) {
-          // Format the checkpoint data
-          const formattedCheckpoints = checkpointResults.map((result: any) => ({
-            id: result.id,
-            checkpointId: result.checkpoint?.id,
-            description: result.checkpoint?.description || 'Unknown checkpoint',
-            passed: result.passed,
-            notes: result.notes,
-            photoUrl: result.photo_url
-          }));
-          
-          // Prepare inspection data
-          inspectionData = {
-            id: latestInspection.id,
-            date: latestInspection.date,
-            type: latestInspection.type,
-            inspector_name: latestInspection.profiles?.full_name || 'Unknown',
-            result: latestInspection.overall_result,
-            notes: latestInspection.notes,
-            signatureUrl: latestInspection.signature_url,
-            checkpoints: formattedCheckpoints
-          };
-        }
-      }
-    }
-    
-    // Generate the comprehensive report
-    await generateSinglePPEReport(ppeItem, inspectionData);
-    
-    toast({
-      title: 'Report Generated',
-      description: 'Your detailed report has been generated and downloaded successfully.',
-    });
-    
-  } catch (error) {
-    console.error('Error generating detailed report:', error);
-    toast({
-      title: 'Report Error',
-      description: typeof error === 'object' && error && 'message' in error ? 
-        (error as Error).message : 'Failed to generate the detailed report',
-      variant: 'destructive',
-    });
-  }
-};
-
-/**
  * Generate a PDF report for inspections within a date range
  * @param startDate The start date for the report
  * @param endDate The end date for the report
@@ -382,7 +275,7 @@ export const generateInspectionsDateReport = async (startDate: Date, endDate: Da
 /**
  * Generate an analytics PDF report
  */
-export const generateAnalyticsDataReport = async (): Promise<void> => {
+export const generateAnalyticsReport = async (): Promise<void> => {
   try {
     // Show user feedback
     toast({

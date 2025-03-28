@@ -539,21 +539,13 @@ const InspectionForm = () => {
     }
   };
   
-  const handlePDFDownload = async () => {
+  const handlePDFDownload = async (data: StandardInspectionData) => {
     try {
-      if (submittedInspectionData) {
-        await generateInspectionDetailPDF(submittedInspectionData);
-        toast({
-          title: 'PDF Generated',
-          description: 'Inspection report has been downloaded as PDF',
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Inspection data not available',
-          variant: 'destructive',
-        });
-      }
+      await generateInspectionDetailPDF(data);
+      toast({
+        title: 'PDF Generated',
+        description: 'Inspection report has been downloaded as PDF',
+      });
     } catch (error) {
       console.error('PDF generation error:', error);
       toast({
@@ -564,21 +556,13 @@ const InspectionForm = () => {
     }
   };
   
-  const handleExcelDownload = async () => {
+  const handleExcelDownload = async (data: StandardInspectionData) => {
     try {
-      if (submittedInspectionData) {
-        await generateInspectionExcelReport(submittedInspectionData);
-        toast({
-          title: 'Excel Generated',
-          description: 'Inspection report has been downloaded as Excel',
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Inspection data not available',
-          variant: 'destructive',
-        });
-      }
+      await generateInspectionExcelReport(data);
+      toast({
+        title: 'Excel Generated',
+        description: 'Inspection report has been downloaded as Excel',
+      });
     } catch (error) {
       console.error('Excel generation error:', error);
       toast({

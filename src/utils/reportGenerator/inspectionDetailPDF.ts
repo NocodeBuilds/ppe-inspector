@@ -2,34 +2,9 @@ import { ExtendedJsPDF, createPDFDocument, addPDFHeader, addPDFFooter, addSectio
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable, { FontStyle, HAlignType, CellInput, RowInput, Color } from 'jspdf-autotable';
+import { StandardInspectionData, formatDate } from './reportDataFormatter';
 
-// Interface for the inspection data structure
-interface InspectionDetail {
-  id: string;
-  date: string;
-  type: string;
-  overall_result: string;
-  notes: string | null;
-  signature_url: string | null;
-  inspector_name: string;
-  inspector_id: string;
-  ppe_type: string;
-  ppe_serial: string;
-  ppe_brand: string;
-  ppe_model: string;
-  site_name: string;
-  manufacturing_date: string;
-  expiry_date: string;
-  checkpoints: {
-    id: string;
-    description: string;
-    passed: boolean | null;
-    notes: string | null;
-    photo_url: string | null;
-  }[];
-}
-
-// Helper function to convert string to FontStyle type
+// Helper functions from the original file
 const getFontStyle = (style: string): FontStyle => {
   switch (style) {
     case 'bold':
@@ -43,7 +18,6 @@ const getFontStyle = (style: string): FontStyle => {
   }
 };
 
-// Helper function to convert string to HAlignType
 const getHAlign = (align: string): HAlignType => {
   switch (align) {
     case 'center':
@@ -57,7 +31,6 @@ const getHAlign = (align: string): HAlignType => {
   }
 };
 
-// Helper function to ensure the color array has 3 elements (RGB)
 const getColor = (color: number[]): [number, number, number] => {
   if (color.length === 3) {
     return [color[0], color[1], color[2]];
@@ -66,7 +39,7 @@ const getColor = (color: number[]): [number, number, number] => {
   return [0, 0, 0];
 };
 
-export const generateInspectionDetailPDF = async (inspection: InspectionDetail): Promise<void> => {
+export const generateInspectionDetailPDF = async (inspection: StandardInspectionData): Promise<void> => {
   if (!inspection) {
     console.error('No inspection data provided');
     return;
@@ -114,13 +87,13 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   doc.setFontSize(12);
   doc.text("EQUIPMENT DETAILS", margin.left, 40);
   
-  // Fetch site name and manufacturing/expiry dates from inspection details
+  // Use the standardized data
   const siteName = inspection.site_name || "Unknown Site";
   const manufacturingDate = inspection.manufacturing_date || "N/A";
   const expiryDate = inspection.expiry_date || "N/A";
 
   const equipmentData = [
-    ["SITE NAME:", siteName, "INSPECTION DATE:", format(new Date(inspection.date), 'dd.MM.yyyy')],
+    ["SITE NAME:", siteName, "INSPECTION DATE:", formatDate(inspection.date)],
     ["PPE TYPE:", inspection.ppe_type.toUpperCase(), "SERIAL NUMBER:", inspection.ppe_serial],
     ["MAKE (BRAND):", inspection.ppe_brand, "MODEL NUMBER:", inspection.ppe_model],
     ["MANUFACTURING DATE:", manufacturingDate, "EXPIRY DATE:", expiryDate]
@@ -153,13 +126,13 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   const inspectorData: RowInput[] = [
     [
       { content: "EMPLOYEE NAME:", styles: { fontStyle: 'bold' } },
-      { content: inspection.inspector_name },
+      { content: inspection.inspector_name || "Unknown" },
       { content: "EMPLOYEE ID:", styles: { fontStyle: 'bold' } },
-      { content: inspection.inspector_id || "N/A" }
+      { content: inspection.inspector_employee_id || "N/A" }
     ],
     [
       { content: "ROLE:", styles: { fontStyle: 'bold' } },
-      { content: "Inspector" },
+      { content: inspection.inspector_role || "Inspector" },
       { content: "DEPARTMENT:", styles: { fontStyle: 'bold' } },
       { content: "Safety" }
     ]
@@ -340,7 +313,7 @@ export const generateInspectionDetailPDF = async (inspection: InspectionDetail):
   // Add inspection date aligned with signature
   finalY = (doc as any).lastAutoTable.finalY + 5;
   doc.setFontSize(9);
-  doc.text(`DATE: ${format(new Date(inspection.date), 'dd.MM.yyyy')}`, 
+  doc.text(`DATE: ${formatDate(inspection.date)}`, 
            pageWidth - margin.right, finalY, { align: 'right' });
   
   // Consistent footer on all pages

@@ -128,8 +128,10 @@ export type Database = {
       }
       notifications: {
         Row: {
+          category: string | null
           created_at: string | null
           id: string
+          importance: string | null
           message: string | null
           read: boolean | null
           title: string
@@ -137,8 +139,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          category?: string | null
           created_at?: string | null
           id?: string
+          importance?: string | null
           message?: string | null
           read?: boolean | null
           title: string
@@ -146,8 +150,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          category?: string | null
           created_at?: string | null
           id?: string
+          importance?: string | null
           message?: string | null
           read?: boolean | null
           title?: string
@@ -158,6 +164,7 @@ export type Database = {
       }
       ppe_items: {
         Row: {
+          batch_number: number | null
           brand: string
           created_at: string | null
           created_by: string | null
@@ -174,6 +181,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          batch_number?: number | null
           brand: string
           created_at?: string | null
           created_by?: string | null
@@ -190,6 +198,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          batch_number?: number | null
           brand?: string
           created_at?: string | null
           created_by?: string | null
@@ -222,6 +231,7 @@ export type Database = {
           created_at: string | null
           department: string | null
           employee_id: string | null
+          Employee_Role: string | null
           full_name: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"] | null
@@ -234,6 +244,7 @@ export type Database = {
           created_at?: string | null
           department?: string | null
           employee_id?: string | null
+          Employee_Role?: string | null
           full_name?: string | null
           id: string
           role?: Database["public"]["Enums"]["app_role"] | null
@@ -246,6 +257,7 @@ export type Database = {
           created_at?: string | null
           department?: string | null
           employee_id?: string | null
+          Employee_Role?: string | null
           full_name?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"] | null

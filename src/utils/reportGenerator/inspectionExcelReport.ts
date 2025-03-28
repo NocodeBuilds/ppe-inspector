@@ -1,34 +1,13 @@
-
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
-
-interface InspectionDetail {
-  id: string;
-  date: string;
-  type: string;
-  overall_result: string;
-  notes: string | null;
-  signature_url: string | null;
-  inspector_name: string;
-  ppe_type: string;
-  ppe_serial: string;
-  ppe_brand: string;
-  ppe_model: string;
-  checkpoints: {
-    id: string;
-    description: string;
-    passed: boolean | null;
-    notes: string | null;
-    photo_url: string | null;
-  }[];
-}
+import { StandardInspectionData, formatDate } from './reportDataFormatter';
 
 /**
  * Generate and save an Excel report for a single inspection
  * Includes an offline fallback using Blob and saveAs
  */
-export const generateInspectionExcelReport = async (inspection: InspectionDetail): Promise<void> => {
+export const generateInspectionExcelReport = async (inspection: StandardInspectionData): Promise<void> => {
   try {
     // Create a new workbook
     const wb = XLSX.utils.book_new();
@@ -49,16 +28,16 @@ export const generateInspectionExcelReport = async (inspection: InspectionDetail
       ['', '', '', ''],
     ];
     
-    // Get site name from inspector's location
-    const siteName = inspection.inspector_name || "Example Site";
+    // Get site name from inspector's data
+    const siteName = inspection.site_name || "Example Site";
     
-    // Create equipment details section - updated structure
+    // Create equipment details section
     const equipmentRows = [
       ['EQUIPMENT DETAILS', '', '', ''],
-      ['SITE NAME:', siteName, 'INSPECTION DATE:', format(new Date(inspection.date), 'dd.MM.yyyy')],
+      ['SITE NAME:', siteName, 'INSPECTION DATE:', formatDate(inspection.date)],
       ['PPE TYPE:', inspection.ppe_type.toUpperCase(), 'SERIAL NUMBER:', inspection.ppe_serial],
       ['MAKE (BRAND):', inspection.ppe_brand, 'MODEL NUMBER:', inspection.ppe_model],
-      ['MANUFACTURING DATE:', 'N/A', 'EXPIRY DATE:', 'N/A'],
+      ['MANUFACTURING DATE:', inspection.manufacturing_date || 'N/A', 'EXPIRY DATE:', inspection.expiry_date || 'N/A'],
       ['', '', '', ''],
     ];
     
@@ -79,15 +58,15 @@ export const generateInspectionExcelReport = async (inspection: InspectionDetail
     const inspectorRows = [
       ['', '', '', ''],
       ['INSPECTOR DETAILS', '', '', ''],
-      ['EMPLOYEE NAME:', inspection.inspector_name, 'EMPLOYEE ID:', ''],
-      ['ROLE:', 'Inspector', 'DEPARTMENT:', 'Safety'],
+      ['EMPLOYEE NAME:', inspection.inspector_name || 'Unknown', 'EMPLOYEE ID:', inspection.inspector_employee_id || ''],
+      ['ROLE:', inspection.inspector_role || 'Inspector', 'DEPARTMENT:', 'Safety'],
       ['', '', '', ''],
     ];
     
     // Create final result section
     const resultRows = [
       ['FINAL INSPECTION RESULT', '', '', ''],
-      ['OVERALL RESULT:', inspection.overall_result.toUpperCase(), 'DATE:', format(new Date(inspection.date), 'dd.MM.yyyy')],
+      ['OVERALL RESULT:', inspection.overall_result.toUpperCase(), 'DATE:', formatDate(inspection.date)],
       ['', '', '', ''],
       ['Inspector Signature', '', '', ''],
       ['', '', '', ''],
@@ -202,7 +181,7 @@ export const generateInspectionsListExcelReport = async (inspections: any[]): Pr
     
     // Create data rows - ensure all PPE types are in uppercase
     const dataRows = inspections.map(inspection => [
-      format(new Date(inspection.date), 'dd.MM.yyyy'),
+      formatDate(inspection.date),
       inspection.type.toUpperCase(),
       inspection.ppe_serial,
       inspection.ppe_type.toUpperCase(),
