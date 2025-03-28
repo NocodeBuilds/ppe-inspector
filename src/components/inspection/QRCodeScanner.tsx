@@ -30,6 +30,13 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
   const scannerContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Reset processing state when component unmounts
+  useEffect(() => {
+    return () => {
+      setHasProcessedResult(false);
+    };
+  }, []);
+
   // Initialize scanner on mount
   useEffect(() => {
     let mounted = true;
@@ -137,7 +144,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
     
     // Only call the result handler if we have a valid string
     if (decodedText && typeof decodedText === 'string') {
-      onResult(decodedText);
+      // Use a timeout to allow the scanner to fully stop before processing the result
+      setTimeout(() => {
+        onResult(decodedText);
+      }, 50);
     }
   };
 
@@ -166,6 +176,11 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
     });
   };
 
+  const handleClose = () => {
+    stopScanner();
+    onClose();
+  };
+
   return (
     <EnhancedErrorBoundary component="QRCodeScanner">
       <motion.div 
@@ -180,10 +195,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
           <Button 
             variant="ghost" 
             size="icon"
-            onClick={() => {
-              stopScanner();
-              onClose();
-            }}
+            onClick={handleClose}
             aria-label="Close scanner"
           >
             <X size={18} />
@@ -227,7 +239,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
               <Button
                 variant="outline"
                 onClick={switchCamera}
-                disabled={!isScanning}
+                disabled={!isScanning || hasProcessedResult}
                 className="flex items-center gap-2"
               >
                 <RefreshCw size={16} />
@@ -237,10 +249,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
             
             <Button
               variant="destructive"
-              onClick={() => {
-                stopScanner();
-                onClose();
-              }}
+              onClick={handleClose}
               className="flex items-center gap-2"
             >
               <X size={16} />

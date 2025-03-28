@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,19 +22,28 @@ const StartInspection = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [multiplePPE, setMultiplePPE] = useState<PPEItem[]>([]);
   const [processingQRCode, setProcessingQRCode] = useState(false);
+  const navigateRef = useRef<boolean>(false);
+  
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { getPPEBySerialNumber } = usePPEData();
 
+  // Clear processing state when component mounts or route changes
+  useEffect(() => {
+    setProcessingQRCode(false);
+    navigateRef.current = false;
+  }, [location.pathname]);
+
   const handleScanResult = async (result: string) => {
     // Prevent multiple scan processing
-    if (processingQRCode) return;
+    if (processingQRCode || navigateRef.current) return;
     
     setProcessingQRCode(true);
     setShowScanner(false);
     
     try {
-      // Show scanning feedback
+      // Show scanning feedback only once
       toast({
         title: 'Processing',
         description: 'Processing QR code...',
@@ -42,14 +51,13 @@ const StartInspection = () => {
       });
       
       await searchBySerial(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error handling scan result:', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to process QR code',
         variant: 'destructive'
       });
-    } finally {
       setProcessingQRCode(false);
     }
   };
@@ -76,6 +84,7 @@ const StartInspection = () => {
         handlePPESelected(ppeItems[0]);
       } else {
         setMultiplePPE(ppeItems);
+        setProcessingQRCode(false);
       }
     } catch (error) {
       console.error('Error processing serial number:', error);
@@ -84,6 +93,7 @@ const StartInspection = () => {
         description: error instanceof Error ? error.message : 'Failed to find PPE with the given serial number',
         variant: 'destructive'
       });
+      setProcessingQRCode(false);
       throw error; // Re-throw to be handled by caller
     } finally {
       setIsLoading(false);
@@ -92,6 +102,10 @@ const StartInspection = () => {
   };
 
   const handlePPESelected = (ppe: PPEItem) => {
+    // Prevent multiple navigations
+    if (navigateRef.current) return;
+    
+    navigateRef.current = true;
     setMultiplePPE([]);
     setShowScanner(false);
     setSerialNumber('');
@@ -104,16 +118,25 @@ const StartInspection = () => {
     
     // Navigate to the inspection form with the PPE ID
     console.log('Navigating to inspection form with PPE ID:', ppe.id);
-    navigate(`/inspect/${ppe.id}`);
+    
+    // Use setTimeout to ensure state updates complete before navigation
+    setTimeout(() => {
+      navigate(`/inspect/${ppe.id}`);
+    }, 100);
   };
 
   const handleManualSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    searchBySerial(serialNumber);
+    if (!processingQRCode) {
+      searchBySerial(serialNumber);
+    }
   };
 
   const handleManualInspection = () => {
-    navigate('/inspect/new');
+    if (!processingQRCode && !navigateRef.current) {
+      navigateRef.current = true;
+      navigate('/inspect/new');
+    }
   };
 
   return (
@@ -137,7 +160,7 @@ const StartInspection = () => {
                 variant="ghost" 
                 className="w-full justify-between p-6"
                 onClick={() => setShowScanner(true)}
-                disabled={processingQRCode}
+                disabled={processingQRCode || navigateRef.current}
               >
                 <div className="flex items-center">
                   <div className="bg-primary/10 p-3 rounded-lg mr-4">
@@ -178,11 +201,11 @@ const StartInspection = () => {
                       value={serialNumber}
                       onChange={(e) => setSerialNumber(e.target.value)}
                       placeholder="Enter serial number"
-                      disabled={isSearching}
+                      disabled={isSearching || processingQRCode}
                     />
                     <Button 
                       type="submit" 
-                      disabled={!serialNumber.trim() || isSearching}
+                      disabled={!serialNumber.trim() || isSearching || processingQRCode}
                     >
                       {isSearching ? (
                         <span className="flex items-center">
@@ -206,6 +229,7 @@ const StartInspection = () => {
                 variant="ghost" 
                 className="w-full justify-between p-6"
                 onClick={handleManualInspection}
+                disabled={processingQRCode || navigateRef.current}
               >
                 <div className="flex items-center">
                   <div className="bg-primary/10 p-3 rounded-lg mr-4">
@@ -229,7 +253,7 @@ const StartInspection = () => {
       <Dialog 
         open={showScanner} 
         onOpenChange={(open) => {
-          if (!processingQRCode) {
+          if (!processingQRCode && !navigateRef.current) {
             setShowScanner(open);
           }
         }}
@@ -238,7 +262,11 @@ const StartInspection = () => {
           {showScanner && (
             <QRCodeScanner
               onResult={handleScanResult}
-              onClose={() => setShowScanner(false)}
+              onClose={() => {
+                if (!processingQRCode) {
+                  setShowScanner(false);
+                }
+              }}
             />
           )}
         </DialogContent>
@@ -249,7 +277,12 @@ const StartInspection = () => {
         ppeItems={multiplePPE}
         isOpen={multiplePPE.length > 0}
         onPPESelect={handlePPESelected}
-        onClose={() => setMultiplePPE([])}
+        onClose={() => {
+          if (!navigateRef.current) {
+            setMultiplePPE([]);
+            setProcessingQRCode(false);
+          }
+        }}
       />
     </div>
   );
