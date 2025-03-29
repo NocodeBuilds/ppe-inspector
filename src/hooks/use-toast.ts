@@ -25,8 +25,17 @@ export const toast = (options: NotificationOptions | string) => {
     ? { title: options } as NotificationOptions
     : options;
 
+  // Convert ReactNode title to string if it's not already a string
+  // This ensures type compatibility with the primitive toast function
+  const titleAsString = typeof opts.title === 'string' 
+    ? opts.title 
+    : opts.title != null 
+      ? String(opts.title) 
+      : undefined;
+
   return primitiveToast({
     ...opts,
+    title: titleAsString,
     duration: opts.duration || (opts.important ? 10000 : 5000),
     className: opts.variant === 'success' 
       ? 'bg-green-500 text-white border-green-600' 
