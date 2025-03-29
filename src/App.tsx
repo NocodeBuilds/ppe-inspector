@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -103,9 +104,11 @@ const App = () => {
     // reportToErrorService(error, info);
   };
 
+  // Wrap the entire app with the BrowserRouter first, then the error boundary
+  // This ensures that all components have access to the router context
   return (
-    <EnhancedErrorBoundary onError={handleGlobalError} component="AppRoot">
-      <BrowserRouter>
+    <BrowserRouter>
+      <EnhancedErrorBoundary onError={handleGlobalError} component="AppRoot">
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <TooltipProvider>
@@ -158,8 +161,8 @@ const App = () => {
             </TooltipProvider>
           </ThemeProvider>
         </QueryClientProvider>
-      </BrowserRouter>
-    </EnhancedErrorBoundary>
+      </EnhancedErrorBoundary>
+    </BrowserRouter>
   );
 };
 
