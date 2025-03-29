@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, ChevronRight } from 'lucide-react';
@@ -116,8 +115,8 @@ const FeatureSpotlight: React.FC<FeatureSpotlightProps> = ({
         </Button>
         
         <div className="mb-4">
-          <h3 className="font-medium mb-1">{steps[currentStep].title}</h3>
-          <p className="text-sm text-muted-foreground">{steps[currentStep].description}</p>
+          <h3 className="h4 mb-1">{steps[currentStep].title}</h3>
+          <p className="text-caption">{steps[currentStep].description}</p>
         </div>
         
         <div className="flex items-center justify-between">
@@ -131,7 +130,7 @@ const FeatureSpotlight: React.FC<FeatureSpotlightProps> = ({
               />
             ))}
           </div>
-          <Button size="sm" onClick={handleNext}>
+          <Button size="sm" className="text-body-sm" onClick={handleNext}>
             {currentStep < steps.length - 1 ? (
               <>
                 Next

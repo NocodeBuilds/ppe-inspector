@@ -1,4 +1,3 @@
-
 import { Download, Edit, FileText } from 'lucide-react';
 import { PPEItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -117,9 +116,9 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
       <div className="flex items-center gap-3 w-full h-full overflow-hidden">
         {statusIcon}
         <div className="flex-1 min-w-0 overflow-hidden">
-          <h3 className="font-semibold truncate text-sm">{item.type}</h3>
-          <p className="text-xs text-muted-foreground truncate">SN: {item.serialNumber}</p>
-          <p className="text-xs truncate">{getStatusText()}</p>
+          <h3 className="h4 truncate">{item.type}</h3>
+          <p className="text-caption truncate">SN: {item.serialNumber}</p>
+          <p className="text-body-sm truncate">{getStatusText()}</p>
         </div>
         <div className="flex-shrink-0 flex gap-1.5">
           {(type === 'upcoming' || type === 'equipment') && (

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -59,11 +58,11 @@ const BottomNav = () => {
             className={`flex-col justify-center items-center ${
               item.primary 
                 ? 'w-14 h-14 rounded-full shadow-md bg-primary hover:bg-primary/90 text-primary-foreground -mt-5' 
-                : 'h-16 text-xs rounded-none gap-1'
+                : 'h-16 rounded-none gap-1'
             } ${isActive(item.path) && !item.primary ? 'bg-muted text-foreground' : ''}`}
           >
             {item.icon}
-            {!item.primary && <span>{item.name}</span>}
+            {!item.primary && <span className="text-caption">{item.name}</span>}
           </Button>
         ))}
       </div>

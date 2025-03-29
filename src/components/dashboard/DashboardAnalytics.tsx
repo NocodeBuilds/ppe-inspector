@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -239,14 +238,14 @@ const StatCard: React.FC<StatCardProps> = ({ icon, value, label, bgColor, trend 
         {icon}
       </div>
       <div className="flex items-center gap-0.5 justify-center">
-        <span className="text-sm font-bold">{value}</span>
+        <span className="text-body font-bold">{value}</span>
         {trend !== undefined && trend !== 0 && (
-          <span className={`text-xs ${trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
+          <span className={`text-caption ${trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
             {trend > 0 ? <TrendingUp className="h-2 w-2 inline" /> : <TrendingDown className="h-2 w-2 inline" />}
           </span>
         )}
       </div>
-      <span className="text-xs text-muted-foreground leading-tight">{label}</span>
+      <span className="text-caption leading-tight">{label}</span>
     </div>
   );
 };

@@ -321,7 +321,7 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
           )}
         </div>
         <span className={cn(
-          "mt-2 text-sm font-medium transition-colors duration-200",
+          "mt-2 text-body-sm font-medium transition-colors duration-200",
           isActive ? "text-green-400" : "text-zinc-400 group-hover:text-zinc-300"
         )}>
           {isLoading === id ? (
@@ -370,21 +370,21 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
             </div>
 
             <DialogHeader className="space-y-3">
-              <DialogTitle className="text-3xl font-bold text-white text-center">
+              <DialogTitle className="h1 text-white text-center">
                 Inspection Complete!
               </DialogTitle>
-              <DialogDescription className="text-lg text-zinc-400 text-center">
+              <DialogDescription className="text-body-lg text-zinc-400 text-center">
                 Download or share your report
                 {!isOnline && (
                   <div className="mt-4 flex items-center justify-center text-amber-400 bg-amber-500/10 p-3 rounded-lg">
                     <WifiOff className="h-5 w-5 mr-2" />
-                    <span>You're currently offline</span>
+                    <span className="text-body-sm">You're currently offline</span>
                   </div>
                 )}
                 {isDataLoading && (
                   <div className="mt-4 flex items-center justify-center text-blue-400 bg-blue-500/10 p-3 rounded-lg">
                     <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
-                    <span>Loading inspection data...</span>
+                    <span className="text-body-sm">Loading inspection data...</span>
                   </div>
                 )}
               </DialogDescription>
@@ -393,7 +393,7 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
             <div className="mt-10">
               <div className="space-y-8">
                 <div>
-                  <h3 className="text-sm font-medium text-zinc-400 mb-4 flex items-center">
+                  <h3 className="text-overline text-zinc-400 mb-4 flex items-center">
                     <Download className="h-4 w-4 mr-2 text-zinc-500" />
                     Download as:
                   </h3>
@@ -403,7 +403,7 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-zinc-400 mb-4 flex items-center">
+                  <h3 className="text-overline text-zinc-400 mb-4 flex items-center">
                     <Share2 className="h-4 w-4 mr-2 text-zinc-500" />
                     Share via:
                   </h3>
@@ -422,7 +422,7 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
                 disabled={isLoading !== null || isDataLoading}
               >
                 <Home className="mr-2 h-5 w-5" />
-                Home
+                <span className="text-body-sm">Home</span>
               </Button>
               <Button 
                 className="flex-1 bg-green-500 hover:bg-green-600 text-white py-6"
@@ -430,7 +430,7 @@ const InspectionSuccessDialog: React.FC<InspectionSuccessDialogProps> = ({
                 disabled={isLoading !== null || isDataLoading}
               >
                 <Plus className="mr-2 h-5 w-5" />
-                New Inspection
+                <span className="text-body-sm">New Inspection</span>
               </Button>
             </div>
           </div>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNetwork } from '@/hooks/useNetwork';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -30,10 +29,12 @@ const NetworkStatus: React.FC = () => {
       >
         <WifiOff className="h-4 w-4" />
         <AlertTitle className="flex items-center gap-2">
-          Offline
-          <Badge variant="destructive" size="sm">No Connection</Badge>
+          <span className="h4">Offline</span>
+          <Badge variant="destructive" size="sm">
+            <span className="text-caption">No Connection</span>
+          </Badge>
         </AlertTitle>
-        <AlertDescription>
+        <AlertDescription className="text-body-sm">
           You are currently offline. Some features may be limited until your connection is restored.
         </AlertDescription>
       </Alert>
@@ -51,10 +52,12 @@ const NetworkStatus: React.FC = () => {
         <Alert className="bg-green-500/10 border-green-500 text-green-700 dark:text-green-400 shadow-lg">
           <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
           <AlertTitle className="flex items-center gap-2">
-            Back Online
-            <Badge variant="success" size="sm">Connected</Badge>
+            <span className="h4">Back Online</span>
+            <Badge variant="success" size="sm">
+              <span className="text-caption">Connected</span>
+            </Badge>
           </AlertTitle>
-          <AlertDescription className="text-green-700 dark:text-green-400">
+          <AlertDescription className="text-body-sm text-green-700 dark:text-green-400">
             Your connection has been restored. All features are now available.
           </AlertDescription>
         </Alert>

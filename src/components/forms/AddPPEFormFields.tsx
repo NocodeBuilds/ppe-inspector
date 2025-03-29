@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Control } from 'react-hook-form';
 import { AddPPEFormValues, ppeTypes } from './AddPPEFormSchema';
@@ -38,14 +37,15 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
         name="serialNumber"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Serial Number</FormLabel>
+            <FormLabel className="text-body-sm">Serial Number</FormLabel>
             <FormControl>
               <Input 
                 placeholder="Enter serial number" 
                 {...field} 
+                className="text-body"
               />
             </FormControl>
-            <FormMessage />
+            <FormMessage className="text-caption" />
           </FormItem>
         )}
       />
@@ -55,25 +55,25 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
         name="type"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>PPE Type</FormLabel>
+            <FormLabel className="text-body-sm">PPE Type</FormLabel>
             <Select 
               onValueChange={field.onChange} 
               defaultValue={field.value}
             >
               <FormControl>
-                <SelectTrigger>
+                <SelectTrigger className="text-body">
                   <SelectValue placeholder="Select PPE type" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
                 {ppeTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
+                  <SelectItem key={type} value={type} className="text-body">
                     {type}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <FormMessage />
+            <FormMessage className="text-caption" />
           </FormItem>
         )}
       />
@@ -83,14 +83,15 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
         name="brand"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Brand</FormLabel>
+            <FormLabel className="text-body-sm">Brand</FormLabel>
             <FormControl>
               <Input 
                 placeholder="Enter brand name" 
                 {...field} 
+                className="text-body"
               />
             </FormControl>
-            <FormMessage />
+            <FormMessage className="text-caption" />
           </FormItem>
         )}
       />
@@ -100,14 +101,15 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
         name="modelNumber"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Model Number</FormLabel>
+            <FormLabel className="text-body-sm">Model Number</FormLabel>
             <FormControl>
               <Input 
                 placeholder="Enter model number" 
                 {...field} 
+                className="text-body"
               />
             </FormControl>
-            <FormMessage />
+            <FormMessage className="text-caption" />
           </FormItem>
         )}
       />
@@ -118,7 +120,7 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
           name="manufacturingDate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Manufacturing Date</FormLabel>
+              <FormLabel className="text-body-sm">Manufacturing Date</FormLabel>
               <FormControl>
                 <DatePicker 
                   date={field.value} 
@@ -126,7 +128,7 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
                   disableFutureDates={true}
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-caption" />
             </FormItem>
           )}
         />
@@ -136,7 +138,7 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
           name="expiryDate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Expiry Date</FormLabel>
+              <FormLabel className="text-body-sm">Expiry Date</FormLabel>
               <FormControl>
                 <DatePicker 
                   date={field.value} 
@@ -144,17 +146,17 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
                   disablePastDates={true}
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-caption" />
             </FormItem>
           )}
         />
       </div>
 
       <div>
-        <FormLabel className="block mb-2">Equipment Photo</FormLabel>
+        <FormLabel className="block mb-2 text-body-sm">Equipment Photo</FormLabel>
         <CameraCapture onImageCapture={onImageCapture} />
         {imageFile && (
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-caption mt-2">
             Image captured: {imageFile.name}
           </p>
         )}

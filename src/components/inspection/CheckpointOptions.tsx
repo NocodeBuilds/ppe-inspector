@@ -49,7 +49,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
         disabled={disabled}
       >
         <Check className="h-4 w-4 mr-1" />
-        Pass
+        <span className="text-body-sm">Pass</span>
       </Button>
 
       <Button
@@ -66,7 +66,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
         disabled={disabled}
       >
         <X className="h-4 w-4 mr-1" />
-        Fail
+        <span className="text-body-sm">Fail</span>
       </Button>
 
       <Button
@@ -83,7 +83,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
         disabled={disabled}
       >
         <Minus className="h-4 w-4 mr-1" />
-        N/A
+        <span className="text-body-sm">N/A</span>
       </Button>
     </div>
   );
