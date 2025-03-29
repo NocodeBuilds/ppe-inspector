@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -55,9 +54,9 @@ const EditProfile = () => {
           <ProfileForm
             fullName={formData.fullName}
             employeeId={formData.employeeId}
-            siteName={formData.siteName}  // Updated from location to siteName
+            siteName={formData.siteName}
             department={formData.department}
-            bio={formData.bio}
+            Employee_Role={formData.Employee_Role}
             onChange={handleInputChange}
             onSelectChange={handleSelectChange}
           />

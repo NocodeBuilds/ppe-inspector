@@ -1,23 +1,16 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  User, Settings, LogOut, Mail, 
-  Building, MapPin, Briefcase, 
-  FileText, Download, Share2
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { User, Settings, LogOut, Mail, Building, MapPin, Briefcase, FileText } from 'lucide-react';
 
 const Profile = () => {
   const { user, profile, signOut, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
   
   useEffect(() => {
     if (!user) {
@@ -46,20 +39,6 @@ const Profile = () => {
     navigate('/edit-profile');
   };
   
-  const handleShare = () => {
-    toast({
-      title: 'Share',
-      description: 'Sharing profile link is not implemented yet',
-    });
-  };
-  
-  const handleDownloadData = () => {
-    toast({
-      title: 'Download Data',
-      description: 'Profile data download is not implemented yet',
-    });
-  };
-  
   if (!user || !profile) {
     return (
       <div className="flex justify-center my-12">
@@ -67,6 +46,14 @@ const Profile = () => {
       </div>
     );
   }
+  
+  // Debug logging
+  console.log('Profile data:', {
+    employee_id: profile.employee_id,
+    Employee_Role: profile.Employee_Role,
+    department: profile.department,
+    site_name: profile.site_name
+  });
   
   return (
     <div className="fade-in pb-28 md:pb-20 max-h-screen overflow-y-auto">
@@ -77,7 +64,8 @@ const Profile = () => {
       
       <div className="space-y-6 mt-6">
         <Card>
-          <CardContent className="flex flex-col items-center pt-6 pb-6">
+          {/* Main Profile Information */}
+          <CardContent className="flex flex-col items-center pt-6">
             <Avatar className="h-24 w-24 mb-4">
               {profile.avatar_url ? (
                 <AvatarImage src={profile.avatar_url} alt={profile.full_name || 'User'} />
@@ -89,122 +77,66 @@ const Profile = () => {
             </Avatar>
             
             <h2 className="text-xl font-bold mb-1">{profile.full_name || 'User'}</h2>
-            <div className="flex items-center text-muted-foreground">
+            <div className="flex items-center text-muted-foreground mb-4">
               <Mail className="h-4 w-4 mr-1" />
               <span>{user.email}</span>
             </div>
           </CardContent>
+
           <Separator />
-          <CardFooter className="justify-between pt-6">
-            <Button variant="outline" onClick={handleEditProfile}>
+
+          {/* Additional Information */}
+          <CardContent className="pt-6">
+            <h3 className="text-lg font-semibold mb-4">Additional Information</h3>
+            <div className="space-y-3">
+              {profile.employee_id && (
+                <div className="flex items-center text-muted-foreground">
+                  <FileText className="h-4 w-4 mr-2" />
+                  <span className="text-muted-foreground/80">Employee ID:</span>
+                  <span className="ml-2 text-foreground">{profile.employee_id}</span>
+                </div>
+              )}
+              
+              {profile.Employee_Role && (
+                <div className="flex items-center text-muted-foreground">
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  <span className="text-muted-foreground/80">Role:</span>
+                  <span className="ml-2 text-foreground">{profile.Employee_Role}</span>
+                </div>
+              )}
+              
+              {profile.department && (
+                <div className="flex items-center text-muted-foreground">
+                  <Building className="h-4 w-4 mr-2" />
+                  <span className="text-muted-foreground/80">Department:</span>
+                  <span className="ml-2 text-foreground">{profile.department}</span>
+                </div>
+              )}
+              
+              {profile.site_name && (
+                <div className="flex items-center text-muted-foreground">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  <span className="text-muted-foreground/80">Site:</span>
+                  <span className="ml-2 text-foreground">{profile.site_name}</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+
+          <Separator />
+
+          {/* Actions */}
+          <CardContent className="pt-6 flex flex-col gap-3">
+            <Button variant="outline" onClick={handleEditProfile} className="w-full">
               <Settings className="h-4 w-4 mr-2" />
               Edit Profile
             </Button>
-            <Button variant="destructive" onClick={handleLogout} disabled={loading}>
-              {loading ? (
-                <div className="flex items-center">
-                  <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
-                  Signing out...
-                </div>
-              ) : (
-                <>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </>
-              )}
+            <Button variant="destructive" onClick={handleLogout} disabled={loading} className="w-full">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
             </Button>
-          </CardFooter>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Additional Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {profile ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-start">
-                    <Briefcase className="h-5 w-5 mr-3 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Employee ID</p>
-                      <p className="text-sm text-muted-foreground">
-                        {profile.employee_id || 'Not set'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start">
-                    <Building className="h-5 w-5 mr-3 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Department</p>
-                      <p className="text-sm text-muted-foreground">
-                        {profile.department || 'Not set'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start">
-                    <MapPin className="h-5 w-5 mr-3 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Site Name</p>
-                      <p className="text-sm text-muted-foreground">
-                        {profile.site_name || 'Not set'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                {profile.bio && (
-                  <div className="pt-2">
-                    <Separator className="mb-4" />
-                    <div className="flex">
-                      <FileText className="h-5 w-5 mr-3 text-muted-foreground shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium">Bio</p>
-                        <p className="text-sm text-muted-foreground whitespace-pre-line">
-                          {profile.bio}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="py-4 text-center text-muted-foreground">
-                <p>No additional information available.</p>
-                <p className="mt-1 text-sm">
-                  <Button 
-                    variant="link" 
-                    className="p-0 h-auto" 
-                    onClick={handleEditProfile}
-                  >
-                    Add more details to your profile
-                  </Button>
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
-        
-        <div className="flex gap-2 pb-4">
-          <Button 
-            variant="outline" 
-            className="flex-1"
-            onClick={handleDownloadData}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Download Data
-          </Button>
-          <Button 
-            variant="outline" 
-            className="flex-1"
-            onClick={handleShare}
-          >
-            <Share2 className="h-4 w-4 mr-2" />
-            Share Profile
-          </Button>
-        </div>
       </div>
     </div>
   );

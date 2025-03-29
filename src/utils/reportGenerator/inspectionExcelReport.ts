@@ -59,7 +59,7 @@ export const generateInspectionExcelReport = async (inspection: StandardInspecti
       ['', '', '', ''],
       ['INSPECTOR DETAILS', '', '', ''],
       ['EMPLOYEE NAME:', inspection.inspector_name || 'Unknown', 'EMPLOYEE ID:', inspection.inspector_employee_id || ''],
-      ['ROLE:', inspection.inspector_role || 'Inspector', 'DEPARTMENT:', 'Safety'],
+      ['ROLE:', inspection.inspector_role || 'Inspector', 'DEPARTMENT:', inspection.inspector_department || 'N/A'],
       ['', '', '', ''],
     ];
     

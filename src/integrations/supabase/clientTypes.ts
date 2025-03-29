@@ -1,4 +1,3 @@
-
 import type { Database } from './types';
 import { Tables, Enums } from './types';
 
@@ -12,8 +11,9 @@ export type Profile = {
   updated_at: string;
   // Profile fields directly in profiles table
   employee_id: string | null;
-  site_name: string | null;  // Updated from location to site_name
+  site_name: string | null;
   department: string | null;
+  Employee_Role: string | null;
   bio: string | null;
   email: string | null;
 };
