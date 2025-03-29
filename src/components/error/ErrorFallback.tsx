@@ -27,7 +27,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
   }, [error, componentStack, componentName]);
   
   const handleGoHome = () => {
-    // Use window.location instead of React Router for greater reliability
+    // Use window.location instead of React Router to avoid context issues
     window.location.href = '/';
     resetErrorBoundary();
   };
