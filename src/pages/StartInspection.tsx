@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import PageHeader from '@/components/common/PageHeader';
 import QRCodeScanner from '@/components/inspection/QRCodeScanner';
+import EnhancedErrorBoundary from '@/components/error/EnhancedErrorBoundary';
 
 const StartInspection = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -28,14 +29,12 @@ const StartInspection = () => {
   const { toast } = useToast();
   const { getPPEBySerialNumber } = usePPEData();
 
-  // Clear processing state when component mounts or route changes
   useEffect(() => {
     setProcessingQRCode(false);
     navigateRef.current = false;
   }, [location.pathname]);
 
   const handleScanResult = async (result: string) => {
-    // Prevent multiple scan processing
     if (processingQRCode || navigateRef.current) return;
     
     setProcessingQRCode(true);
@@ -222,7 +221,6 @@ const StartInspection = () => {
         </>
       )}
       
-      {/* QR Scanner Dialog */}
       <Dialog 
         open={showScanner} 
         onOpenChange={(open) => {
@@ -231,21 +229,30 @@ const StartInspection = () => {
           }
         }}
       >
-        <DialogContent className="max-w-md p-0 h-[90vh] max-h-[600px]">
+        <DialogContent className="max-w-md p-0 h-[90vh] max-h-[600px]" hideCloseButton>
           {showScanner && (
-            <QRCodeScanner
-              onResult={handleScanResult}
-              onClose={() => {
-                if (!processingQRCode) {
-                  setShowScanner(false);
-                }
-              }}
-            />
+            <EnhancedErrorBoundary 
+              component="QRCodeScanner" 
+              fallback={
+                <div className="p-6 text-center">
+                  <p className="text-red-500 mb-4">Error loading scanner</p>
+                  <Button variant="outline" onClick={() => setShowScanner(false)}>Close</Button>
+                </div>
+              }
+            >
+              <QRCodeScanner
+                onResult={handleScanResult}
+                onClose={() => {
+                  if (!processingQRCode) {
+                    setShowScanner(false);
+                  }
+                }}
+              />
+            </EnhancedErrorBoundary>
           )}
         </DialogContent>
       </Dialog>
       
-      {/* PPE Selection Dialog */}
       <PPESelectionDialog
         ppeItems={multiplePPE}
         isOpen={multiplePPE.length > 0}

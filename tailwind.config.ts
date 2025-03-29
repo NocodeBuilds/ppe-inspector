@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -123,6 +124,19 @@ export default {
           "50%": { transform: "translateY(100%)" },
           "100%": { transform: "translateY(0%)" },
         },
+        "scale-in": {
+          "0%": { 
+            transform: "scale(0.5)",
+            opacity: "0"
+          },
+          "70%": {
+            transform: "scale(1.05)"
+          },
+          "100%": { 
+            transform: "scale(1)",
+            opacity: "1"
+          },
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -130,6 +144,7 @@ export default {
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "spin-fade": "spin-fade 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite",
         "scan": "scan 2s linear infinite",
+        "scale-in": "scale-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards"
       },
     },
   },
