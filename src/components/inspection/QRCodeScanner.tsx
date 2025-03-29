@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import ScannerViewfinder from './ScannerViewfinder';
 import EnhancedErrorBoundary from '../error/EnhancedErrorBoundary';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Define the CameraDevice type that html5-qrcode returns
 interface CameraDevice {
@@ -150,10 +150,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
         (decodedText) => {
           handleQrCodeScan(decodedText);
         },
-        (errorMessage) => {
-          // This is just for qr detection errors, not critical
-          console.log('QR scan process:', errorMessage);
-        }
+        () => {} // Ignore QR detection errors
       );
       
       setIsScanning(true);
@@ -183,16 +180,12 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
     // Prevent processing the same result multiple times
     if (hasProcessedResult) return;
     
-    console.log('QR code scanned:', decodedText);
     setHasProcessedResult(true);
     cleanupScanner();
     
     // Only call the result handler if we have a valid string
     if (decodedText && typeof decodedText === 'string') {
-      // Use a timeout to allow the scanner to fully stop before processing the result
-      setTimeout(() => {
-        onResult(decodedText);
-      }, 50);
+      onResult(decodedText);
     }
   };
 
@@ -207,18 +200,12 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
     
     await cleanupScanner();
     
-    // Find the next camera in the list
     const currentIndex = cameraList.findIndex(camera => camera.id === currentCamera);
     const nextIndex = (currentIndex + 1) % cameraList.length;
     const nextCameraId = cameraList[nextIndex].id;
     
     setCurrentCamera(nextCameraId);
     startScanner(nextCameraId);
-    
-    toast({
-      title: 'Camera Switched',
-      description: `Now using: ${cameraList[nextIndex].label.split('(')[0].trim()}`,
-    });
   };
 
   const handleClose = () => {
@@ -228,28 +215,33 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
 
   if (!hasPermission && error) {
     return (
-      <div className="flex flex-col items-center justify-center p-4 text-center">
-        <Camera className="w-12 h-12 mb-4 text-muted-foreground" />
-        <h3 className="text-lg font-semibold mb-2">Camera Access Required</h3>
-        <p className="text-sm text-muted-foreground mb-4">{error}</p>
-        <Button onClick={retryScanner}>
-          <RefreshCw className="mr-2 h-4 w-4" />
+      <motion.div 
+        className="flex flex-col items-center justify-center p-8 bg-background rounded-lg shadow-lg"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Camera className="w-16 h-16 mb-6 text-muted-foreground" />
+        <h3 className="text-xl font-semibold mb-3">Camera Access Required</h3>
+        <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">{error}</p>
+        <Button onClick={retryScanner} size="lg" className="gap-2">
+          <RefreshCw className="h-5 w-5" />
           Retry Camera Access
         </Button>
-      </div>
+      </motion.div>
     );
   }
 
   return (
     <EnhancedErrorBoundary component="QRCodeScanner">
       <motion.div 
-        className="relative h-full w-full flex flex-col"
+        className="relative h-full w-full flex flex-col bg-background rounded-lg shadow-lg overflow-hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        {/* Header with close button */}
-        <div className="flex justify-between items-center p-4 bg-background/80 backdrop-blur-sm border-b">
+        {/* Header */}
+        <div className="flex justify-between items-center p-4 bg-background/95 backdrop-blur-sm border-b">
           <h2 className="text-lg font-semibold">Scan QR Code</h2>
           <div className="flex gap-2">
             {cameraList.length > 1 && (
@@ -258,15 +250,17 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
                 size="icon"
                 onClick={switchCamera}
                 disabled={isInitializing || !isScanning}
+                className="hover:bg-background/80"
                 aria-label="Switch camera"
               >
                 <RefreshCw size={18} className={isInitializing ? 'animate-spin' : ''} />
               </Button>
             )}
             <Button 
-              variant="ghost" 
+              variant="ghost"
               size="icon"
               onClick={handleClose}
+              className="hover:bg-background/80"
               aria-label="Close scanner"
             >
               <X size={18} />
@@ -275,40 +269,66 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
         </div>
 
         {/* Scanner container */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative bg-black">
           <div 
             id="qr-scanner-container" 
             ref={scannerContainerRef}
             className="w-full h-full"
           />
           
-          {/* Loading state */}
-          {isInitializing && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm">
-              <div className="flex flex-col items-center">
-                <RefreshCw className="w-8 h-8 animate-spin mb-2" />
-                <p className="text-sm">Initializing camera...</p>
-              </div>
-            </div>
-          )}
+          <AnimatePresence>
+            {/* Loading state */}
+            {isInitializing && (
+              <motion.div 
+                className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <div className="flex flex-col items-center bg-background p-6 rounded-lg shadow-lg">
+                  <RefreshCw className="w-10 h-10 animate-spin mb-4 text-primary" />
+                  <p className="text-sm font-medium">Initializing camera...</p>
+                </div>
+              </motion.div>
+            )}
 
-          {/* Error state with retry button */}
-          {error && !isInitializing && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm">
-              <div className="flex flex-col items-center p-4 text-center">
-                <p className="text-sm text-destructive mb-4">{error}</p>
-                <Button onClick={retryScanner}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Retry
-                </Button>
-              </div>
-            </div>
-          )}
+            {/* Error state */}
+            {error && !isInitializing && (
+              <motion.div 
+                className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+              >
+                <div className="flex flex-col items-center bg-background p-6 rounded-lg shadow-lg max-w-sm mx-4">
+                  <p className="text-sm text-destructive mb-4 text-center">{error}</p>
+                  <Button onClick={retryScanner} variant="outline" className="gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Retry
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Scanner viewfinder */}
           {isScanning && !error && !isInitializing && (
-            <ScannerViewfinder />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 pointer-events-none"
+            >
+              <ScannerViewfinder />
+            </motion.div>
           )}
+        </div>
+
+        {/* Scanning instructions */}
+        <div className="p-4 bg-background/95 backdrop-blur-sm border-t text-center">
+          <p className="text-sm text-muted-foreground">
+            Position the QR code within the frame to scan
+          </p>
         </div>
       </motion.div>
     </EnhancedErrorBoundary>

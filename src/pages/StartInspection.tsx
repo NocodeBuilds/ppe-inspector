@@ -95,15 +95,7 @@ const StartInspection = () => {
     setShowScanner(false);
     setSerialNumber('');
     
-    toast({
-      title: 'PPE Found',
-      description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`,
-      variant: 'default'
-    });
-    
-    setTimeout(() => {
-      navigate(`/inspect/${ppe.id}`);
-    }, 100);
+    navigate(`/inspect/${ppe.id}`);
   };
 
   const handleManualSearch = (e: React.FormEvent) => {
