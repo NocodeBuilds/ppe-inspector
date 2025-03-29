@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useBackNavigation } from '@/components/layout/MainLayout';
 
@@ -33,7 +32,7 @@ const PageHeader = ({
   return (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center">
-        <h1 className="text-2xl font-bold">{title}</h1>
+        <h1 className="h2">{title}</h1>
       </div>
       
       {rightElement && (

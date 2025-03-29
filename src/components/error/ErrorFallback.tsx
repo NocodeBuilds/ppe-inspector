@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
@@ -42,36 +41,35 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
             <AlertTriangle className="h-8 w-8 text-red-600" />
           </div>
           
-          <h2 className="text-xl font-bold text-red-600">Something went wrong</h2>
+          <h2 className="h3 text-red-600">Something went wrong</h2>
           {componentName && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-caption">
               Error in: {componentName}
             </p>
           )}
           
-          <div className="bg-red-50 border border-red-200 rounded p-3 w-full overflow-auto max-h-28 text-left">
-            <p className="text-sm font-mono text-red-800 whitespace-pre-wrap">
-              {error.message || 'An unexpected error occurred'}
+          <div className="bg-muted/30 rounded p-3 w-full">
+            <p className="text-body-sm text-muted-foreground break-words font-mono">
+              {error.message}
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-3 w-full pt-2">
-            <Button 
-              variant="outline" 
-              className="flex-1" 
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <Button
               onClick={resetErrorBoundary}
+              className="flex items-center justify-center gap-2 flex-1"
             >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Try again
+              <RefreshCw className="h-4 w-4" />
+              <span className="text-body-sm">Try Again</span>
             </Button>
             
-            <Button 
-              variant="default" 
-              className="flex-1" 
+            <Button
+              variant="outline"
               onClick={handleGoHome}
+              className="flex items-center justify-center gap-2 flex-1"
             >
-              <Home className="mr-2 h-4 w-4" />
-              Go to home
+              <Home className="h-4 w-4" />
+              <span className="text-body-sm">Go Home</span>
             </Button>
           </div>
           

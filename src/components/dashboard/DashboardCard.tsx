@@ -1,4 +1,3 @@
-
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -53,8 +52,8 @@ const DashboardCard = ({
           {icon}
         </div>
         <div className="text-left">
-          <h3 className="text-base sm:text-lg font-medium leading-tight">{title}</h3>
-          <p className="text-sm text-muted-foreground leading-tight">{description}</p>
+          <h3 className="h4">{title}</h3>
+          <p className="text-caption">{description}</p>
         </div>
       </div>
     </Link>

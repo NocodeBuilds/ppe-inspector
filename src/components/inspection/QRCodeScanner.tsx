@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { X, RefreshCw } from 'lucide-react';
@@ -215,14 +214,14 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
           {error && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-4">
               <div className="bg-background rounded-lg p-4 max-w-xs text-center">
-                <p className="text-destructive mb-4">{error}</p>
+                <p className="text-body-sm text-destructive mb-4">{error}</p>
                 <Button 
                   onClick={() => {
                     setError(null);
                     if (currentCamera) startScanner(currentCamera);
                   }}
                 >
-                  Try Again
+                  <span className="text-body-sm">Try Again</span>
                 </Button>
               </div>
             </div>
@@ -243,7 +242,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
                 className="flex items-center gap-2"
               >
                 <RefreshCw size={16} />
-                Switch Camera
+                <span className="text-body-sm">Switch Camera</span>
               </Button>
             )}
             
@@ -253,7 +252,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
               className="flex items-center gap-2"
             >
               <X size={16} />
-              Cancel
+              <span className="text-body-sm">Cancel</span>
             </Button>
           </div>
         </div>

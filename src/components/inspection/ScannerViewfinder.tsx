@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Camera } from 'lucide-react';
@@ -29,7 +28,7 @@ const ScannerViewfinder: React.FC = () => {
       </div>
       
       {/* Instruction text */}
-      <p className="mt-6 text-white text-lg font-medium bg-black/50 px-4 py-2 rounded-md max-w-xs text-center">
+      <p className="mt-6 text-white text-body bg-black/50 px-4 py-2 rounded-md max-w-xs text-center">
         Position the QR code inside the frame
       </p>
     </div>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Bell, X, CheckCheck, Info, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -57,9 +56,9 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
     <div className={`p-3 border-b last:border-0 ${read ? 'bg-background' : 'bg-muted/20'} transition-colors`}>
       <div className="flex items-start gap-2">
         <div className="mt-1">{getIcon()}</div>
-        <div className="flex-1 text-sm">
+        <div className="flex-1">
           <div className="flex justify-between items-start">
-            <h4 className="font-medium">{title}</h4>
+            <h4 className="h4">{title}</h4>
             <div className="flex gap-1">
               {!read && (
                 <Button
@@ -83,8 +82,8 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
               </Button>
             </div>
           </div>
-          <p className="text-muted-foreground text-xs">{message}</p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-caption">{message}</p>
+          <p className="text-caption mt-1">
             {formatDistanceToNow(createdAt, { addSuffix: true })}
           </p>
         </div>
@@ -120,13 +119,13 @@ const NotificationCenter: React.FC = () => {
       </PopoverTrigger>
       <PopoverContent className="w-[350px] p-0" align="end">
         <div className="border-b px-4 py-3 flex justify-between items-center">
-          <h3 className="font-medium text-sm">Notifications</h3>
+          <h3 className="h4">Notifications</h3>
           <div className="flex gap-1">
             {unreadCount > 0 && (
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="text-xs h-7 px-2" 
+                className="text-body-sm h-7 px-2" 
                 onClick={markAllAsRead}
               >
                 Mark all read
@@ -146,7 +145,7 @@ const NotificationCenter: React.FC = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    className="text-destructive cursor-pointer"
+                    className="text-destructive text-body-sm cursor-pointer"
                     onClick={deleteAllNotifications}
                   >
                     Delete all notifications
@@ -172,7 +171,7 @@ const NotificationCenter: React.FC = () => {
             </div>
           ) : notifications.length === 0 ? (
             <div className="p-4 py-8 text-center">
-              <p className="text-muted-foreground text-sm">No notifications</p>
+              <p className="text-caption">No notifications</p>
             </div>
           ) : (
             notifications.map((notification) => (
