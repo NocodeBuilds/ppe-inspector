@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import ScannerViewfinder from './ScannerViewfinder';
@@ -21,21 +20,48 @@ interface QRCodeScannerProps {
 
 const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
   const [isScanning, setIsScanning] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cameraList, setCameraList] = useState<CameraDevice[]>([]);
   const [currentCamera, setCurrentCamera] = useState<string | null>(null);
   const [hasProcessedResult, setHasProcessedResult] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Reset processing state when component unmounts
+  const cleanupScanner = async () => {
+    if (scannerRef.current && isScanning) {
+      try {
+        await scannerRef.current.stop();
+        setIsScanning(false);
+      } catch (err) {
+        console.error('Error during scanner cleanup:', err);
+      }
+    }
+  };
+
+  // Reset processing state and cleanup when component unmounts
   useEffect(() => {
     return () => {
       setHasProcessedResult(false);
+      cleanupScanner();
     };
   }, []);
+
+  const checkCameraPermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(track => track.stop());
+      setHasPermission(true);
+      return true;
+    } catch (err) {
+      setHasPermission(false);
+      setError('Camera permission denied. Please grant access to use the scanner.');
+      return false;
+    }
+  };
 
   // Initialize scanner on mount
   useEffect(() => {
@@ -45,6 +71,9 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
       try {
         if (!scannerContainerRef.current) return;
         
+        const hasAccess = await checkCameraPermission();
+        if (!hasAccess || !mounted) return;
+
         // Create scanner instance
         const scanner = new Html5Qrcode('qr-scanner-container');
         scannerRef.current = scanner;
@@ -63,7 +92,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
           setCurrentCamera(cameraId || null);
           
           if (cameraId) {
-            startScanner(cameraId);
+            await startScanner(cameraId);
           } else if (devices.length === 0) {
             setError('No cameras found on this device');
           }
@@ -73,17 +102,33 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
           console.error('Camera initialization error:', err);
           setError('Failed to initialize camera. Please ensure camera permissions are granted.');
         }
+      } finally {
+        if (mounted) {
+          setIsInitializing(false);
+        }
       }
     };
     
     initScanner();
     
-    // Cleanup function
     return () => {
       mounted = false;
-      stopScanner();
+      cleanupScanner();
     };
   }, []);
+
+  const calculateQrBoxSize = () => {
+    if (!scannerContainerRef.current) return { width: 250, height: 250 };
+    
+    const containerWidth = scannerContainerRef.current.clientWidth;
+    const containerHeight = scannerContainerRef.current.clientHeight;
+    
+    const size = Math.min(containerWidth, containerHeight) * 0.7;
+    return {
+      width: Math.floor(size),
+      height: Math.floor(size)
+    };
+  };
 
   const startScanner = async (deviceId: string) => {
     if (!scannerRef.current) return;
@@ -92,9 +137,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
       setError(null);
       setHasProcessedResult(false);
       
+      const qrBoxSize = calculateQrBoxSize();
       const config = {
         fps: 10,
-        qrbox: { width: 250, height: 250 },
+        qrbox: qrBoxSize,
         aspectRatio: 1,
       };
       
@@ -118,20 +164,19 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
     }
   };
 
-  const stopScanner = () => {
-    if (scannerRef.current && isScanning) {
+  const retryScanner = async () => {
+    setError(null);
+    setIsInitializing(true);
+    await cleanupScanner();
+    
+    if (currentCamera) {
       try {
-        scannerRef.current.stop()
-          .then(() => {
-            setIsScanning(false);
-          })
-          .catch((err) => {
-            console.error('Error stopping scanner:', err);
-          });
+        await startScanner(currentCamera);
       } catch (err) {
-        console.error('Exception when stopping scanner:', err);
+        setError('Failed to restart scanner. Please try again.');
       }
     }
+    setIsInitializing(false);
   };
 
   const handleQrCodeScan = (decodedText: string) => {
@@ -140,7 +185,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
     
     console.log('QR code scanned:', decodedText);
     setHasProcessedResult(true);
-    stopScanner();
+    cleanupScanner();
     
     // Only call the result handler if we have a valid string
     if (decodedText && typeof decodedText === 'string') {
@@ -160,7 +205,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
       return;
     }
     
-    await stopScanner();
+    await cleanupScanner();
     
     // Find the next camera in the list
     const currentIndex = cameraList.findIndex(camera => camera.id === currentCamera);
@@ -177,9 +222,23 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
   };
 
   const handleClose = () => {
-    stopScanner();
+    cleanupScanner();
     onClose();
   };
+
+  if (!hasPermission && error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-4 text-center">
+        <Camera className="w-12 h-12 mb-4 text-muted-foreground" />
+        <h3 className="text-lg font-semibold mb-2">Camera Access Required</h3>
+        <p className="text-sm text-muted-foreground mb-4">{error}</p>
+        <Button onClick={retryScanner}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Retry Camera Access
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <EnhancedErrorBoundary component="QRCodeScanner">
@@ -192,70 +251,64 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
         {/* Header with close button */}
         <div className="flex justify-between items-center p-4 bg-background/80 backdrop-blur-sm border-b">
           <h2 className="text-lg font-semibold">Scan QR Code</h2>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={handleClose}
-            aria-label="Close scanner"
-          >
-            <X size={18} />
-          </Button>
+          <div className="flex gap-2">
+            {cameraList.length > 1 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={switchCamera}
+                disabled={isInitializing || !isScanning}
+                aria-label="Switch camera"
+              >
+                <RefreshCw size={18} className={isInitializing ? 'animate-spin' : ''} />
+              </Button>
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={handleClose}
+              aria-label="Close scanner"
+            >
+              <X size={18} />
+            </Button>
+          </div>
         </div>
-        
+
         {/* Scanner container */}
-        <div className="relative flex-1 bg-black">
-          {/* The actual scanner element */}
+        <div className="flex-1 relative">
           <div 
             id="qr-scanner-container" 
             ref={scannerContainerRef}
             className="w-full h-full"
-          ></div>
+          />
           
-          {/* Error message */}
-          {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-4">
-              <div className="bg-background rounded-lg p-4 max-w-xs text-center">
-                <p className="text-destructive mb-4">{error}</p>
-                <Button 
-                  onClick={() => {
-                    setError(null);
-                    if (currentCamera) startScanner(currentCamera);
-                  }}
-                >
-                  Try Again
+          {/* Loading state */}
+          {isInitializing && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm">
+              <div className="flex flex-col items-center">
+                <RefreshCw className="w-8 h-8 animate-spin mb-2" />
+                <p className="text-sm">Initializing camera...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error state with retry button */}
+          {error && !isInitializing && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm">
+              <div className="flex flex-col items-center p-4 text-center">
+                <p className="text-sm text-destructive mb-4">{error}</p>
+                <Button onClick={retryScanner}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry
                 </Button>
               </div>
             </div>
           )}
-          
-          {/* Scanner viewfinder overlay */}
-          {isScanning && !error && <ScannerViewfinder />}
-        </div>
-        
-        {/* Footer with controls */}
-        <div className="p-4 border-t bg-background/80 backdrop-blur-sm">
-          <div className="flex gap-2 justify-center">
-            {cameraList.length > 1 && (
-              <Button
-                variant="outline"
-                onClick={switchCamera}
-                disabled={!isScanning || hasProcessedResult}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw size={16} />
-                Switch Camera
-              </Button>
-            )}
-            
-            <Button
-              variant="destructive"
-              onClick={handleClose}
-              className="flex items-center gap-2"
-            >
-              <X size={16} />
-              Cancel
-            </Button>
-          </div>
+
+          {/* Scanner viewfinder */}
+          {isScanning && !error && !isInitializing && (
+            <ScannerViewfinder />
+          )}
         </div>
       </motion.div>
     </EnhancedErrorBoundary>
