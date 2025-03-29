@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -43,13 +42,6 @@ const StartInspection = () => {
     setShowScanner(false);
     
     try {
-      // Show scanning feedback only once
-      toast({
-        title: 'Processing',
-        description: 'Processing QR code...',
-        variant: 'default'
-      });
-      
       await searchBySerial(result);
     } catch (error: any) {
       console.error('Error handling scan result:', error);
@@ -71,10 +63,7 @@ const StartInspection = () => {
     setIsSearching(true);
     
     try {
-      console.log('Searching for serial number:', serial);
-      
       const ppeItems = await getPPEBySerialNumber(serial);
-      console.log('Found PPE items:', ppeItems);
       
       if (!ppeItems || ppeItems.length === 0) {
         throw new Error(`No PPE found with serial number: ${serial}`);
@@ -94,7 +83,7 @@ const StartInspection = () => {
         variant: 'destructive'
       });
       setProcessingQRCode(false);
-      throw error; // Re-throw to be handled by caller
+      throw error;
     } finally {
       setIsLoading(false);
       setIsSearching(false);
@@ -102,11 +91,7 @@ const StartInspection = () => {
   };
 
   const handlePPESelected = (ppe: PPEItem) => {
-    // Prevent multiple navigations
-    if (navigateRef.current) return;
-    
     navigateRef.current = true;
-    setMultiplePPE([]);
     setShowScanner(false);
     setSerialNumber('');
     
@@ -116,10 +101,6 @@ const StartInspection = () => {
       variant: 'default'
     });
     
-    // Navigate to the inspection form with the PPE ID
-    console.log('Navigating to inspection form with PPE ID:', ppe.id);
-    
-    // Use setTimeout to ensure state updates complete before navigation
     setTimeout(() => {
       navigate(`/inspect/${ppe.id}`);
     }, 100);
