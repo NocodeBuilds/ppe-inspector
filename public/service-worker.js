@@ -1,7 +1,8 @@
+
 // Service Worker for PPE Inspector PWA
-const CACHE_NAME = 'ppe-inspector-v3';
-const DYNAMIC_CACHE = 'ppe-inspector-dynamic-v3';
-const API_CACHE = 'ppe-inspector-api-v3';
+const CACHE_NAME = 'ppe-inspector-v4';
+const DYNAMIC_CACHE = 'ppe-inspector-dynamic-v4';
+const API_CACHE = 'ppe-inspector-api-v4';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
@@ -64,8 +65,100 @@ const syncHelpers = {
     clients.forEach(client => {
       client.postMessage(message);
     });
+  },
+  
+  // Store notification for later delivery
+  storeNotificationForSync: async (notification) => {
+    try {
+      // Open the 'notifications-sync' object store to store pending notifications
+      const db = await openNotificationDatabase();
+      const tx = db.transaction('notifications-sync', 'readwrite');
+      const store = tx.objectStore('notifications-sync');
+      
+      // Add the notification with timestamp
+      await store.add({
+        ...notification,
+        timestamp: Date.now()
+      });
+      
+      return new Promise((resolve, reject) => {
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (error) {
+      console.error('[Service Worker] Failed to store notification:', error);
+      return false;
+    }
+  },
+  
+  // Get pending notifications
+  getPendingNotifications: async () => {
+    try {
+      const db = await openNotificationDatabase();
+      const tx = db.transaction('notifications-sync', 'readonly');
+      const store = tx.objectStore('notifications-sync');
+      
+      return new Promise((resolve, reject) => {
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('[Service Worker] Failed to get pending notifications:', error);
+      return [];
+    }
+  },
+  
+  // Clear delivered notifications from storage
+  clearDeliveredNotifications: async (ids) => {
+    if (!ids || !ids.length) return;
+    
+    try {
+      const db = await openNotificationDatabase();
+      const tx = db.transaction('notifications-sync', 'readwrite');
+      const store = tx.objectStore('notifications-sync');
+      
+      for (const id of ids) {
+        store.delete(id);
+      }
+      
+      return new Promise((resolve, reject) => {
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (error) {
+      console.error('[Service Worker] Failed to clear delivered notifications:', error);
+    }
   }
 };
+
+// IndexedDB for storing notifications that need to be synced
+let notificationDb = null;
+
+function openNotificationDatabase() {
+  if (notificationDb) return Promise.resolve(notificationDb);
+  
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('notifications-db', 1);
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('notifications-sync')) {
+        db.createObjectStore('notifications-sync', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    
+    request.onsuccess = (event) => {
+      notificationDb = event.target.result;
+      resolve(notificationDb);
+    };
+    
+    request.onerror = (event) => {
+      console.error('[Service Worker] IndexedDB error:', event.target.error);
+      reject(event.target.error);
+    };
+  });
+}
 
 // Simplified install event - only cache critical assets
 self.addEventListener('install', (event) => {
@@ -74,6 +167,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     Promise.resolve()
       .then(async () => {
+        // Initialize notification database
+        await openNotificationDatabase();
+        
         const success = await cacheHelpers.addResourcesToCache(CACHE_NAME, STATIC_ASSETS);
         if (success) {
           console.log('[Service Worker] Successfully installed');
@@ -169,10 +265,10 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// Push notification event with sound and vibration
+// Enhanced Push notification event with sound and vibration
 self.addEventListener('push', (event) => {
   try {
-    let payload = { title: 'New Notification', body: 'Something new happened', url: '/' };
+    let payload = { title: 'New Notification', body: 'Something new happened', url: '/', type: 'info' };
     
     // Try to parse the payload
     if (event.data) {
@@ -183,13 +279,24 @@ self.addEventListener('push', (event) => {
       }
     }
     
+    // Configure notification appearance based on type
+    let icon = '/favicon.ico';
+    let badge = '/favicon.ico';
+    let tag = payload.tag || 'default';
+    let requireInteraction = payload.type === 'error' || payload.important;
+    
     const options = {
       body: payload.body,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
+      icon: icon,
+      badge: badge,
+      tag: tag,
       vibrate: [100, 50, 100],
+      requireInteraction: requireInteraction,
+      renotify: payload.type === 'error',
       data: {
-        url: payload.url || '/'
+        url: payload.url || '/',
+        type: payload.type || 'info',
+        timestamp: Date.now()
       },
       actions: [
         {
@@ -211,28 +318,104 @@ self.addEventListener('push', (event) => {
   }
 });
 
-// Notification click event handler
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  
-  // Handle notification action clicks
-  if (event.action === 'view') {
-    const url = event.notification.data.url || '/';
-    
+// Handle background sync for notifications
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-notifications') {
     event.waitUntil(
-      clients.matchAll({ type: 'window' }).then(clientsList => {
-        // If a tab is already open, focus it
-        for (const client of clientsList) {
-          if (client.url === url && 'focus' in client) {
-            return client.focus();
+      syncHelpers.getPendingNotifications()
+        .then(async (notifications) => {
+          if (notifications.length === 0) return;
+          
+          console.log('[Service Worker] Syncing pending notifications:', notifications.length);
+          
+          const deliveredIds = [];
+          
+          for (const notification of notifications) {
+            // Show the notification
+            await self.registration.showNotification(notification.title, {
+              body: notification.body,
+              icon: '/favicon.ico',
+              badge: '/favicon.ico',
+              tag: notification.tag || 'synced',
+              vibrate: [100, 50, 100],
+              data: {
+                url: notification.url || '/',
+                type: notification.type || 'info',
+                synced: true,
+                timestamp: Date.now()
+              }
+            });
+            
+            deliveredIds.push(notification.id);
           }
-        }
+          
+          // Clear delivered notifications
+          return syncHelpers.clearDeliveredNotifications(deliveredIds);
+        })
+        .catch(error => {
+          console.error('[Service Worker] Failed to process sync:', error);
+        })
+    );
+  }
+});
+
+// Enhanced notification click event handler
+self.addEventListener('notificationclick', (event) => {
+  const notification = event.notification;
+  const action = event.action;
+  const notificationData = notification.data || {};
+  
+  notification.close();
+  
+  let targetUrl = notificationData.url || '/';
+  
+  // Handle specific actions
+  if (action === 'view') {
+    // Already have targetUrl set
+  } else if (action === 'dismiss') {
+    // Just close the notification, no further action
+    return;
+  }
+  
+  // Custom handling for different notification types
+  if (notificationData.type === 'error') {
+    targetUrl = targetUrl || '/flagged';
+  } else if (notificationData.type === 'warning') {
+    targetUrl = targetUrl || '/upcoming';
+  }
+  
+  // Open/focus the appropriate window
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then(clientsList => {
+      // If a tab is already open with the target URL, focus it
+      for (const client of clientsList) {
+        const url = new URL(client.url);
+        const targetPath = new URL(targetUrl, self.location.origin).pathname;
         
-        // Otherwise open a new tab
-        if (clients.openWindow) {
-          return clients.openWindow(url);
+        if (url.pathname === targetPath && 'focus' in client) {
+          return client.focus();
         }
-      })
+      }
+      
+      // If no matching tab is open, open a new one
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
+// Listen for message events to manually trigger sync
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SYNC_NOTIFICATIONS') {
+    event.waitUntil(
+      self.registration.sync.register('sync-notifications')
+        .then(() => {
+          console.log('[Service Worker] Registered notification sync');
+        })
+        .catch(error => {
+          console.error('[Service Worker] Failed to register sync:', error);
+        })
     );
   }
 });
