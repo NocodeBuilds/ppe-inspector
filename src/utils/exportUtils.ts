@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import { formatDateOrNA } from './pdfUtils';
@@ -52,7 +51,11 @@ export const exportInspectionsToExcel = async () => {
       .from('inspections')
       .select(`
         id, date, type, overall_result, notes,
-        profiles:inspector_id (full_name),
+        profiles:inspector_id (
+          full_name,
+          Employee_Role,
+          department
+        ),
         ppe_items:ppe_id (type, serial_number)
       `);
     
@@ -65,6 +68,8 @@ export const exportInspectionsToExcel = async () => {
         'Type': item.type,
         'Result': item.overall_result,
         'Inspector': item.profiles?.full_name || 'Unknown',
+        'Role': item.profiles?.Employee_Role || 'Unknown',
+        'Department': item.profiles?.department || 'Unknown',
         'PPE Type': item.ppe_items?.type || 'Unknown',
         'Serial Number': item.ppe_items?.serial_number || 'Unknown',
         'Notes': item.notes || ''

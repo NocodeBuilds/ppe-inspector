@@ -7,8 +7,9 @@ import { useToast } from '@/hooks/use-toast';
 type ProfileFormData = {
   fullName: string;
   employeeId: string;
-  siteName: string;  // Updated from location to siteName
+  siteName: string;
   department: string;
+  Employee_Role: string;
   bio: string;
 };
 
@@ -22,8 +23,9 @@ export const useProfileForm = () => {
   const [formData, setFormData] = useState<ProfileFormData>({
     fullName: '',
     employeeId: '',
-    siteName: '',  // Updated from location to siteName
+    siteName: '',
     department: '',
+    Employee_Role: '',
     bio: '',
   });
   
@@ -58,8 +60,9 @@ export const useProfileForm = () => {
       setFormData({
         fullName: profile.full_name || '',
         employeeId: profile.employee_id || '',
-        siteName: profile.site_name || '',  // Consistently use siteName
+        siteName: profile.site_name || '',
         department: profile.department || '',
+        Employee_Role: profile.Employee_Role || '',
         bio: profile.bio || '',
       });
     }
@@ -119,8 +122,9 @@ export const useProfileForm = () => {
             avatar_url: avatarUrl || profile.avatar_url,
             updated_at: new Date().toISOString(),
             employee_id: formData.employeeId,
-            site_name: formData.siteName,  // Consistently use siteName
+            site_name: formData.siteName,
             department: formData.department,
+            Employee_Role: formData.Employee_Role,
             bio: formData.bio
           })
           .eq('id', profile.id);

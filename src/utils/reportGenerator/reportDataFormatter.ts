@@ -1,4 +1,3 @@
-
 import { format } from 'date-fns';
 
 // Standardized interface for inspection data across all report generators
@@ -13,6 +12,7 @@ export interface StandardInspectionData {
   inspector_id: string;
   inspector_employee_id?: string;
   inspector_role?: string;
+  inspector_department?: string;
   ppe_type: string;
   ppe_serial: string;
   ppe_brand: string;
@@ -42,6 +42,7 @@ export const formatFromFormSubmission = (formData: any, userProfile: any): Stand
     inspector_id: userProfile?.id || '',
     inspector_employee_id: userProfile?.employee_id || '',
     inspector_role: userProfile?.Employee_Role || userProfile?.role || '',
+    inspector_department: userProfile?.department || '',
     ppe_type: formData.ppe_type || '',
     ppe_serial: formData.ppe_serial || '',
     ppe_brand: formData.ppe_brand || '',
@@ -70,6 +71,7 @@ export const formatFromDatabaseFetch = (dbData: any): StandardInspectionData => 
     inspector_id: dbData.inspector_id || '',
     inspector_employee_id: profiles.employee_id || '',
     inspector_role: profiles.Employee_Role || profiles.role || '',
+    inspector_department: profiles.department || '',
     ppe_type: ppeItems.type || '',
     ppe_serial: ppeItems.serial_number || '',
     ppe_brand: ppeItems.brand || '',

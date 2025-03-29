@@ -1,6 +1,5 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { 
   Select,
   SelectContent,
@@ -13,14 +12,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface ProfileFormProps {
   fullName: string;
   employeeId: string;
-  siteName: string;  // Updated from location to siteName
+  siteName: string;
   department: string;
-  bio: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  Employee_Role: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSelectChange: (field: string, value: string) => void;
 }
 
-const siteNames = [  // Updated variable name from locations to siteNames
+const siteNames = [
   'Molagavalli 1 & 2', 
   'Molagavalli 3', 
   'Nimbagallu', 
@@ -46,12 +45,24 @@ const departments = [
   'Others'
 ];
 
+const employeeRoles = [
+  'DET',
+  'GET',
+  'Jr. Engineer',
+  'Engineer',
+  'Sr. Engineer',
+  'Assistant Manager',
+  'Deputy Manager',
+  'Manager',
+  'General Manager'
+];
+
 const ProfileForm = ({ 
   fullName, 
   employeeId, 
-  siteName,  // Updated from location to siteName
-  department, 
-  bio, 
+  siteName,
+  department,
+  Employee_Role,
   onChange,
   onSelectChange 
 }: ProfileFormProps) => {
@@ -80,26 +91,26 @@ const ProfileForm = ({
       </div>
       
       <div>
-        <label htmlFor="siteName" className="text-body-sm block mb-1">Site Name (Optional)</label>
+        <label htmlFor="Employee_Role" className="text-body-sm block mb-1">Role (Optional)</label>
         <Select
-          value={siteName}
-          onValueChange={(value) => onSelectChange('siteName', value)}
+          value={Employee_Role}
+          onValueChange={(value) => onSelectChange('Employee_Role', value)}
         >
-          <SelectTrigger id="siteName" className="w-full text-body">
-            <SelectValue placeholder="Select your site" />
+          <SelectTrigger id="Employee_Role" className="w-full text-body">
+            <SelectValue placeholder="Select your role" />
           </SelectTrigger>
           <SelectContent>
             <ScrollArea className="h-[200px]">
-              {siteNames.map((site) => (
-                <SelectItem key={site} value={site} className="text-body">
-                  {site}
+              {employeeRoles.map((role) => (
+                <SelectItem key={role} value={role} className="text-body">
+                  {role}
                 </SelectItem>
               ))}
             </ScrollArea>
           </SelectContent>
         </Select>
       </div>
-      
+
       <div>
         <label htmlFor="department" className="text-body-sm block mb-1">Department (Optional)</label>
         <Select
@@ -122,15 +133,24 @@ const ProfileForm = ({
       </div>
       
       <div>
-        <label htmlFor="bio" className="text-body-sm block mb-1">Bio (Optional)</label>
-        <Textarea
-          id="bio"
-          value={bio}
-          onChange={onChange}
-          placeholder="A short bio about yourself"
-          rows={4}
-          className="text-body"
-        />
+        <label htmlFor="siteName" className="text-body-sm block mb-1">Site Name (Optional)</label>
+        <Select
+          value={siteName}
+          onValueChange={(value) => onSelectChange('siteName', value)}
+        >
+          <SelectTrigger id="siteName" className="w-full text-body">
+            <SelectValue placeholder="Select your site" />
+          </SelectTrigger>
+          <SelectContent>
+            <ScrollArea className="h-[200px]">
+              {siteNames.map((site) => (
+                <SelectItem key={site} value={site} className="text-body">
+                  {site}
+                </SelectItem>
+              ))}
+            </ScrollArea>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
