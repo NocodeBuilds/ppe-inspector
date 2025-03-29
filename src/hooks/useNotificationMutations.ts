@@ -167,18 +167,25 @@ export const useNotificationMutations = (
              messageOrType === 'success' || messageOrType === 'error')) {
       title = titleOrOptions;
       type = messageOrType as NotificationType;
-      const options = typeOrOptions as { description?: string } || {};
-      message = options?.description || '';
+      if (typeOrOptions && typeof typeOrOptions === 'object') {
+        const options = typeOrOptions as { description?: string };
+        message = options.description || '';
+      }
     } 
-    // Case 3: Handle other cases (options object)
+    // Case 3: Handle options object
     else {
       if (typeof titleOrOptions === 'string') {
         title = titleOrOptions;
-        const options = typeof messageOrType === 'object' ? messageOrType : {};
-        message = options?.description || '';
+        if (messageOrType && typeof messageOrType === 'object') {
+          const options = messageOrType as { description?: string };
+          message = options.description || '';
+        }
+      } else if (typeof titleOrOptions === 'object') {
+        title = 'Notification';
+        const options = titleOrOptions as { description?: string };
+        message = options.description || '';
       } else {
         title = 'Notification';
-        message = titleOrOptions?.description || '';
       }
       
       if (typeof messageOrType === 'string' && 

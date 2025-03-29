@@ -22,7 +22,7 @@ export interface NotificationOptions {
 // Enhanced toast function with improved options
 export const toast = (options: NotificationOptions | string) => {
   const opts = typeof options === "string" 
-    ? { title: options } 
+    ? { title: options } as NotificationOptions
     : options;
 
   return primitiveToast({

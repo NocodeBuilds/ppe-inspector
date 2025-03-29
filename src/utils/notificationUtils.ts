@@ -1,6 +1,7 @@
 
 import { toast } from '@/hooks/use-toast';
 import { NotificationType } from '@/hooks/useNotificationMutations';
+import { ToastActionElement } from '@/components/ui/use-toast-primitive';
 
 /**
  * Show a toast notification with consistent styling
@@ -11,7 +12,7 @@ export function showToast(
   type: NotificationType = 'info',
   options?: { 
     duration?: number;
-    action?: React.ReactNode;
+    action?: ToastActionElement;
     important?: boolean;
   }
 ) {

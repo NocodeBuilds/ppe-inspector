@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { Notification } from '@/integrations/supabase/clientTypes';
+import { Notification } from './useNotifications';
 
 export interface UseNotificationQueriesReturn {
   notifications: Notification[];
@@ -36,11 +36,18 @@ export const useNotificationQueries = (): UseNotificationQueriesReturn => {
       
       if (error) throw error;
       
+      // Map the database fields to our client-side model
       const formattedNotifications = data.map(item => ({
-        ...item,
+        id: item.id,
+        title: item.title,
+        message: item.message,
+        type: item.type as 'info' | 'warning' | 'success' | 'error',
         createdAt: new Date(item.created_at),
         read: item.read || false,
-        type: (item.type || 'info') as 'info' | 'warning' | 'success' | 'error'
+        user_id: item.user_id,
+        category: item.category || 'general',
+        importance: item.importance || 'medium',
+        created_at: item.created_at
       })) as Notification[];
       
       setNotifications(formattedNotifications);

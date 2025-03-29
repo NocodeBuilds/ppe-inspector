@@ -11,8 +11,11 @@ export interface Notification {
   message: string;
   type: NotificationType;
   createdAt: Date;
+  created_at: string; // Keep the original field for compatibility
   read: boolean;
   user_id: string;
+  category?: string;
+  importance?: string;
 }
 
 export const useNotifications = () => {

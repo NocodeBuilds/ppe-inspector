@@ -222,7 +222,7 @@ const NotificationCenter: React.FC = () => {
                     id={notification.id}
                     title={notification.title}
                     message={notification.message}
-                    type={notification.type}
+                    type={notification.type as NotificationType}
                     createdAt={notification.createdAt}
                     read={notification.read}
                     onMarkAsRead={markAsRead}
