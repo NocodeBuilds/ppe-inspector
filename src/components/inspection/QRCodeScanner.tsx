@@ -1,13 +1,28 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
-import { X, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { X, RefreshCw, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useQRScannerManager } from '@/hooks/useQRScannerManager';
 import ScannerViewfinder from './ScannerViewfinder';
 import EnhancedErrorBoundary from '../error/EnhancedErrorBoundary';
-import { motion } from 'framer-motion';
 
-// Define the CameraDevice type that html5-qrcode returns
+// Scanner configuration
+const SCANNER_CONFIG = {
+  fps: 30,
+  qrbox: {
+    width: Math.min(window.innerWidth * 0.7, 300),
+    height: Math.min(window.innerWidth * 0.7, 300)
+  },
+  aspectRatio: 1,
+  disableFlip: false,
+  formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+  experimentalFeatures: {
+    useBarCodeDetectorIfSupported: true
+  }
+};
+
 interface CameraDevice {
   id: string;
   label: string;
@@ -23,18 +38,14 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [cameraList, setCameraList] = useState<CameraDevice[]>([]);
   const [currentCamera, setCurrentCamera] = useState<string | null>(null);
-  const [hasProcessedResult, setHasProcessedResult] = useState(false);
+  const [torchEnabled, setTorchEnabled] = useState(false);
+  const [hasTorch, setHasTorch] = useState(false);
+  const [focusMode, setFocusMode] = useState<'auto' | 'manual'>('auto');
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-
-  // Reset processing state when component unmounts
-  useEffect(() => {
-    return () => {
-      setHasProcessedResult(false);
-    };
-  }, []);
+  const scannerManager = useQRScannerManager();
 
   // Initialize scanner on mount
   useEffect(() => {
@@ -44,8 +55,12 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
       try {
         if (!scannerContainerRef.current) return;
         
-        // Create scanner instance
-        const scanner = new Html5Qrcode('qr-scanner-container');
+        // Create scanner instance with enhanced config
+        const scanner = new Html5Qrcode('qr-scanner-container', {
+          verbose: false,
+          ...SCANNER_CONFIG
+        });
+        
         scannerRef.current = scanner;
         
         // Get available cameras
@@ -89,25 +104,28 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
     
     try {
       setError(null);
-      setHasProcessedResult(false);
-      
-      const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1,
-      };
+      scannerManager.resetScan();
       
       await scannerRef.current.start(
         deviceId,
-        config,
-        (decodedText) => {
-          handleQrCodeScan(decodedText);
-        },
+        SCANNER_CONFIG,
+        handleQrCodeScan,
         (errorMessage) => {
           // This is just for qr detection errors, not critical
-          console.log('QR scan process:', errorMessage);
+          if (!errorMessage.includes('No MultiFormat Readers')) {
+            console.log('QR scan process:', errorMessage);
+          }
         }
       );
+      
+      // Check if torch is available
+      try {
+        const torchAvailable = await scannerRef.current.hasFlash();
+        setHasTorch(torchAvailable);
+      } catch (err) {
+        console.log('Torch check failed:', err);
+        setHasTorch(false);
+      }
       
       setIsScanning(true);
     } catch (err: any) {
@@ -117,45 +135,40 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
     }
   };
 
-  const stopScanner = () => {
+  const stopScanner = useCallback(async () => {
     if (scannerRef.current && isScanning) {
       try {
-        scannerRef.current.stop()
-          .then(() => {
-            setIsScanning(false);
-          })
-          .catch((err) => {
-            console.error('Error stopping scanner:', err);
-          });
+        await scannerRef.current.stop();
+        setIsScanning(false);
+        setTorchEnabled(false);
       } catch (err) {
         console.error('Exception when stopping scanner:', err);
       }
     }
-  };
+  }, [isScanning]);
 
-  const handleQrCodeScan = (decodedText: string) => {
-    // Prevent processing the same result multiple times
-    if (hasProcessedResult) return;
+  const handleQrCodeScan = async (decodedText: string) => {
+    // Use the scanner manager to prevent duplicate scans
+    const shouldProcess = await scannerManager.processScan(decodedText);
+    if (!shouldProcess) return;
     
     console.log('QR code scanned:', decodedText);
-    setHasProcessedResult(true);
-    stopScanner();
     
-    // Only call the result handler if we have a valid string
-    if (decodedText && typeof decodedText === 'string') {
-      // Use a timeout to allow the scanner to fully stop before processing the result
-      setTimeout(() => {
-        onResult(decodedText);
-      }, 50);
+    // Provide haptic feedback if available
+    if (navigator.vibrate) {
+      navigator.vibrate(200);
     }
+    
+    await stopScanner();
+    
+    // Use a timeout to ensure the scanner is fully stopped
+    setTimeout(() => {
+      onResult(decodedText);
+    }, 50);
   };
 
   const switchCamera = async () => {
     if (cameraList.length <= 1) {
-      toast({
-        title: 'Camera Switch',
-        description: 'No additional cameras available on this device',
-      });
       return;
     }
     
@@ -168,11 +181,21 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
     
     setCurrentCamera(nextCameraId);
     startScanner(nextCameraId);
+  };
+
+  const toggleTorch = async () => {
+    if (!scannerRef.current || !hasTorch) return;
     
-    toast({
-      title: 'Camera Switched',
-      description: `Now using: ${cameraList[nextIndex].label.split('(')[0].trim()}`,
-    });
+    try {
+      await scannerRef.current.toggleFlash();
+      setTorchEnabled(prev => !prev);
+    } catch (err) {
+      console.error('Error toggling torch:', err);
+    }
+  };
+
+  const handleFocusChange = (mode: 'auto' | 'manual') => {
+    setFocusMode(mode);
   };
 
   const handleClose = () => {
@@ -197,7 +220,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
             onClick={handleClose}
             aria-label="Close scanner"
           >
-            <X size={18} />
+            <X className="h-5 w-5" />
           </Button>
         </div>
         
@@ -208,27 +231,43 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
             id="qr-scanner-container" 
             ref={scannerContainerRef}
             className="w-full h-full"
-          ></div>
+          />
           
           {/* Error message */}
-          {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-4">
-              <div className="bg-background rounded-lg p-4 max-w-xs text-center">
-                <p className="text-body-sm text-destructive mb-4">{error}</p>
-                <Button 
-                  onClick={() => {
-                    setError(null);
-                    if (currentCamera) startScanner(currentCamera);
-                  }}
-                >
-                  <span className="text-body-sm">Try Again</span>
-                </Button>
-              </div>
-            </div>
-          )}
+          <AnimatePresence>
+            {error && (
+              <motion.div 
+                className="absolute inset-0 flex items-center justify-center bg-black/70 p-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <div className="bg-background rounded-lg p-4 max-w-xs text-center">
+                  <p className="text-body-sm text-destructive mb-4">{error}</p>
+                  <Button 
+                    onClick={() => {
+                      setError(null);
+                      if (currentCamera) startScanner(currentCamera);
+                    }}
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           
           {/* Scanner viewfinder overlay */}
-          {isScanning && !error && <ScannerViewfinder />}
+          {isScanning && !error && (
+            <ScannerViewfinder 
+              isScanning={isScanning}
+              onTorchToggle={hasTorch ? toggleTorch : undefined}
+              onFocusChange={handleFocusChange}
+              torchEnabled={torchEnabled}
+              focusMode={focusMode}
+              hasTorch={hasTorch}
+            />
+          )}
         </div>
         
         {/* Footer with controls */}
@@ -238,11 +277,11 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
               <Button
                 variant="outline"
                 onClick={switchCamera}
-                disabled={!isScanning || hasProcessedResult}
+                disabled={!isScanning || scannerManager.scanState.isProcessing}
                 className="flex items-center gap-2"
               >
-                <RefreshCw size={16} />
-                <span className="text-body-sm">Switch Camera</span>
+                <RefreshCw className="h-4 w-4" />
+                <span>Switch Camera</span>
               </Button>
             )}
             
@@ -251,8 +290,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
               onClick={handleClose}
               className="flex items-center gap-2"
             >
-              <X size={16} />
-              <span className="text-body-sm">Cancel</span>
+              <X className="h-4 w-4" />
+              <span>Cancel</span>
             </Button>
           </div>
         </div>

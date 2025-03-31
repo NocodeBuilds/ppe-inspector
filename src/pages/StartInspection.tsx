@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { QrCode, ChevronRight, Scan, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { usePPEData } from '@/hooks/usePPEData';
 import PPESelectionDialog from '@/components/inspection/PPESelectionDialog';
 import { PPEItem } from '@/integrations/supabase/client';
@@ -42,19 +42,12 @@ const StartInspection = () => {
     setShowScanner(false);
     
     try {
-      // Show scanning feedback only once
-      toast({
-        title: 'Processing',
-        description: 'Processing QR code...',
-        variant: 'default'
-      });
-      
       await searchBySerial(result);
     } catch (error: any) {
       console.error('Error handling scan result:', error);
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to process QR code',
+        description: error instanceof Error ? error.message : 'Failed to find PPE with the given serial number',
         variant: 'destructive'
       });
       setProcessingQRCode(false);
@@ -88,7 +81,7 @@ const StartInspection = () => {
     } catch (error) {
       console.error('Error processing serial number:', error);
       toast({
-        title: 'Error',
+        title: 'PPE Not Found',
         description: error instanceof Error ? error.message : 'Failed to find PPE with the given serial number',
         variant: 'destructive'
       });
@@ -108,12 +101,6 @@ const StartInspection = () => {
     setMultiplePPE([]);
     setShowScanner(false);
     setSerialNumber('');
-    
-    toast({
-      title: 'PPE Found',
-      description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`,
-      variant: 'default'
-    });
     
     // Navigate to the inspection form with the PPE ID
     console.log('Navigating to inspection form with PPE ID:', ppe.id);
@@ -260,6 +247,8 @@ const StartInspection = () => {
         }}
       >
         <DialogContent className="max-w-md p-0 h-[90vh] max-h-[600px]">
+          <DialogTitle className="sr-only">QR Code Scanner</DialogTitle>
+          <DialogDescription className="sr-only">Scan a QR code to start inspection</DialogDescription>
           {showScanner && (
             <QRCodeScanner
               onResult={handleScanResult}
