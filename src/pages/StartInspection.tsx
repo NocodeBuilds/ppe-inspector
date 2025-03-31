@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { QrCode, ChevronRight, Scan, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { usePPEData } from '@/hooks/usePPEData';
 import PPESelectionDialog from '@/components/inspection/PPESelectionDialog';
 import { PPEItem } from '@/integrations/supabase/client';
@@ -260,6 +260,8 @@ const StartInspection = () => {
         }}
       >
         <DialogContent className="max-w-md p-0 h-[90vh] max-h-[600px]">
+          <DialogTitle className="sr-only">QR Code Scanner</DialogTitle>
+          <DialogDescription className="sr-only">Scan a QR code to start inspection</DialogDescription>
           {showScanner && (
             <QRCodeScanner
               onResult={handleScanResult}
