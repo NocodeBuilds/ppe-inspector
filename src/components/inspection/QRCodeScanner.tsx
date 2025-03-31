@@ -159,13 +159,6 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
       navigator.vibrate(200);
     }
     
-    // Show success toast
-    toast({
-      title: 'QR Code Detected',
-      description: 'Processing scan result...',
-      variant: 'default'
-    });
-    
     await stopScanner();
     
     // Use a timeout to ensure the scanner is fully stopped
@@ -176,10 +169,6 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
 
   const switchCamera = async () => {
     if (cameraList.length <= 1) {
-      toast({
-        title: 'Camera Switch',
-        description: 'No additional cameras available on this device',
-      });
       return;
     }
     
@@ -192,11 +181,6 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
     
     setCurrentCamera(nextCameraId);
     startScanner(nextCameraId);
-    
-    toast({
-      title: 'Camera Switched',
-      description: `Now using: ${cameraList[nextIndex].label.split('(')[0].trim()}`,
-    });
   };
 
   const toggleTorch = async () => {
@@ -207,21 +191,11 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onResult, onClose }) => {
       setTorchEnabled(prev => !prev);
     } catch (err) {
       console.error('Error toggling torch:', err);
-      toast({
-        title: 'Torch Error',
-        description: 'Failed to toggle the torch',
-        variant: 'destructive'
-      });
     }
   };
 
   const handleFocusChange = (mode: 'auto' | 'manual') => {
     setFocusMode(mode);
-    // Implement focus mode change logic here
-    toast({
-      title: 'Focus Mode',
-      description: `Switched to ${mode} focus`,
-    });
   };
 
   const handleClose = () => {

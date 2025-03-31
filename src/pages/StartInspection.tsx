@@ -42,19 +42,12 @@ const StartInspection = () => {
     setShowScanner(false);
     
     try {
-      // Show scanning feedback only once
-      toast({
-        title: 'Processing',
-        description: 'Processing QR code...',
-        variant: 'default'
-      });
-      
       await searchBySerial(result);
     } catch (error: any) {
       console.error('Error handling scan result:', error);
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to process QR code',
+        description: error instanceof Error ? error.message : 'Failed to find PPE with the given serial number',
         variant: 'destructive'
       });
       setProcessingQRCode(false);
@@ -88,7 +81,7 @@ const StartInspection = () => {
     } catch (error) {
       console.error('Error processing serial number:', error);
       toast({
-        title: 'Error',
+        title: 'PPE Not Found',
         description: error instanceof Error ? error.message : 'Failed to find PPE with the given serial number',
         variant: 'destructive'
       });
@@ -108,12 +101,6 @@ const StartInspection = () => {
     setMultiplePPE([]);
     setShowScanner(false);
     setSerialNumber('');
-    
-    toast({
-      title: 'PPE Found',
-      description: `Ready to inspect: ${ppe.type} (${ppe.serial_number})`,
-      variant: 'default'
-    });
     
     // Navigate to the inspection form with the PPE ID
     console.log('Navigating to inspection form with PPE ID:', ppe.id);
