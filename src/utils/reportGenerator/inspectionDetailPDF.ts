@@ -94,7 +94,7 @@ export const generateInspectionDetailPDF = async (inspection: StandardInspection
 
   const equipmentData = [
     ["SITE NAME:", siteName, "INSPECTION DATE:", formatDate(inspection.date)],
-    ["PPE TYPE:", inspection.ppe_type.toUpperCase(), "SERIAL NUMBER:", inspection.ppe_serial],
+    ["PPE TYPE:", inspection.ppe_type.toUpperCase(), "SERIAL NUMBER:", `${inspection.ppe_serial}${inspection.batch_number ? '_' + inspection.batch_number : ''}`],
     ["MAKE (BRAND):", inspection.ppe_brand, "MODEL NUMBER:", inspection.ppe_model],
     ["MANUFACTURING DATE:", manufacturingDate, "EXPIRY DATE:", expiryDate]
   ];

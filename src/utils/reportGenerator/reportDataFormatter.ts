@@ -20,6 +20,7 @@ export interface StandardInspectionData {
   site_name: string;
   manufacturing_date: string;
   expiry_date: string;
+  batch_number?: string;
   checkpoints: {
     id: string;
     description: string;
@@ -50,6 +51,7 @@ export const formatFromFormSubmission = (formData: any, userProfile: any): Stand
     site_name: userProfile?.site_name || 'Unknown Site',
     manufacturing_date: formData.manufacturing_date || 'N/A',
     expiry_date: formData.expiry_date || 'N/A',
+    batch_number: formData.batch_number || '',
     checkpoints: Array.isArray(formData.checkpoints) ? formData.checkpoints : [],
   };
 };
@@ -79,6 +81,7 @@ export const formatFromDatabaseFetch = (dbData: any): StandardInspectionData => 
     site_name: profiles.site_name || 'Unknown Site',
     manufacturing_date: ppeItems.manufacturing_date || 'N/A',
     expiry_date: ppeItems.expiry_date || 'N/A',
+    batch_number: ppeItems.batch_number || '',
     checkpoints: Array.isArray(dbData.checkpoints) ? dbData.checkpoints : [],
   };
 };

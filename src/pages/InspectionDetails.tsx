@@ -62,6 +62,7 @@ interface InspectionDetails {
   site_name: string;
   manufacturing_date: string;
   expiry_date: string;
+  batch_number: string;
   checkpoints: InspectionCheckpoint[];
 }
 
@@ -97,7 +98,7 @@ const InspectionDetails = () => {
           signature_url,
           inspector_id,
           profiles(full_name, site_name),
-          ppe_items(type, serial_number, brand, model_number, manufacturing_date, expiry_date)
+          ppe_items(type, serial_number, brand, model_number, manufacturing_date, expiry_date, batch_number)
         `)
         .eq('id', inspectionId)
         .single();
@@ -145,6 +146,7 @@ const InspectionDetails = () => {
         site_name: inspectionData.profiles?.site_name || 'Unknown Site',
         manufacturing_date: inspectionData.ppe_items?.manufacturing_date || 'N/A',
         expiry_date: inspectionData.ppe_items?.expiry_date || 'N/A',
+        batch_number: inspectionData.ppe_items?.batch_number ? String(inspectionData.ppe_items.batch_number) : 'N/A',
         checkpoints: formattedCheckpoints,
       };
       
@@ -415,6 +417,10 @@ const InspectionDetails = () => {
                 <div>
                   <p className="text-muted-foreground">Model</p>
                   <p className="font-medium">{inspection.ppe_model}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Batch Number</p>
+                  <p className="font-medium">{inspection.batch_number}</p>
                 </div>
               </div>
               
