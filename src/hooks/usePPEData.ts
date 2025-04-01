@@ -34,7 +34,7 @@ export function usePPEData() {
       let imageUrl = null;
       if (imageFile) {
         const imagePath = `ppe-images/${serial_number}-${Date.now()}`;
-        const { error: storageError } = await supabase.storage
+        const { data: uploadData, error: storageError } = await supabase.storage
           .from('ppe-images')
           .upload(imagePath, imageFile, {
             cacheControl: '3600',
@@ -43,10 +43,15 @@ export function usePPEData() {
 
         if (storageError) {
           console.error('Error uploading image:', storageError);
-          throw new Error('Failed to upload image');
+          throw new Error(`Failed to upload image: ${storageError.message}`);
         }
 
-        imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ppe-images/${imagePath}`;
+        // Get the public URL using getPublicUrl method
+        const { data: publicUrlData } = supabase.storage
+          .from('ppe-images')
+          .getPublicUrl(imagePath);
+          
+        imageUrl = publicUrlData.publicUrl;
       }
 
       const { data, error } = await supabase

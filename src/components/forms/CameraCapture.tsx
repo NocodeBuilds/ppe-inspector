@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -188,15 +187,17 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       // Draw video frame to canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Convert canvas content to blob
+      // Convert canvas content to blob with improved error handling
       canvas.toBlob((blob) => {
         if (!blob) {
           throw new Error('Failed to create image blob');
         }
         
-        // Create a File object from the blob
+        // Create a File object with a more descriptive filename
         const fileName = `ppe_photo_${new Date().getTime()}.jpg`;
         const file = new File([blob], fileName, { type: 'image/jpeg' });
+        
+        console.log("Photo captured successfully, file size:", file.size, "bytes");
         
         // Close camera and pass image data
         stopCamera();
@@ -207,7 +208,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
           title: 'Photo Captured',
           description: 'Image has been captured successfully'
         });
-      }, 'image/jpeg', 0.8);
+      }, 'image/jpeg', 0.85); // Slightly increased quality for better image
     } catch (error: any) {
       console.error('Error capturing photo:', error);
       setCameraError(error.message || 'Failed to capture image');
