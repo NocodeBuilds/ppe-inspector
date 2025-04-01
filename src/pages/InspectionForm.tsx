@@ -59,6 +59,9 @@ const InspectionForm = () => {
     type: string;
     brand: string;
     modelNumber: string;
+    batch_number?: string;
+    manufacturing_date?: string;
+    expiry_date?: string;
   } | null>(null);
   
   const [inspectionType, setInspectionType] = useState<'pre-use' | 'monthly' | 'quarterly'>('pre-use');
@@ -98,19 +101,32 @@ const InspectionForm = () => {
       
       const { data, error } = await supabase
         .from('ppe_items')
-        .select('*')
+        .select(`
+          id,
+          serial_number,
+          type,
+          brand,
+          model_number,
+          batch_number,
+          manufacturing_date,
+          expiry_date
+        `)
         .eq('id', id)
         .single();
       
       if (error) throw error;
       
       if (data) {
+        console.log('PPE Item data:', data); // Debug log
         setPpeItem({
           id: data.id,
           serialNumber: data.serial_number,
           type: toPPEType(data.type),
           brand: data.brand,
           modelNumber: data.model_number,
+          batch_number: data.batch_number ? String(data.batch_number) : '',
+          manufacturing_date: data.manufacturing_date,
+          expiry_date: data.expiry_date
         });
         
         await fetchCheckpoints(data.type);
@@ -661,20 +677,38 @@ const InspectionForm = () => {
         <h1 className="text-2xl font-bold">Inspection Form</h1>
       </div>
       
-      <Card className="p-4 mb-6 border border-border/40 shadow-sm">
-        <h2 className="font-semibold mb-2">{ppeItem?.type}</h2>
-        <div className="grid grid-cols-2 gap-2 text-sm">
+      <Card className="p-4 mb-4 border border-border/40 shadow-sm bg-slate-950">
+        <h2 className="text-2xl font-semibold mb-3 text-white">{ppeItem?.type}</h2>
+        
+        {/* First row: Serial, Batch, Brand */}
+        <div className="grid grid-cols-3 gap-x-4 md:gap-x-6 gap-y-2 mb-3">
           <div>
-            <p className="text-muted-foreground">Serial Number</p>
-            <p>{ppeItem?.serialNumber}</p>
+            <p className="text-xs text-slate-400 font-medium truncate">Serial Number</p>
+            <p className="text-sm text-white truncate">{ppeItem?.serialNumber}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">Brand</p>
-            <p>{ppeItem?.brand}</p>
+            <p className="text-xs text-slate-400 font-medium truncate">Batch Number</p>
+            <p className="text-sm text-white truncate">{ppeItem?.batch_number || '-'}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">Model</p>
-            <p>{ppeItem?.modelNumber}</p>
+            <p className="text-xs text-slate-400 font-medium truncate">Brand</p>
+            <p className="text-sm text-white truncate">{ppeItem?.brand}</p>
+          </div>
+        </div>
+        
+        {/* Second row: Model, Manufacturing Date, Expiry Date */}
+        <div className="grid grid-cols-3 gap-x-4 md:gap-x-6">
+          <div>
+            <p className="text-xs text-slate-400 font-medium truncate">Model</p>
+            <p className="text-sm text-white truncate">{ppeItem?.modelNumber}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 font-medium truncate">Manufacturing Date</p>
+            <p className="text-sm text-white truncate">{ppeItem?.manufacturing_date ? new Date(ppeItem.manufacturing_date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : '-'}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 font-medium truncate">Expiry Date</p>
+            <p className="text-sm text-white truncate">{ppeItem?.expiry_date ? new Date(ppeItem.expiry_date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : '-'}</p>
           </div>
         </div>
       </Card>
