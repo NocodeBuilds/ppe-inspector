@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Camera, Trash2, Smartphone, Image } from 'lucide-react';
 import CardOverlay from '@/components/ui/card-overlay';
 import { toast } from '@/hooks/use-toast';
@@ -300,14 +299,18 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         />
       </div>
       
-      <div className="space-y-4">
-        {/* Show notes textarea for all checkpoints but make it required only for failed ones */}
-        <Textarea
-          placeholder={passed === false ? "Add notes describing the issue... (required)" : "Add notes (optional)"}
-          value={notes}
-          onChange={(e) => onNotesChange(e.target.value)}
-          className={`min-h-[80px] ${passed === false ? 'border-amber-500' : ''}`}
-        />
+      <div className="space-y-3">
+        {/* Single line notes input */}
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder={passed === false ? "Add notes describing the issue... (required)" : "Add notes (optional)"}
+            value={notes}
+            onChange={(e) => onNotesChange(e.target.value)}
+            className={`w-full h-8 px-3 py-1 rounded-md bg-background text-sm ${passed === false ? 'border-amber-500' : 'border-input'} border focus:border-ring focus:ring-1 focus:ring-ring focus-visible:outline-none`}
+            disabled={disabled}
+          />
+        </div>
         
         <div className="flex justify-between items-center">
           <Button
