@@ -66,7 +66,7 @@ const InspectionForm = () => {
   
   const [inspectionType, setInspectionType] = useState<'pre-use' | 'monthly' | 'quarterly'>('pre-use');
   const [checkpoints, setCheckpoints] = useState<InspectionCheckpoint[]>([]);
-  const [results, setResults] = useState<Record<string, { passed: boolean | null; notes: string; photoUrl?: string }>>({});
+  const [results, setResults] = useState<Record<string, { passed: boolean | null | undefined; notes: string; photoUrl?: string }>>({});
   const [notes, setNotes] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
   const [overallResult, setOverallResult] = useState<'pass' | 'fail' | null>(null);
@@ -157,9 +157,9 @@ const InspectionForm = () => {
         const appCheckpoints = existingCheckpoints.map(mapDbCheckpointToAppCheckpoint);
         setCheckpoints(appCheckpoints);
         
-        const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
+        const initialResults: Record<string, { passed: boolean | null | undefined; notes: string; photoUrl?: string }> = {};
         existingCheckpoints.forEach(checkpoint => {
-          initialResults[checkpoint.id] = { passed: null, notes: '' };
+          initialResults[checkpoint.id] = { passed: undefined, notes: '' };
         });
         setResults(initialResults);
       } else {
@@ -191,9 +191,9 @@ const InspectionForm = () => {
           const appCheckpoints = insertedCheckpoints.map(mapDbCheckpointToAppCheckpoint);
           setCheckpoints(appCheckpoints);
           
-          const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
+          const initialResults: Record<string, { passed: boolean | null | undefined; notes: string; photoUrl?: string }> = {};
           insertedCheckpoints.forEach(checkpoint => {
-            initialResults[checkpoint.id] = { passed: null, notes: '' };
+            initialResults[checkpoint.id] = { passed: undefined, notes: '' };
           });
           setResults(initialResults);
         }
@@ -214,9 +214,9 @@ const InspectionForm = () => {
         
         setCheckpoints(tempCheckpoints);
         
-        const initialResults: Record<string, { passed: boolean | null; notes: string; photoUrl?: string }> = {};
+        const initialResults: Record<string, { passed: boolean | null | undefined; notes: string; photoUrl?: string }> = {};
         tempCheckpoints.forEach(checkpoint => {
-          initialResults[checkpoint.id] = { passed: null, notes: '' };
+          initialResults[checkpoint.id] = { passed: undefined, notes: '' };
         });
         setResults(initialResults);
         
@@ -230,27 +230,61 @@ const InspectionForm = () => {
   };
   
   const handleResultChange = (checkpointId: string, value: boolean | null) => {
+    // Update the results state immediately with the new value
     setResults(prev => ({
       ...prev,
-      [checkpointId]: { ...prev[checkpointId], passed: value }
+      [checkpointId]: { 
+        ...prev[checkpointId], 
+        passed: value,
+        // Keep existing notes if any
+        notes: prev[checkpointId]?.notes || ''
+      }
     }));
     
+    // Calculate overall result
     const allResults = Object.entries({
       ...results,
       [checkpointId]: { ...results[checkpointId], passed: value }
     });
     
-    const anyFailing = allResults.some(([_, result]) => result.passed === false);
-    const allResultsEntered = allResults.every(([_, result]) => result.passed !== null);
-    const allPassing = allResults.every(([_, result]) => result.passed === true || result.passed === null);
+    // Consider all required checkpoints that are not NA
+    const requiredResults = allResults.filter(([id]) => {
+      const checkpoint = checkpoints.find(cp => cp.id === id);
+      const result = results[id];
+      // Only include required checkpoints that are OK or NOT OK (not NA)
+      return checkpoint?.required && result?.passed !== null;
+    });
     
-    if (anyFailing) {
+    if (requiredResults.length === 0) {
+      setOverallResult(null);
+      return;
+    }
+
+    // Check if any checkpoint is NOT OK
+    const anyNotOk = requiredResults.some(([_, result]) => result.passed === false);
+    // All required checkpoints must be OK
+    const allOk = requiredResults.every(([_, result]) => result.passed === true);
+    
+    if (anyNotOk) {
       setOverallResult('fail');
-    } else if (allResultsEntered && allPassing) {
+    } else if (allOk) {
       setOverallResult('pass');
+    } else {
+      setOverallResult(null);
     }
   };
-  
+
+  const getResultLabel = (result: string | null) => {
+    switch (result) {
+      case 'pass':
+        return 'PASS';
+      case 'fail':
+        return 'FAIL';
+      default:
+        return 'Pending';
+    }
+  };
+
   const handleNotesChange = (checkpointId: string, value: string) => {
     setResults(prev => ({
       ...prev,
@@ -291,45 +325,22 @@ const InspectionForm = () => {
     }
   };
   
-  const validateForm = (): boolean => {
+  const validateForm = () => {
+    // Get required checkpoints that have no selection (not even NA)
     const unselectedRequired = checkpoints
       .filter(cp => cp.required)
-      .filter(cp => results[cp.id]?.passed === null);
+      .filter(cp => results[cp.id]?.passed === undefined);
       
     if (unselectedRequired.length > 0) {
-      setResultsError('Please select Pass or Fail for all required checkpoints');
+      setResultsError('Please select OK, NOT OK, or N/A for all required checkpoints');
       toast({
         title: 'Incomplete Form',
-        description: 'Please select Pass or Fail for all required checkpoints',
+        description: 'Please select OK, NOT OK, or N/A for all required checkpoints',
         variant: 'destructive',
       });
       return false;
     }
 
-    const invalidResults = Object.entries(results).filter(
-      ([_, result]) => result.passed === false && !result.notes.trim()
-    );
-    
-    if (invalidResults.length > 0) {
-      setResultsError('Please add notes for all failed checkpoints');
-      toast({
-        title: 'Notes Required',
-        description: 'Please add notes for all failed checkpoints',
-        variant: 'destructive',
-      });
-      return false;
-    }
-    
-    if (step === 3 && !signature) {
-      toast({
-        title: 'Signature Required',
-        description: 'Please sign to complete the inspection',
-        variant: 'destructive',
-      });
-      return false;
-    }
-    
-    setResultsError(null);
     return true;
   };
   
@@ -596,7 +607,7 @@ const InspectionForm = () => {
         `Inspection Report\n` +
         `PPE: ${ppeItem?.type} (${ppeItem?.serialNumber})\n` +
         `Date: ${new Date().toLocaleDateString()}\n` +
-        `Result: ${overallResult?.toUpperCase() || 'UNKNOWN'}\n` +
+        `Result: ${getResultLabel(overallResult)}\n` +
         `Inspector: ${user?.user_metadata?.full_name || 'Unknown Inspector'}\n`;
       
       const encodedMessage = encodeURIComponent(message);
@@ -625,7 +636,7 @@ const InspectionForm = () => {
         `Inspection Report\n\n` +
         `PPE: ${ppeItem?.type} (${ppeItem?.serialNumber})\n` +
         `Date: ${new Date().toLocaleDateString()}\n` +
-        `Result: ${overallResult?.toUpperCase() || 'UNKNOWN'}\n` +
+        `Result: ${getResultLabel(overallResult)}\n` +
         `Inspector: ${user?.user_metadata?.full_name || 'Unknown Inspector'}\n`;
       
       const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -805,7 +816,7 @@ const InspectionForm = () => {
                   key={checkpoint.id}
                   id={checkpoint.id}
                   description={checkpoint.description}
-                  passed={results[checkpoint.id]?.passed ?? null}
+                  passed={results[checkpoint.id]?.passed ?? undefined}
                   notes={results[checkpoint.id]?.notes ?? ''}
                   photoUrl={results[checkpoint.id]?.photoUrl}
                   onPassedChange={(value) => handleResultChange(checkpoint.id, value)}
@@ -838,7 +849,7 @@ const InspectionForm = () => {
                 onClick={() => setOverallResult('pass')}
               >
                 <Check size={16} className="mr-2" />
-                Pass
+                PASS
               </Button>
               
               <Button
@@ -853,7 +864,7 @@ const InspectionForm = () => {
                 onClick={() => setOverallResult('fail')}
               >
                 <X size={16} className="mr-2" />
-                Fail
+                FAIL
               </Button>
             </div>
           </div>
@@ -905,7 +916,7 @@ const InspectionForm = () => {
                   <h4 className="font-medium text-sm">Inspection Summary</h4>
                   <p className="text-sm text-muted-foreground mt-1">
                     By submitting this form, you confirm that you have inspected {ppeItem?.type} (Serial: {ppeItem?.serialNumber}) 
-                    and the overall result is {overallResult === 'pass' ? 'PASS' : 'FAIL'}.
+                    and the overall result is {getResultLabel(overallResult)}.
                   </p>
                 </div>
               </div>
