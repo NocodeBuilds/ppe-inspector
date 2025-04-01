@@ -1,5 +1,6 @@
+
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { Html5Qrcode, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 interface ScannerInitializerProps {
   scannerContainerId: string;
@@ -183,21 +184,14 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
         return;
       }
       
-      // Create a simplified camera identifier object
-      // Must contain ONLY ONE of: deviceId OR facingMode
-      const cameraIdentifier = deviceId 
-        ? { deviceId: { exact: deviceId } } 
-        : { facingMode: "environment" };
-      
-      console.log('Starting scanner with camera identifier:', cameraIdentifier);
-
       if (!deviceId) {
         onScannerError('No valid device ID found');
         return;
       }
 
+      // Fix: Use only the deviceId string instead of an object
       await scannerRef.current.start(
-        cameraIdentifier,  // Only pass the camera identifier here - MUST have just ONE key
+        deviceId,  // Pass only the deviceId string
         config,
         handleScanSuccess,
         onScanError
@@ -217,7 +211,7 @@ const ScannerInitializer: React.FC<ScannerInitializerProps> = ({
         setIsInitializing(false);
       }
     }
-  }, [scannerContainerId, onScanSuccess, onScanError, cleanupScanner, findBestCamera, isMountedRef, onScannerError]);
+  }, [scannerContainerId, onScanSuccess, onScanError, cleanupScanner, findBestCamera, isMountedRef, onScannerError, handleScanSuccess, onScannerStart]);
 
   useEffect(() => {
     // Start the scanner when the component mounts
