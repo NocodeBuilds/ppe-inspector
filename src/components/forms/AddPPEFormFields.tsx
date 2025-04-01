@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Control, useWatch } from 'react-hook-form';
 import { AddPPEFormValues, ppeTypes } from './AddPPEFormSchema';
@@ -67,24 +66,6 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
     <div className="space-y-4">
       <FormField
         control={control}
-        name="serialNumber"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="text-body-sm">Serial Number</FormLabel>
-            <FormControl>
-              <Input 
-                placeholder="Enter serial number" 
-                {...field} 
-                className="text-body"
-              />
-            </FormControl>
-            <FormMessage className="text-caption" />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={control}
         name="type"
         render={({ field }) => (
           <FormItem>
@@ -111,63 +92,102 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
         )}
       />
 
-      <FormField
-        control={control}
-        name="batchNumber"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="text-body-sm">
-              Batch Number
-              {isDuplicatePPE && <Badge variant="destructive" className="ml-2">Required*</Badge>}
-              {isCheckingDuplicate && <Badge variant="outline" className="ml-2">Checking...</Badge>}
-            </FormLabel>
-            <FormControl>
-              <Input 
-                placeholder={isDuplicatePPE ? "Required for duplicate PPE" : "Enter batch number (optional)"} 
-                {...field} 
-                className="text-body"
-              />
-            </FormControl>
-            <FormMessage className="text-caption" />
-            {isDuplicatePPE && (
-              <p className="text-sm text-amber-600">
-                A PPE with this serial number and type already exists. 
-                Batch number is required to differentiate it.
-              </p>
-            )}
-          </FormItem>
-        )}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          control={control}
+          name="serialNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-body-sm">
+                Serial Number
+                <span className="text-destructive ml-1">*</span>
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="Enter serial number"
+                  minLength={3}
+                  {...field} 
+                  className="text-body"
+                />
+              </FormControl>
+              <FormMessage className="text-caption" />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="batchNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-body-sm">
+                Batch Number
+                {isDuplicatePPE && <span className="text-destructive ml-1">*</span>}
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder={isDuplicatePPE 
+                    ? "A PPE with this serial number and type exists. Enter different batch number." 
+                    : "Enter batch number (optional)"} 
+                  {...field} 
+                  className="text-body"
+                />
+              </FormControl>
+              <FormMessage className="text-caption" />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          control={control}
+          name="brand"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-body-sm">Brand</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="Enter brand name" 
+                  {...field} 
+                  className="text-body"
+                />
+              </FormControl>
+              <FormMessage className="text-caption" />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="modelNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-body-sm">Model Number</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="Enter model number" 
+                  {...field} 
+                  className="text-body"
+                />
+              </FormControl>
+              <FormMessage className="text-caption" />
+            </FormItem>
+          )}
+        />
+      </div>
 
       <FormField
         control={control}
-        name="brand"
+        name="firstUseDate"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-body-sm">Brand</FormLabel>
+            <FormLabel className="text-body-sm">First Use Date</FormLabel>
             <FormControl>
-              <Input 
-                placeholder="Enter brand name" 
-                {...field} 
-                className="text-body"
-              />
-            </FormControl>
-            <FormMessage className="text-caption" />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={control}
-        name="modelNumber"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="text-body-sm">Model Number</FormLabel>
-            <FormControl>
-              <Input 
-                placeholder="Enter model number" 
-                {...field} 
-                className="text-body"
+              <DatePicker 
+                date={field.value} 
+                setDate={field.onChange}
+                disableFutureDates={true}
               />
             </FormControl>
             <FormMessage className="text-caption" />
@@ -212,24 +232,6 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
           )}
         />
       </div>
-
-      <FormField
-        control={control}
-        name="firstUseDate"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="text-body-sm">First Use Date (Optional)</FormLabel>
-            <FormControl>
-              <DatePicker 
-                date={field.value} 
-                setDate={field.onChange}
-                placeholder="Select first use date"
-              />
-            </FormControl>
-            <FormMessage className="text-caption" />
-          </FormItem>
-        )}
-      />
 
       <div>
         <FormLabel className="block mb-2 text-body-sm">Equipment Photo</FormLabel>
