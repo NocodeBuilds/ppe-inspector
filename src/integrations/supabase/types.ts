@@ -169,6 +169,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           expiry_date: string
+          first_use: string | null
           id: string
           image_url: string | null
           last_inspection: string | null
@@ -186,6 +187,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           expiry_date: string
+          first_use?: string | null
           id?: string
           image_url?: string | null
           last_inspection?: string | null
@@ -203,6 +205,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           expiry_date?: string
+          first_use?: string | null
           id?: string
           image_url?: string | null
           last_inspection?: string | null
@@ -227,7 +230,6 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
-          bio: string | null
           created_at: string | null
           department: string | null
           employee_id: string | null
@@ -240,7 +242,6 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
-          bio?: string | null
           created_at?: string | null
           department?: string | null
           employee_id?: string | null
@@ -253,7 +254,6 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
-          bio?: string | null
           created_at?: string | null
           department?: string | null
           employee_id?: string | null

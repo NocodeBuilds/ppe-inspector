@@ -23,6 +23,10 @@ export const addPPEFormSchema = z.object({
     .refine(date => date > new Date(), {
       message: 'Expiry date must be in the future',
     }),
+
+  // Add new fields
+  batchNumber: z.string().optional(),
+  firstUseDate: z.date().optional(),
 });
 
 export type AddPPEFormValues = z.infer<typeof addPPEFormSchema>;
@@ -31,6 +35,7 @@ export const defaultFormValues: Partial<AddPPEFormValues> = {
   serialNumber: '',
   brand: '',
   modelNumber: '',
+  batchNumber: '',
 };
 
 // PPE types standardized across the application

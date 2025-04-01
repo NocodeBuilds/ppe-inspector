@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PPEItem, PPEStatus } from '@/integrations/supabase/client';
@@ -14,6 +15,8 @@ export function usePPEData() {
     model_number,
     manufacturing_date,
     expiry_date,
+    batch_number,
+    first_use,
     imageFile,
   }: {
     brand: string;
@@ -22,6 +25,8 @@ export function usePPEData() {
     model_number: string;
     manufacturing_date: string;
     expiry_date: string;
+    batch_number?: number;
+    first_use?: string;
     imageFile?: File;
   }) => {
     setIsUploading(true);
@@ -55,6 +60,8 @@ export function usePPEData() {
             manufacturing_date,
             expiry_date,
             image_url: imageUrl,
+            batch_number,
+            first_use,
           },
         ])
         .select();

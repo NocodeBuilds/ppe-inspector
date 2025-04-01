@@ -1,5 +1,6 @@
-import React from 'react';
-import { Control } from 'react-hook-form';
+
+import React, { useState, useEffect } from 'react';
+import { Control, useWatch } from 'react-hook-form';
 import { AddPPEFormValues, ppeTypes } from './AddPPEFormSchema';
 import CameraCapture from './CameraCapture';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -18,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { usePPEData } from '@/hooks/usePPEData';
+import { Badge } from '@/components/ui/badge';
 
 interface AddPPEFormFieldsProps {
   control: Control<AddPPEFormValues>;
@@ -30,6 +33,36 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
   onImageCapture,
   imageFile 
 }) => {
+  const [isDuplicatePPE, setIsDuplicatePPE] = useState(false);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+  const { getPPEBySerialNumber } = usePPEData();
+
+  // Watch for changes in serial number and type
+  const serialNumber = useWatch({ control, name: 'serialNumber' });
+  const ppeType = useWatch({ control, name: 'type' });
+
+  // Check for duplicate PPE when serial number and type change
+  useEffect(() => {
+    const checkDuplicate = async () => {
+      if (serialNumber && serialNumber.length >= 3 && ppeType) {
+        setIsCheckingDuplicate(true);
+        try {
+          const items = await getPPEBySerialNumber(serialNumber);
+          const hasDuplicate = items.some(item => item.type === ppeType);
+          setIsDuplicatePPE(hasDuplicate);
+        } catch (error) {
+          console.error('Error checking for duplicate PPE:', error);
+        } finally {
+          setIsCheckingDuplicate(false);
+        }
+      } else {
+        setIsDuplicatePPE(false);
+      }
+    };
+
+    checkDuplicate();
+  }, [serialNumber, ppeType, getPPEBySerialNumber]);
+
   return (
     <div className="space-y-4">
       <FormField
@@ -74,6 +107,34 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
               </SelectContent>
             </Select>
             <FormMessage className="text-caption" />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name="batchNumber"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-body-sm">
+              Batch Number
+              {isDuplicatePPE && <Badge variant="destructive" className="ml-2">Required*</Badge>}
+              {isCheckingDuplicate && <Badge variant="outline" className="ml-2">Checking...</Badge>}
+            </FormLabel>
+            <FormControl>
+              <Input 
+                placeholder={isDuplicatePPE ? "Required for duplicate PPE" : "Enter batch number (optional)"} 
+                {...field} 
+                className="text-body"
+              />
+            </FormControl>
+            <FormMessage className="text-caption" />
+            {isDuplicatePPE && (
+              <p className="text-sm text-amber-600">
+                A PPE with this serial number and type already exists. 
+                Batch number is required to differentiate it.
+              </p>
+            )}
           </FormItem>
         )}
       />
@@ -151,6 +212,24 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
           )}
         />
       </div>
+
+      <FormField
+        control={control}
+        name="firstUseDate"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-body-sm">First Use Date (Optional)</FormLabel>
+            <FormControl>
+              <DatePicker 
+                date={field.value} 
+                setDate={field.onChange}
+                placeholder="Select first use date"
+              />
+            </FormControl>
+            <FormMessage className="text-caption" />
+          </FormItem>
+        )}
+      />
 
       <div>
         <FormLabel className="block mb-2 text-body-sm">Equipment Photo</FormLabel>

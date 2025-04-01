@@ -224,7 +224,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     <div>
       <div className="flex items-center gap-3">
         <Button 
-          type="button" 
+          type="button" // Explicitly set type to button to prevent form submission
           variant="outline" 
           onClick={startCamera}
           className="flex items-center gap-2"
@@ -255,14 +255,21 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
             <div className="text-center p-4 border rounded">
               <p className="text-destructive mb-3">{cameraError}</p>
               <div className="flex justify-center gap-2">
-                <Button onClick={() => {
-                  setCameraError(null);
-                  startCamera();
-                }}>Try Again</Button>
-                <Button variant="outline" onClick={() => {
-                  stopCamera();
-                  setIsCameraOpen(false);
-                }}>Cancel</Button>
+                <Button 
+                  type="button" // Explicitly set type to button
+                  onClick={() => {
+                    setCameraError(null);
+                    startCamera();
+                  }}
+                >Try Again</Button>
+                <Button 
+                  type="button" // Explicitly set type to button
+                  variant="outline" 
+                  onClick={() => {
+                    stopCamera();
+                    setIsCameraOpen(false);
+                  }}
+                >Cancel</Button>
               </div>
             </div>
           ) : (
@@ -286,6 +293,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
               
               <div className="flex justify-between">
                 <Button 
+                  type="button" // Explicitly set type to button
                   variant="outline" 
                   onClick={() => {
                     stopCamera();
@@ -297,6 +305,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
                 </Button>
                 
                 <Button 
+                  type="button" // Explicitly set type to button
                   onClick={capturePhoto}
                   disabled={isCapturing || !streamRef.current}
                 >
