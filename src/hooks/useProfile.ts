@@ -45,13 +45,12 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
             full_name: data.full_name || null,
             avatar_url: data.avatar_url || null,
             role: data.role || 'user',
-            created_at: data.created_at || null,
-            updated_at: data.updated_at || null,
+            created_at: data.created_at || '',
+            updated_at: data.updated_at || '',
             employee_id: data.employee_id || null,
             site_name: data.site_name || null,
             department: data.department || null,
             Employee_Role: data.Employee_Role || null,
-            bio: data.bio || null,
             email: null
           };
           

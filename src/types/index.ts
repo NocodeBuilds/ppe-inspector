@@ -1,4 +1,3 @@
-
 export type PPEType =
   | 'Full Body Harness'
   | 'Fall Arrester'
@@ -80,7 +79,6 @@ export interface ExtendedProfile {
   employeeId?: string | null;
   siteName?: string | null;  // Updated from location to siteName
   department?: string | null;
-  bio?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -94,3 +92,17 @@ export interface InspectionData {
   ppe_type: string;
   serial_number: string;
 }
+
+export type UserProfile = {
+  id: string;
+  email?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  employee_id?: string | null;
+  site_name?: string | null;
+  department?: string | null;
+  Employee_Role?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};

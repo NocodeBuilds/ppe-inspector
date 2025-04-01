@@ -5,12 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 type ProfileFormData = {
-  fullName: string;
-  employeeId: string;
-  siteName: string;
+  full_name: string;
+  employee_id: string;
+  site_name: string;
   department: string;
   Employee_Role: string;
-  bio: string;
 };
 
 export const useProfileForm = () => {
@@ -21,12 +20,11 @@ export const useProfileForm = () => {
   const [isSaving, setIsSaving] = useState(false);
   
   const [formData, setFormData] = useState<ProfileFormData>({
-    fullName: '',
-    employeeId: '',
-    siteName: '',
+    full_name: '',
+    employee_id: '',
+    site_name: '',
     department: '',
     Employee_Role: '',
-    bio: '',
   });
   
   const [avatar, setAvatar] = useState<File | null>(null);
@@ -58,12 +56,11 @@ export const useProfileForm = () => {
     // Populate form with existing data
     if (profile) {
       setFormData({
-        fullName: profile.full_name || '',
-        employeeId: profile.employee_id || '',
-        siteName: profile.site_name || '',
+        full_name: profile.full_name || '',
+        employee_id: profile.employee_id || '',
+        site_name: profile.site_name || '',
         department: profile.department || '',
         Employee_Role: profile.Employee_Role || '',
-        bio: profile.bio || '',
       });
     }
 
@@ -118,14 +115,13 @@ export const useProfileForm = () => {
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
-            full_name: formData.fullName,
+            full_name: formData.full_name,
             avatar_url: avatarUrl || profile.avatar_url,
             updated_at: new Date().toISOString(),
-            employee_id: formData.employeeId,
-            site_name: formData.siteName,
+            employee_id: formData.employee_id,
+            site_name: formData.site_name,
             department: formData.department,
             Employee_Role: formData.Employee_Role,
-            bio: formData.bio
           })
           .eq('id', profile.id);
 

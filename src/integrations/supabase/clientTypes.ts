@@ -14,7 +14,6 @@ export type Profile = {
   site_name: string | null;
   department: string | null;
   Employee_Role: string | null;
-  bio: string | null;
   email: string | null;
 };
 
