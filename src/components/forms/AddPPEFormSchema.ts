@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 import { PPEType } from '@/integrations/supabase/client';
 
@@ -26,7 +25,7 @@ export const addPPEFormSchema = z.object({
 
   // Add new fields
   batchNumber: z.string().optional(),
-  firstUseDate: z.date().optional(),
+  firstUseDate: z.date().optional()
 });
 
 export type AddPPEFormValues = z.infer<typeof addPPEFormSchema>;

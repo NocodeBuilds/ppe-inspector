@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -62,6 +61,11 @@ const PPESelectionDialog: React.FC<PPESelectionDialogProps> = ({
                     <div className="font-medium">{ppe.type}</div>
                     <div className="text-sm text-muted-foreground">
                       {ppe.brand} - {ppe.model_number}
+                      {ppe.batch_number && (
+                        <span className="ml-2 text-xs bg-secondary px-2 py-0.5 rounded-full">
+                          Batch: {ppe.batch_number}
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs mt-1">
                       <span className={`px-2 py-0.5 rounded-full ${getStatusClass(ppe.status || 'active')}`}>
