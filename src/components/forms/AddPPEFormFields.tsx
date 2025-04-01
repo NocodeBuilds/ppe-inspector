@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Control, useWatch } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import { AddPPEFormValues, ppeTypes } from './AddPPEFormSchema';
 import CameraCapture from './CameraCapture';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -25,12 +26,14 @@ interface AddPPEFormFieldsProps {
   control: Control<AddPPEFormValues>;
   onImageCapture: (file: File) => void;
   imageFile: File | null;
+  onDuplicateChange?: (isDuplicate: boolean) => void;
 }
 
 const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({ 
   control,
   onImageCapture,
-  imageFile 
+  imageFile,
+  onDuplicateChange 
 }) => {
   const [duplicateState, setDuplicateState] = useState({
     isDuplicate: false,
@@ -40,10 +43,12 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
   });
   
   const { getPPEBySerialNumber } = usePPEData();
+  const form = useFormContext<AddPPEFormValues>();
 
   // Watch for changes in serial number and type
   const serialNumber = useWatch({ control, name: 'serialNumber' });
   const ppeType = useWatch({ control, name: 'type' });
+  const batchNumber = useWatch({ control, name: 'batchNumber' });
 
   // Memoize the check function to prevent unnecessary recreations
   const checkDuplicate = useCallback(async (serial: string, type: string) => {
@@ -62,6 +67,7 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
           lastCheckedSerial: serial,
           lastCheckedType: type
         });
+        onDuplicateChange?.(hasDuplicate);
       } catch (error) {
         console.error('Error checking for duplicate PPE:', error);
         setDuplicateState(prev => ({ ...prev, isChecking: false }));
@@ -73,8 +79,9 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
         lastCheckedSerial: serial,
         lastCheckedType: type
       });
+      onDuplicateChange?.(false);
     }
-  }, [getPPEBySerialNumber]);
+  }, [getPPEBySerialNumber, onDuplicateChange]);
 
   // Debounced effect for checking duplicates
   useEffect(() => {

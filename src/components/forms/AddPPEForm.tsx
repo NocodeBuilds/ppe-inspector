@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -18,6 +17,7 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDuplicate, setIsDuplicate] = useState(false);
   
   const { toast } = useToast();
   const { createPPE, isUploading } = usePPEData();
@@ -33,6 +33,16 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
   };
 
   const onSubmit = async (data: AddPPEFormValues) => {
+    // Check if batch number is required but missing
+    if (isDuplicate && !data.batchNumber) {
+      toast({
+        title: 'Validation Error',
+        description: 'Batch number is required for duplicate PPE items',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     setUploadProgress(0);
     
@@ -97,6 +107,7 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
             control={form.control}
             onImageCapture={handleImageCapture}
             imageFile={imageFile}
+            onDuplicateChange={setIsDuplicate}
           />
           
           <AddPPEFormActions
