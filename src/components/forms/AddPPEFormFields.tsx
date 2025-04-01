@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Control, useWatch } from 'react-hook-form';
 import { AddPPEFormValues, ppeTypes } from './AddPPEFormSchema';
 import CameraCapture from './CameraCapture';
@@ -32,35 +32,63 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
   onImageCapture,
   imageFile 
 }) => {
-  const [isDuplicatePPE, setIsDuplicatePPE] = useState(false);
-  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+  const [duplicateState, setDuplicateState] = useState({
+    isDuplicate: false,
+    isChecking: false,
+    lastCheckedSerial: '',
+    lastCheckedType: ''
+  });
+  
   const { getPPEBySerialNumber } = usePPEData();
 
   // Watch for changes in serial number and type
   const serialNumber = useWatch({ control, name: 'serialNumber' });
   const ppeType = useWatch({ control, name: 'type' });
 
-  // Check for duplicate PPE when serial number and type change
-  useEffect(() => {
-    const checkDuplicate = async () => {
-      if (serialNumber && serialNumber.length >= 3 && ppeType) {
-        setIsCheckingDuplicate(true);
-        try {
-          const items = await getPPEBySerialNumber(serialNumber);
-          const hasDuplicate = items.some(item => item.type === ppeType);
-          setIsDuplicatePPE(hasDuplicate);
-        } catch (error) {
-          console.error('Error checking for duplicate PPE:', error);
-        } finally {
-          setIsCheckingDuplicate(false);
-        }
-      } else {
-        setIsDuplicatePPE(false);
-      }
-    };
+  // Memoize the check function to prevent unnecessary recreations
+  const checkDuplicate = useCallback(async (serial: string, type: string) => {
+    if (serial === duplicateState.lastCheckedSerial && type === duplicateState.lastCheckedType) {
+      return;
+    }
 
-    checkDuplicate();
-  }, [serialNumber, ppeType, getPPEBySerialNumber]);
+    if (serial && serial.length >= 3 && type) {
+      setDuplicateState(prev => ({ ...prev, isChecking: true }));
+      try {
+        const items = await getPPEBySerialNumber(serial);
+        const hasDuplicate = items.some(item => item.type === type);
+        setDuplicateState({
+          isDuplicate: hasDuplicate,
+          isChecking: false,
+          lastCheckedSerial: serial,
+          lastCheckedType: type
+        });
+      } catch (error) {
+        console.error('Error checking for duplicate PPE:', error);
+        setDuplicateState(prev => ({ ...prev, isChecking: false }));
+      }
+    } else {
+      setDuplicateState({
+        isDuplicate: false,
+        isChecking: false,
+        lastCheckedSerial: serial,
+        lastCheckedType: type
+      });
+    }
+  }, [getPPEBySerialNumber]);
+
+  // Debounced effect for checking duplicates
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      checkDuplicate(serialNumber || '', ppeType || '');
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [serialNumber, ppeType, checkDuplicate]);
+
+  // Memoize the batch number validation state
+  const showBatchValidation = useMemo(() => {
+    return duplicateState.isDuplicate && !duplicateState.isChecking;
+  }, [duplicateState.isDuplicate, duplicateState.isChecking]);
 
   return (
     <div className="space-y-4">
@@ -110,7 +138,6 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
                   className="text-body"
                 />
               </FormControl>
-              <FormMessage className="text-caption" />
             </FormItem>
           )}
         />
@@ -122,11 +149,11 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
             <FormItem>
               <FormLabel className="text-body-sm">
                 Batch Number
-                {isDuplicatePPE && <span className="text-destructive ml-1">*</span>}
+                {showBatchValidation && <span className="text-destructive ml-1">*</span>}
               </FormLabel>
               <FormControl>
                 <Input 
-                  placeholder={isDuplicatePPE 
+                  placeholder={showBatchValidation
                     ? "A PPE with this serial number and type exists. Enter different batch number." 
                     : "Enter batch number (optional)"} 
                   {...field} 
