@@ -14,9 +14,8 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
   onStatusChange,
   disabled = false
 }) => {
-  const handleNAClick = () => {
-    // Always set to null, no toggle behavior
-    onStatusChange(null);
+  const handleStatusChange = (status: boolean | null) => {
+    onStatusChange(status);
   };
 
   return (
@@ -31,7 +30,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
             ? "!bg-green-500 hover:!bg-green-600 !border-green-600 text-white" 
             : "hover:bg-green-50 hover:text-green-600 hover:border-green-400"
         )}
-        onClick={() => onStatusChange(true)}
+        onClick={() => handleStatusChange(true)}
         disabled={disabled}
       >
         <Check className="h-4 w-4 mr-1" />
@@ -48,7 +47,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
             ? "!bg-red-500 hover:!bg-red-600 !border-red-600 text-white" 
             : "hover:bg-red-50 hover:text-red-600 hover:border-red-400"
         )}
-        onClick={() => onStatusChange(false)}
+        onClick={() => handleStatusChange(false)}
         disabled={disabled}
       >
         <X className="h-4 w-4 mr-1" />
@@ -65,7 +64,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
             ? "!bg-slate-500 hover:!bg-slate-600 !border-slate-600 text-white" 
             : "hover:bg-slate-100 hover:text-slate-600 hover:border-slate-400"
         )}
-        onClick={handleNAClick}
+        onClick={() => handleStatusChange(null)}
         disabled={disabled}
       >
         <Minus className="h-4 w-4 mr-1" />
