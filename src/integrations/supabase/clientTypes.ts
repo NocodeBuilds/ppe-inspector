@@ -1,3 +1,4 @@
+
 import type { Database } from './types';
 import { Tables, Enums } from './types';
 

@@ -25,6 +25,7 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
   const form = useForm<AddPPEFormValues>({
     resolver: zodResolver(addPPEFormSchema),
     defaultValues: defaultFormValues,
+    mode: 'onChange'
   });
 
   const handleImageCapture = (file: File) => {
@@ -47,6 +48,9 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
     }, 300);
     
     try {
+      // Convert firstUseDate to ISO string if it exists
+      const firstUseDate = data.firstUseDate ? data.firstUseDate.toISOString() : undefined;
+      
       // Call the createPPE mutation from usePPEData
       await createPPE({
         brand: data.brand,
@@ -55,6 +59,8 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
         model_number: data.modelNumber,
         manufacturing_date: data.manufacturingDate.toISOString(),
         expiry_date: data.expiryDate.toISOString(),
+        batch_number: data.batchNumber ? Number(data.batchNumber) : undefined,
+        first_use: firstUseDate,
         imageFile: imageFile || undefined
       });
       

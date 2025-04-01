@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PPEItem, PPEStatus } from '@/integrations/supabase/client';
@@ -14,6 +15,8 @@ export function usePPEData() {
     model_number,
     manufacturing_date,
     expiry_date,
+    batch_number,
+    first_use,
     imageFile,
   }: {
     brand: string;
@@ -22,6 +25,8 @@ export function usePPEData() {
     model_number: string;
     manufacturing_date: string;
     expiry_date: string;
+    batch_number?: number;
+    first_use?: string;
     imageFile?: File;
   }) => {
     setIsUploading(true);
@@ -29,7 +34,7 @@ export function usePPEData() {
       let imageUrl = null;
       if (imageFile) {
         const imagePath = `ppe-images/${serial_number}-${Date.now()}`;
-        const { error: storageError } = await supabase.storage
+        const { data: uploadData, error: storageError } = await supabase.storage
           .from('ppe-images')
           .upload(imagePath, imageFile, {
             cacheControl: '3600',
@@ -38,10 +43,15 @@ export function usePPEData() {
 
         if (storageError) {
           console.error('Error uploading image:', storageError);
-          throw new Error('Failed to upload image');
+          throw new Error(`Failed to upload image: ${storageError.message}`);
         }
 
-        imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ppe-images/${imagePath}`;
+        // Get the public URL using getPublicUrl method
+        const { data: publicUrlData } = supabase.storage
+          .from('ppe-images')
+          .getPublicUrl(imagePath);
+          
+        imageUrl = publicUrlData.publicUrl;
       }
 
       const { data, error } = await supabase
@@ -55,6 +65,8 @@ export function usePPEData() {
             manufacturing_date,
             expiry_date,
             image_url: imageUrl,
+            batch_number,
+            first_use,
           },
         ])
         .select();

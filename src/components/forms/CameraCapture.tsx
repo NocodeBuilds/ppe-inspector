@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -188,15 +187,17 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       // Draw video frame to canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Convert canvas content to blob
+      // Convert canvas content to blob with improved error handling
       canvas.toBlob((blob) => {
         if (!blob) {
           throw new Error('Failed to create image blob');
         }
         
-        // Create a File object from the blob
+        // Create a File object with a more descriptive filename
         const fileName = `ppe_photo_${new Date().getTime()}.jpg`;
         const file = new File([blob], fileName, { type: 'image/jpeg' });
+        
+        console.log("Photo captured successfully, file size:", file.size, "bytes");
         
         // Close camera and pass image data
         stopCamera();
@@ -207,7 +208,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
           title: 'Photo Captured',
           description: 'Image has been captured successfully'
         });
-      }, 'image/jpeg', 0.8);
+      }, 'image/jpeg', 0.85); // Slightly increased quality for better image
     } catch (error: any) {
       console.error('Error capturing photo:', error);
       setCameraError(error.message || 'Failed to capture image');
@@ -224,7 +225,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     <div>
       <div className="flex items-center gap-3">
         <Button 
-          type="button" 
+          type="button" // Explicitly set type to button to prevent form submission
           variant="outline" 
           onClick={startCamera}
           className="flex items-center gap-2"
@@ -255,14 +256,21 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
             <div className="text-center p-4 border rounded">
               <p className="text-destructive mb-3">{cameraError}</p>
               <div className="flex justify-center gap-2">
-                <Button onClick={() => {
-                  setCameraError(null);
-                  startCamera();
-                }}>Try Again</Button>
-                <Button variant="outline" onClick={() => {
-                  stopCamera();
-                  setIsCameraOpen(false);
-                }}>Cancel</Button>
+                <Button 
+                  type="button" // Explicitly set type to button
+                  onClick={() => {
+                    setCameraError(null);
+                    startCamera();
+                  }}
+                >Try Again</Button>
+                <Button 
+                  type="button" // Explicitly set type to button
+                  variant="outline" 
+                  onClick={() => {
+                    stopCamera();
+                    setIsCameraOpen(false);
+                  }}
+                >Cancel</Button>
               </div>
             </div>
           ) : (
@@ -286,6 +294,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
               
               <div className="flex justify-between">
                 <Button 
+                  type="button" // Explicitly set type to button
                   variant="outline" 
                   onClick={() => {
                     stopCamera();
@@ -297,6 +306,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
                 </Button>
                 
                 <Button 
+                  type="button" // Explicitly set type to button
                   onClick={capturePhoto}
                   disabled={isCapturing || !streamRef.current}
                 >
