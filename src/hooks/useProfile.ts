@@ -53,7 +53,6 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
             site_name: data.site_name || null,
             department: data.department || null,
             Employee_Role: data.Employee_Role || null,
-            bio: data.bio || null,
             email: null
           };
           

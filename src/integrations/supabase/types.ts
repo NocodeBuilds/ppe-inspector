@@ -288,7 +288,6 @@ export type Database = {
           p_employee_id: string
           p_location: string
           p_department: string
-          p_bio: string
         }
         Returns: Json
       }
