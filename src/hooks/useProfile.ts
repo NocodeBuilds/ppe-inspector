@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase, Profile } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -40,13 +41,14 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
           console.log("Profile data:", data);
           
           // Cast data to Profile type with proper type safety
+          // Make sure all properties from the Profile type are included here
           const profileData: Profile = {
             id: data.id,
             full_name: data.full_name || null,
             avatar_url: data.avatar_url || null,
             role: data.role || 'user',
-            created_at: data.created_at || null,
-            updated_at: data.updated_at || null,
+            created_at: data.created_at || '',
+            updated_at: data.updated_at || '',
             employee_id: data.employee_id || null,
             site_name: data.site_name || null,
             department: data.department || null,
