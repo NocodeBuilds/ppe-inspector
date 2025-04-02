@@ -37,7 +37,7 @@ export type Database = {
           id: string
           inspection_id: string | null
           notes: string | null
-          passed: boolean
+          passed: boolean | null
           photo_url: string | null
         }
         Insert: {
@@ -46,7 +46,7 @@ export type Database = {
           id?: string
           inspection_id?: string | null
           notes?: string | null
-          passed: boolean
+          passed?: boolean | null
           photo_url?: string | null
         }
         Update: {
@@ -55,7 +55,7 @@ export type Database = {
           id?: string
           inspection_id?: string | null
           notes?: string | null
-          passed?: boolean
+          passed?: boolean | null
           photo_url?: string | null
         }
         Relationships: [
@@ -82,7 +82,7 @@ export type Database = {
           id: string
           inspector_id: string | null
           notes: string | null
-          overall_result: string
+          overall_result: string | null
           ppe_id: string | null
           signature_url: string | null
           type: Database["public"]["Enums"]["inspection_type"]
@@ -93,7 +93,7 @@ export type Database = {
           id?: string
           inspector_id?: string | null
           notes?: string | null
-          overall_result: string
+          overall_result?: string | null
           ppe_id?: string | null
           signature_url?: string | null
           type: Database["public"]["Enums"]["inspection_type"]
@@ -104,7 +104,7 @@ export type Database = {
           id?: string
           inspector_id?: string | null
           notes?: string | null
-          overall_result?: string
+          overall_result?: string | null
           ppe_id?: string | null
           signature_url?: string | null
           type?: Database["public"]["Enums"]["inspection_type"]

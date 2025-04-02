@@ -35,6 +35,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
         )}
         onClick={() => handleStatusChange(true)}
         disabled={disabled}
+        aria-pressed={passed === true}
       >
         <Check className="h-4 w-4 mr-1" />
         <span className="text-body-sm">OK</span>
@@ -52,6 +53,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
         )}
         onClick={() => handleStatusChange(false)}
         disabled={disabled}
+        aria-pressed={passed === false}
       >
         <X className="h-4 w-4 mr-1" />
         <span className="text-body-sm">NOT OK</span>
@@ -69,6 +71,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
         )}
         onClick={() => handleStatusChange(null)}
         disabled={disabled}
+        aria-pressed={passed === null}
       >
         <Minus className="h-4 w-4 mr-1" />
         <span className="text-body-sm">N/A</span>
