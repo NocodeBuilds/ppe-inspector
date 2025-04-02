@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Check, X, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,8 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
   disabled = false
 }) => {
   const handleStatusChange = (status: boolean | null) => {
+    // Log the status change to debug
+    console.log("CheckpointOptions: Setting status to:", status);
     onStatusChange(status);
   };
 
