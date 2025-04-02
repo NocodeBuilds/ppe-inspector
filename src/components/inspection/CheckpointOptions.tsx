@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Check, X, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +20,9 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
     onStatusChange(status);
   };
 
+  // Log the received passed prop
+  console.log(`CheckpointOptions (ID related to parent): Received passed = ${passed} (Type: ${typeof passed})`); 
+
   return (
     <div className="flex gap-2">
       <Button
@@ -30,7 +32,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
         className={cn(
           "border transition-colors duration-200",
           passed === true 
-            ? "!bg-green-500 hover:!bg-green-600 !border-green-600 text-white" 
+            ? "!bg-green-500 hover:!bg-green-600 !border-green-600 text-white ring-green-400" 
             : "hover:bg-green-50 hover:text-green-600 hover:border-green-400"
         )}
         onClick={() => handleStatusChange(true)}
@@ -48,7 +50,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
         className={cn(
           "border transition-colors duration-200",
           passed === false 
-            ? "!bg-red-500 hover:!bg-red-600 !border-red-600 text-white" 
+            ? "!bg-red-500 hover:!bg-red-600 !border-red-600 text-white ring-red-400" 
             : "hover:bg-red-50 hover:text-red-600 hover:border-red-400"
         )}
         onClick={() => handleStatusChange(false)}
@@ -66,8 +68,8 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
         className={cn(
           "border transition-colors duration-200",
           passed === null 
-            ? "!bg-slate-500 hover:!bg-slate-600 !border-slate-600 text-white" 
-            : "hover:bg-slate-100 hover:text-slate-600 hover:border-slate-400"
+            ? "!bg-slate-500 hover:!bg-slate-600 !border-slate-600 text-white ring-slate-400" 
+            : "hover:bg-slate-50 hover:text-slate-600 hover:border-slate-400"
         )}
         onClick={() => handleStatusChange(null)}
         disabled={disabled}

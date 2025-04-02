@@ -251,8 +251,8 @@ const InspectionForm = () => {
     const requiredResults = allResults.filter(([id]) => {
       const checkpoint = checkpoints.find(cp => cp.id === id);
       const result = results[id];
-      // Only include required checkpoints that are OK or NOT OK (not NA)
-      return checkpoint?.required && result?.passed !== null;
+      // Include required checkpoints that have any selection (OK, NOT OK, or NA)
+      return checkpoint?.required && result?.passed !== undefined;
     });
     
     if (requiredResults.length === 0) {
@@ -260,15 +260,13 @@ const InspectionForm = () => {
       return;
     }
 
-    // Check if any checkpoint is NOT OK
-    const anyNotOk = requiredResults.some(([_, result]) => result.passed === false);
-    // All required checkpoints must be OK
-    const allOk = requiredResults.every(([_, result]) => result.passed === true);
+    // Calculate pass/fail based on required checkpoints that are not NA
+    const nonNAResults = requiredResults.filter(([_, result]) => result.passed !== null);
+    const hasFailedRequired = nonNAResults.some(([_, result]) => result.passed === false);
     
-    if (anyNotOk) {
-      setOverallResult('fail');
-    } else if (allOk) {
-      setOverallResult('pass');
+    // Only set a pass/fail result if there are non-NA required checkpoints
+    if (nonNAResults.length > 0) {
+      setOverallResult(hasFailedRequired ? 'fail' : 'pass');
     } else {
       setOverallResult(null);
     }
@@ -326,10 +324,13 @@ const InspectionForm = () => {
   };
   
   const validateForm = () => {
-    // Get required checkpoints that have no selection (not even NA)
+    // Get required checkpoints that have no selection at all
     const unselectedRequired = checkpoints
       .filter(cp => cp.required)
-      .filter(cp => results[cp.id]?.passed === undefined);
+      .filter(cp => {
+        const result = results[cp.id];
+        return result?.passed === undefined || (result?.passed !== true && result?.passed !== false && result?.passed !== null);
+      });
       
     if (unselectedRequired.length > 0) {
       setResultsError('Please select OK, NOT OK, or N/A for all required checkpoints');
@@ -674,6 +675,9 @@ const InspectionForm = () => {
     );
   }
   
+  // Add console log to check the results state
+  console.log("InspectionForm Results State:", results); 
+
   return (
     <div className="pb-20">
       <div className="flex items-center mb-6">
@@ -816,7 +820,7 @@ const InspectionForm = () => {
                   key={checkpoint.id}
                   id={checkpoint.id}
                   description={checkpoint.description}
-                  passed={results[checkpoint.id]?.passed ?? undefined}
+                  passed={results[checkpoint.id]?.passed}
                   notes={results[checkpoint.id]?.notes ?? ''}
                   photoUrl={results[checkpoint.id]?.photoUrl}
                   onPassedChange={(value) => handleResultChange(checkpoint.id, value)}
