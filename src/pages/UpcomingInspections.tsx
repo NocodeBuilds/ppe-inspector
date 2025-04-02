@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,7 +40,10 @@ const UpcomingInspections = () => {
       setIsRefreshing(true);
       setHasNetworkError(false);
       
-      const currentDate = new Date().toISOString();
+      const now = new Date();
+      const futureDate = new Date();
+      futureDate.setDate(now.getDate() + 10); // Set threshold to 10 days from now
+      const thresholdDateISO = futureDate.toISOString();
       
       if (!navigator.onLine) {
         setHasNetworkError(true);
@@ -78,10 +80,24 @@ const UpcomingInspections = () => {
       const { data, error } = await supabase
         .from('ppe_items')
         .select('*')
-        .lte('next_inspection', currentDate)
-        .or(`status.eq.active,status.eq.due`);
+        // .eq('status', 'active') // Temporarily commented out for debugging
+        .lte('next_inspection', thresholdDateISO); // Due within the next 10 days or past due
       
-      if (error) throw error;
+      console.log("Raw data from Supabase:", data);
+      
+      if (error) {
+        // Check if the error is the invalid enum value again, though it shouldn't be
+        if (error.code === '22P02') { 
+          console.error('Supabase enum error persists:', error.message);
+          toast({
+            title: 'Configuration Error',
+            description: `Invalid status value used in query: ${error.message}`,
+            variant: 'destructive',
+          });
+        } else {
+          throw error; // Rethrow other errors
+        }
+      }
       
       if (!data || data.length === 0) {
         setPpeItems([]);
@@ -105,6 +121,7 @@ const UpcomingInspections = () => {
         createdAt: item.created_at,
         updatedAt: item.updated_at,
       }));
+      console.log("Mapped items:", mappedItems);
       
       localStorage.setItem('upcoming_inspections_cache', JSON.stringify({
         items: mappedItems,
@@ -163,7 +180,7 @@ const UpcomingInspections = () => {
           const inspDate = new Date(item.nextInspection || item.createdAt);
           const diffTime = inspDate.getTime() - now.getTime();
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          return diffDays >= 0 && diffDays <= 7;
+          return diffDays >= 0 && diffDays <= 10;
         });
       }
     }
@@ -261,7 +278,7 @@ const UpcomingInspections = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Items</SelectItem>
-            <SelectItem value="due">Due Soon (7 days)</SelectItem>
+            <SelectItem value="due">Due Soon (10 days)</SelectItem>
             <SelectItem value="overdue">Overdue</SelectItem>
           </SelectContent>
         </Select>

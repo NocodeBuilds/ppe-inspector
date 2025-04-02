@@ -41,17 +41,22 @@ const Home = () => {
     try {
       setIsLoading(true);
 
-      // Get current date
-      const today = new Date().toISOString();
+      // Get current date and 10 days in the future
+      const today = new Date(); // Keep for other stats if needed
+      const futureDate = new Date();
+      futureDate.setDate(today.getDate() + 10);
+      const thresholdDateISO = futureDate.toISOString();
 
-      // Get upcoming inspections count
+      // Get upcoming inspections count (within next 10 days or past due, any status)
       const {
         count: upcomingCount,
         error: upcomingError
       } = await supabase.from('ppe_items').select('id', {
         count: 'exact',
         head: true
-      }).lte('next_inspection', today);
+      })
+      // No status filter applied here to match UpcomingInspections page logic
+      .lte('next_inspection', thresholdDateISO); // Use 10-day lookahead
       if (upcomingError) throw upcomingError;
 
       // Get expiring PPE count (within next year)
@@ -63,7 +68,7 @@ const Home = () => {
       } = await supabase.from('ppe_items').select('id', {
         count: 'exact',
         head: true
-      }).or(`status.eq.expired,and(expiry_date.gte.${today},expiry_date.lte.${oneYearFromNow.toISOString()})`);
+      }).or(`status.eq.expired,and(expiry_date.gte.${today.toISOString()},expiry_date.lte.${oneYearFromNow.toISOString()})`);
       if (expiringError) throw expiringError;
 
       // Get flagged PPE count
