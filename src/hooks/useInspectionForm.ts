@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,10 +15,10 @@ const inspectionFormSchema = z.object({
   type: z.enum(['pre-use', 'monthly', 'quarterly']),
   notes: z.string().optional(),
   signatureUrl: z.string().optional(),
-  overallResult: z.enum(['pass', 'fail', 'maintenance-required']),
+  overallResult: z.enum(['pass', 'fail', 'maintenance-required']).nullable(),
   checkpointResults: z.array(z.object({
     checkpointId: z.string(),
-    passed: z.boolean(),
+    passed: z.boolean().nullable(),
     notes: z.string().optional(),
     photoUrl: z.string().optional(),
   }))
@@ -43,7 +44,7 @@ export const useInspectionForm = () => {
     defaultValues: {
       type: 'pre-use',
       notes: '',
-      overallResult: 'pass',
+      overallResult: null,
       checkpointResults: []
     }
   });
@@ -79,7 +80,7 @@ export const useInspectionForm = () => {
         if (ppe) {
           form.setValue('checkpointResults', (checkpointData || []).map(checkpoint => ({
             checkpointId: checkpoint.id,
-            passed: true,
+            passed: null,
             notes: '',
             photoUrl: '',
           })));

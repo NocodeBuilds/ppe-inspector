@@ -78,3 +78,46 @@ export const getDaysUntilNextInspection = (
     return 'N/A';
   }
 };
+
+/**
+ * Calculate overall result from checkpoint results
+ * @param results Map of checkpoint results
+ * @param checkpoints List of checkpoints
+ * @returns Overall result as 'pass', 'fail', or null if inconclusive
+ */
+export const calculateOverallResult = (
+  results: Record<string, { passed: boolean | null | undefined; notes: string; photoUrl?: string }>,
+  checkpoints: any[]
+): 'pass' | 'fail' | null => {
+  // Get all checkpoints that have been answered (not undefined)
+  const answeredCheckpoints = Object.entries(results).filter(
+    ([_, result]) => result.passed !== undefined
+  );
+  
+  if (answeredCheckpoints.length === 0) {
+    return null; // No answered checkpoints
+  }
+  
+  // Count results
+  const failCount = answeredCheckpoints.filter(([_, result]) => result.passed === false).length;
+  const passCount = answeredCheckpoints.filter(([_, result]) => result.passed === true).length;
+  const naCount = answeredCheckpoints.filter(([_, result]) => result.passed === null).length;
+  
+  // If any checkpoint fails, overall result is fail
+  if (failCount > 0) {
+    return 'fail';
+  }
+  
+  // If all checkpoints are N/A, result is null
+  if (naCount === answeredCheckpoints.length) {
+    return null;
+  }
+  
+  // If there are any passes and no fails, result is pass
+  if (passCount > 0) {
+    return 'pass';
+  }
+  
+  // Default case
+  return null;
+};

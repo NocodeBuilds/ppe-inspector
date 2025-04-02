@@ -1,4 +1,3 @@
-
 export interface CheckpointStatus {
   id: string;
   description: string;
