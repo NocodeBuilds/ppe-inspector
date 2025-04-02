@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,9 +53,9 @@ const EditProfile = () => {
           />
           
           <ProfileForm
-            fullName={formData.fullName}
-            employeeId={formData.employeeId}
-            siteName={formData.siteName}
+            fullName={formData.full_name}
+            employeeId={formData.employee_id}
+            siteName={formData.site_name}
             department={formData.department}
             Employee_Role={formData.Employee_Role}
             onChange={handleInputChange}
