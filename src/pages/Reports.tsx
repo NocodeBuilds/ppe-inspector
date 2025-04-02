@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -12,9 +11,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRoleAccess } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '@/hooks/useNotifications';
-import ReportCard from '@/components/reports/ReportCard';
 import ReportSkeleton from '@/components/reports/ReportSkeleton';
 import InspectionHistory from '@/components/reports/InspectionHistory';
+import PPEInventoryList from '@/components/reports/PPEInventoryList';
 import { 
   generatePPEItemReport, 
   generateInspectionsDateReport
@@ -28,7 +27,7 @@ import EquipmentLifecycleTracker from '@/components/reports/EquipmentLifecycleTr
 import PageHeader from '@/components/common/PageHeader';
 
 const ReportsPage = () => {
-  const [activeTab, setActiveTab] = useState('inspections');
+  const [activeTab, setActiveTab] = useState('ppe');
   const [isGenerating, setIsGenerating] = useState(false);
   const [inspectionCount, setInspectionCount] = useState(0);
   const [ppeCount, setPpeCount] = useState(0);
@@ -170,8 +169,7 @@ const ReportsPage = () => {
       <PageHeader title="Reports" />
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-3 mb-6">
-          <TabsTrigger value="inspections">Inspections</TabsTrigger>
+        <TabsList className="grid grid-cols-2 mb-6">
           <TabsTrigger value="ppe">PPE Inventory</TabsTrigger>
           <TabsTrigger value="history">Inspection History</TabsTrigger>
         </TabsList>
@@ -182,43 +180,8 @@ const ReportsPage = () => {
           </div>
         ) : (
           <>
-            <TabsContent value="inspections">
-              <ReportCard
-                title={<>
-                  <Calendar className="mr-2 h-5 w-5" />
-                  Inspections Report
-                </>}
-                description="Generate a detailed report of all inspections, including dates, inspectors, and results."
-                count={inspectionCount}
-                isEmpty={inspectionCount === 0}
-                emptyMessage="No inspections found in the system. Complete inspections to generate a report."
-                onGenerate={() => handleGenerateReport('inspections')}
-                onGenerateExcel={() => handleExportExcel('inspections')}
-                isGenerating={isGenerating}
-              />
-            </TabsContent>
-            
             <TabsContent value="ppe">
-              <ReportCard
-                title={<>
-                  <FileText className="mr-2 h-5 w-5" />
-                  PPE Inventory Report
-                </>}
-                description="Generate a comprehensive report of all PPE items in the system, including status, expiry dates, and last inspection details."
-                count={ppeCount}
-                isEmpty={ppeCount === 0}
-                emptyMessage="No PPE items found in the system. Add PPE items to generate a report."
-                onGenerate={() => handleGenerateReport('ppe')}
-                onGenerateExcel={() => handleExportExcel('ppe')}
-                isGenerating={isGenerating}
-                visualizations={
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {recentItems.map(item => (
-                      <EquipmentLifecycleTracker key={item.id} item={item} />
-                    ))}
-                  </div>
-                }
-              />
+              <PPEInventoryList />
             </TabsContent>
             
             <TabsContent value="history">

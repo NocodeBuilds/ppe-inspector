@@ -15,12 +15,13 @@ import {
   Filter
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { exportInspectionsToExcel } from '@/utils/exportUtils';
+import { exportFilteredInspectionsToExcel } from '@/utils/exportUtils';
 import { generateInspectionsDateReport } from '@/utils/reportGeneratorService';
 import { Badge } from '@/components/ui/badge';
 import { fetchCompleteInspectionData } from '@/utils/reportGenerator/reportDataFormatter';
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
+import { SelectedExportFilters } from './ExportFilterModal';
 
 const InspectionHistory = () => {
   const [inspections, setInspections] = useState<any[]>([]);
@@ -28,7 +29,6 @@ const InspectionHistory = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [timeframe, setTimeframe] = useState('all');
-  const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -112,65 +112,80 @@ const InspectionHistory = () => {
     setFilteredInspections(filtered);
   };
   
-  const handleExportPDF = async () => {
+  const handleExport = (filters: SelectedExportFilters) => {
+    console.log("Export requested with filters:", filters);
+    toast({ title: "Exporting Inspections...", description: "Generating Excel file." });
+    
     try {
-      setIsExporting(true);
-      const endDate = new Date();
-      let startDate = new Date();
+      let dataToExport = inspections.filter(inspection => {
+        if (filters.ppeType && inspection.ppe_type !== filters.ppeType) {
+          return false;
+        }
+        
+        if (filters.result && inspection.overall_result?.toLowerCase() !== filters.result.toLowerCase()) {
+          return false;
+        }
+        
+        return true;
+      });
       
-      if (timeframe === 'week') {
-        startDate.setDate(endDate.getDate() - 7);
-      } else if (timeframe === 'month') {
-        startDate.setMonth(endDate.getMonth() - 1);
-      } else if (timeframe === 'year') {
-        startDate.setFullYear(endDate.getFullYear() - 1);
+      const filterDesc = Object.entries(filters)
+          .map(([key, value]) => `${key}=${value}`)
+          .join('_');
+      const filenamePrefix = filterDesc ? `InspectionHistory_${filterDesc}` : 'InspectionHistory_All';
+      
+      if (dataToExport.length > 0) {
+        exportFilteredInspectionsToExcel(dataToExport, filenamePrefix);
+        toast({ title: "Export Successful", description: `Exported ${dataToExport.length} inspections.` });
       } else {
-        startDate.setFullYear(endDate.getFullYear() - 10); // Default to 10 years
+        toast({ variant: "destructive", title: "No Data Found", description: "No inspections match the selected filter criteria." });
       }
-      
-      await generateInspectionsDateReport(startDate, endDate);
-      
-      toast({
-        title: 'Report Generated',
-        description: 'Inspection history has been exported to PDF',
-      });
     } catch (error) {
-      console.error('Error exporting to PDF:', error);
-      toast({
-        title: 'Export Failed',
-        description: 'Failed to export inspection history to PDF',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsExporting(false);
+      console.error("Export failed:", error);
+      toast({ variant: "destructive", title: "Export Error", description: "An unexpected error occurred during export." });
     }
   };
   
-  const handleExportExcel = async () => {
+  const handleDownloadPDF = async (id: string) => {
     try {
-      setIsExporting(true);
-      const success = await exportInspectionsToExcel();
+      const inspectionData = await fetchCompleteInspectionData(supabase, id);
+      if (!inspectionData) throw new Error('Inspection data not found.');
       
-      if (success) {
-        toast({
-          title: 'Export Successful',
-          description: 'Inspection history has been exported to Excel',
-        });
-      } else {
-        throw new Error('Failed to export to Excel');
-      }
-    } catch (error) {
-      console.error('Error exporting to Excel:', error);
+      await generateInspectionDetailPDF(inspectionData);
       toast({
-        title: 'Export Failed',
-        description: 'Failed to export inspection history to Excel',
+        title: 'PDF Generated',
+        description: 'Inspection report has been downloaded as PDF',
+      });
+    } catch (error: any) {
+      console.error('Error generating single PDF report:', error);
+      toast({
+        title: 'PDF Generation Failed',
+        description: error.message || 'Could not generate PDF report',
         variant: 'destructive',
       });
-    } finally {
-      setIsExporting(false);
     }
   };
   
+  const handleDownloadExcel = async (id: string) => {
+    try {
+      const inspectionData = await fetchCompleteInspectionData(supabase, id);
+      if (!inspectionData) throw new Error('Inspection data not found.');
+
+      await generateInspectionExcelReport(inspectionData);
+      toast({
+        title: 'Excel Generated',
+        description: 'Inspection report has been downloaded as Excel',
+      });
+    } catch (error: any) {
+      console.error('Error generating single Excel report:', error);
+      toast({
+        title: 'Excel Generation Failed',
+        description: error.message || 'Could not generate Excel report',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleViewDetails = async (id: string) => {
     try {
       const inspectionData = await fetchCompleteInspectionData(supabase, id);
@@ -244,27 +259,6 @@ const InspectionHistory = () => {
                   <SelectItem value="year">Past Year</SelectItem>
                 </SelectContent>
               </Select>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleExportExcel}
-                disabled={isExporting || filteredInspections.length === 0}
-                className="h-8"
-              >
-                <FileSpreadsheet className="h-4 w-4 mr-1" />
-                Excel
-              </Button>
-              
-              <Button 
-                size="sm" 
-                onClick={handleExportPDF}
-                disabled={isExporting || filteredInspections.length === 0}
-                className="h-8"
-              >
-                <Download className="h-4 w-4 mr-1" />
-                PDF
-              </Button>
             </div>
           </div>
           
@@ -272,7 +266,12 @@ const InspectionHistory = () => {
             inspections={filteredInspections}
             isLoading={isLoading}
             onViewDetails={handleViewDetails}
+            onDownloadPDF={handleDownloadPDF}
+            onDownloadExcel={handleDownloadExcel}
             onFilterChange={handleFilterChange}
+            onExport={handleExport}
+            activeFilter={filter}
+            activeTimeframe={timeframe}
           />
         </div>
       </CardContent>

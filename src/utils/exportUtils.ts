@@ -208,3 +208,140 @@ export const exportAnalyticsToExcel = async () => {
     return false;
   }
 };
+
+import { format } from 'date-fns';
+
+interface InspectionExportData {
+  id: string;
+  ppe_id: string;
+  inspection_date: string;
+  inspector_name?: string;
+  ppe_type?: string;
+  serial_number?: string;
+  overall_result?: string;
+}
+
+export const exportFilteredInspectionsToExcel = async (
+  inspections: any[], 
+  filenamePrefix: string = 'Inspections'
+): Promise<boolean> => {
+  try {
+    if (!inspections || inspections.length === 0) {
+      console.warn('No inspection data provided for export.');
+      return false;
+    }
+
+    const dataForSheet = inspections.map(inspection => ({
+      'Inspection ID': inspection.id,
+      'PPE ID': inspection.ppe_id,
+      'Inspection Date': inspection.inspection_date 
+          ? format(new Date(inspection.inspection_date), 'yyyy-MM-dd HH:mm') 
+          : 'N/A',
+      'Inspector': inspection.user?.full_name || inspection.inspector_name || 'N/A', 
+      'PPE Type': inspection.ppe?.type || inspection.ppe_type || 'N/A', 
+      'Serial Number': inspection.ppe?.serial_number || inspection.serial_number || 'N/A', 
+      'Result': inspection.overall_result?.toUpperCase() || 'N/A',
+      'Location': inspection.location || 'N/A',
+      'Notes': inspection.notes || ''
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inspections');
+
+    const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+    const filename = `${filenamePrefix}_${timestamp}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+
+    console.log(`Successfully exported data to ${filename}`);
+    return true;
+
+  } catch (error) {
+    console.error("Error generating Excel export:", error);
+    return false;
+  }
+};
+
+// --- PPE Export Utility --- 
+
+// Define a type for the PPE data structure (adjust based on actual data)
+interface PPEExportData {
+  id: string;
+  serial_number?: string;
+  type?: string;
+  brand?: string;
+  model_number?: string;
+  status?: string;
+  manufacturing_date?: string | Date;
+  expiry_date?: string | Date;
+  last_inspection_date?: string | Date;
+  next_inspection_date?: string | Date;
+  created_at?: string | Date;
+  // Add other relevant fields
+}
+
+/**
+ * Exports a filtered list of PPE items to an Excel file.
+ * @param ppeItems - Array of PPE item objects to export.
+ * @param filenamePrefix - Prefix for the generated filename.
+ * @returns True if export was successful, false otherwise.
+ */
+export const exportFilteredPPEToExcel = async (
+  ppeItems: any[], // Use a more specific type like PPEItem if available
+  filenamePrefix: string = 'PPEInventory'
+): Promise<boolean> => {
+  try {
+    if (!ppeItems || ppeItems.length === 0) {
+      console.warn('No PPE data provided for export.');
+      return false;
+    }
+
+    // 1. Format data for the worksheet
+    const dataForSheet = ppeItems.map(item => ({
+      'Serial Number': item.serial_number || 'N/A',
+      'Type': item.type || 'N/A',
+      'Brand': item.brand || 'N/A',
+      'Model': item.model_number || 'N/A',
+      'Status': item.status?.toUpperCase() || 'N/A',
+      'Manufacture Date': item.manufacturing_date 
+          ? format(new Date(item.manufacturing_date), 'yyyy-MM-dd') 
+          : 'N/A',
+      'Expiry Date': item.expiry_date 
+          ? format(new Date(item.expiry_date), 'yyyy-MM-dd') 
+          : 'N/A',
+      'Last Inspection': item.last_inspection_date 
+          ? format(new Date(item.last_inspection_date), 'yyyy-MM-dd') 
+          : 'N/A',
+      'Next Inspection': item.next_inspection_date 
+          ? format(new Date(item.next_inspection_date), 'yyyy-MM-dd') 
+          : 'N/A',
+      'Date Added': item.created_at 
+          ? format(new Date(item.created_at), 'yyyy-MM-dd HH:mm') 
+          : 'N/A',
+      // Add other relevant fields
+      'Location': item.location || 'N/A', // Example
+    }));
+
+    // 2. Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
+
+    // Optional: Adjust column widths
+
+    // 3. Create workbook and add worksheet
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'PPE Inventory');
+
+    // 4. Generate filename and trigger download
+    const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+    const filename = `${filenamePrefix}_${timestamp}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+
+    console.log(`Successfully exported PPE data to ${filename}`);
+    return true;
+
+  } catch (error) {
+    console.error("Error generating PPE Excel export:", error);
+    return false;
+  }
+};
