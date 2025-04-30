@@ -89,6 +89,12 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     };
   }, []);
   
+  // Handle passed value changes with improved feedback
+  const handleStatusChange = (value: boolean | null) => {
+    console.log(`CheckpointItem ${id}: Changing status to ${value}`);
+    onPassedChange(value);
+  };
+
   const fetchAvailableDevices = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ video: true });
@@ -277,12 +283,16 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
     }
   };
 
+  // Improved border color function to handle null values explicitly
   const getBorderColor = () => {
     if (passed === true) return 'border-l-green-500';
     if (passed === false) return 'border-l-destructive';
     if (passed === null) return 'border-l-yellow-500';
     return 'border-l-gray-300';
   };
+  
+  // Log the passed value to help with debugging
+  console.log(`CheckpointItem ${id}: passed = ${passed}, type = ${typeof passed}`);
   
   return (
     <Card className={`p-4 border-l-4 ${getBorderColor()} mb-4`}>
@@ -291,10 +301,7 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         
         <CheckpointOptions 
           passed={passed}
-          onStatusChange={(value) => {
-            console.log("CheckpointItem: Status change requested:", { value });
-            onPassedChange(value);
-          }}
+          onStatusChange={handleStatusChange}
           disabled={disabled}
         />
       </div>
@@ -376,6 +383,7 @@ const CheckpointItem: React.FC<CheckpointItemProps> = ({
         </div>
       </div>
       
+      {/* Camera overlay */}
       <CardOverlay
         show={showCamera}
         onClose={stopCamera}

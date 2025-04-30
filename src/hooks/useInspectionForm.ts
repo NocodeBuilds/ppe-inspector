@@ -9,6 +9,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
 import { PPEItem, InspectionType } from '@/integrations/supabase/client';
 import { usePPEData } from '@/hooks/usePPEData';
+import { calculateOverallResult } from '@/utils/inspectionUtils';
 
 // Define the form schema
 const inspectionFormSchema = z.object({
@@ -38,7 +39,7 @@ export const useInspectionForm = () => {
   const { showNotification } = useNotifications();
   const { getPPEById, updatePPEStatus } = usePPEData();
 
-  // Initialize form
+  // Initialize form with proper handling for null values
   const form = useForm<InspectionFormValues>({
     resolver: zodResolver(inspectionFormSchema),
     defaultValues: {
@@ -78,6 +79,7 @@ export const useInspectionForm = () => {
         setCheckpoints(checkpointData || []);
 
         if (ppe) {
+          // Initialize each checkpoint with explicit null value for passed
           form.setValue('checkpointResults', (checkpointData || []).map(checkpoint => ({
             checkpointId: checkpoint.id,
             passed: null,
@@ -100,13 +102,30 @@ export const useInspectionForm = () => {
     loadData();
   }, [ppeId, form, navigate, showNotification, getPPEById]);
 
-  // Handle form submission
+  // Handle form submission with improved null handling
   const onSubmit = async (data: InspectionFormValues) => {
     if (!user || !ppeItem) return;
     
     setIsSubmitting(true);
     try {
       console.log('Submitting inspection form data:', data);
+
+      // Calculate overall result using the utility function
+      const resultsMap: Record<string, { passed: boolean | null | undefined; notes: string; photoUrl?: string }> = {};
+      data.checkpointResults.forEach(result => {
+        resultsMap[result.checkpointId] = {
+          passed: result.passed,
+          notes: result.notes || '',
+          photoUrl: result.photoUrl
+        };
+      });
+      
+      // Use the utility function to calculate the overall result
+      const calculatedResult = calculateOverallResult(resultsMap, checkpoints);
+      
+      // Override with the form value if provided, otherwise use calculated value
+      const finalResult = data.overallResult || calculatedResult;
+      console.log('Final overall result:', finalResult);
 
       const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
@@ -115,7 +134,7 @@ export const useInspectionForm = () => {
           inspector_id: user.id,
           type: data.type as InspectionType,
           date: new Date().toISOString(),
-          overall_result: data.overallResult,
+          overall_result: finalResult,
           signature_url: data.signatureUrl,
           notes: data.notes
         })
@@ -127,7 +146,7 @@ export const useInspectionForm = () => {
       const resultsToInsert = data.checkpointResults.map(result => ({
         inspection_id: inspection.id,
         checkpoint_id: result.checkpointId,
-        passed: result.passed,
+        passed: result.passed, // This now properly handles null values
         notes: result.notes || null,
         photo_url: result.photoUrl || null
       }));
@@ -159,10 +178,13 @@ export const useInspectionForm = () => {
           nextInspectionDate.setMonth(nextInspectionDate.getMonth() + 1);
       }
 
-      if (data.overallResult === 'fail') {
+      // Update PPE status based on the final result
+      if (finalResult === 'fail') {
         updatePPEStatus({ id: ppeId, status: 'flagged' });
       } else if (data.overallResult === 'maintenance-required') {
         updatePPEStatus({ id: ppeId, status: 'maintenance' });
+      } else if (finalResult === 'pass') {
+        updatePPEStatus({ id: ppeId, status: 'active' });
       }
 
       await supabase

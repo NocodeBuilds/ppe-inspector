@@ -1,7 +1,7 @@
 // Service Worker for PPE Inspector PWA
-const CACHE_NAME = 'ppe-inspector-v3';
-const DYNAMIC_CACHE = 'ppe-inspector-dynamic-v3';
-const API_CACHE = 'ppe-inspector-api-v3';
+const CACHE_NAME = 'ppe-inspector-v4'; // Incremented version
+const DYNAMIC_CACHE = 'ppe-inspector-dynamic-v4';
+const API_CACHE = 'ppe-inspector-api-v4';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
@@ -14,6 +14,15 @@ const STATIC_ASSETS = [
   '/assets/index.js'
 ];
 
+// Routes that should be cached for offline access
+const OFFLINE_ROUTES = [
+  '/equipment',
+  '/upcoming',
+  '/expiring',
+  '/flagged',
+  '/reports'
+];
+
 // Helper functions for cache management
 const cacheHelpers = {
   // Add all resources to a specific cache
@@ -21,6 +30,7 @@ const cacheHelpers = {
     try {
       const cache = await caches.open(cacheName);
       await cache.addAll(resources);
+      console.log(`[Service Worker] Added ${resources.length} resources to ${cacheName}`);
       return true;
     } catch (error) {
       console.error('[Service Worker] Failed to cache resources:', error);
@@ -49,11 +59,60 @@ const cacheHelpers = {
       try {
         const cache = await caches.open(cacheName);
         await cache.put(request, response.clone());
+        return response;
       } catch (error) {
         console.error('[Service Worker] Failed to put in cache:', error);
+        return response;
       }
     }
     return response;
+  },
+  
+  // Network first, then cache strategy
+  networkFirstStrategy: async (request) => {
+    try {
+      // Try network first
+      const networkResponse = await fetch(request);
+      
+      // If request is successful, update cache
+      if (networkResponse.ok) {
+        const requestUrl = new URL(request.url);
+        
+        // Determine which cache to use based on request URL
+        let cacheName = DYNAMIC_CACHE;
+        if (requestUrl.pathname.includes('/rest/v1/')) {
+          cacheName = API_CACHE;
+        }
+        
+        await cacheHelpers.putInCache(cacheName, request, networkResponse.clone());
+      }
+      
+      return networkResponse;
+    } catch (error) {
+      console.log('[Service Worker] Network request failed, trying cache', request.url);
+      
+      // If network fails, try cache
+      const cache = await caches.match(request);
+      if (cache) {
+        console.log('[Service Worker] Serving from cache', request.url);
+        return cache;
+      }
+      
+      // If not in cache and is a page, serve offline page
+      if (request.mode === 'navigate') {
+        const offlineCache = await caches.open(CACHE_NAME);
+        return offlineCache.match('/offline.html') || new Response('Unable to connect. Please check your internet connection.', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
+      
+      // Otherwise return error
+      return new Response('Network error happened', {
+        status: 408,
+        headers: { 'Content-Type': 'text/plain' },
+      });
+    }
   }
 };
 
@@ -64,10 +123,53 @@ const syncHelpers = {
     clients.forEach(client => {
       client.postMessage(message);
     });
+  },
+  
+  // Process background sync for stored inspection forms
+  processQueuedInspections: async () => {
+    try {
+      const keys = await caches.keys();
+      const formKeys = keys.filter(key => key.startsWith('inspection_form_'));
+      
+      if (formKeys.length === 0) return;
+      
+      syncHelpers.notifyClients({
+        type: 'SYNC_STARTED',
+        count: formKeys.length
+      });
+      
+      for (const key of formKeys) {
+        try {
+          // Process each form submission here
+          // Implementation would depend on how your form data is stored
+          
+          // After successful processing, remove from cache
+          await caches.delete(key);
+          
+          syncHelpers.notifyClients({
+            type: 'FORM_SYNCED',
+            key
+          });
+        } catch (error) {
+          console.error(`[Service Worker] Failed to sync form ${key}:`, error);
+        }
+      }
+      
+      syncHelpers.notifyClients({
+        type: 'SYNC_COMPLETED'
+      });
+    } catch (error) {
+      console.error('[Service Worker] Error in background sync:', error);
+      
+      syncHelpers.notifyClients({
+        type: 'SYNC_ERROR',
+        error: error.message
+      });
+    }
   }
 };
 
-// Simplified install event - only cache critical assets
+// Install event - cache core assets
 self.addEventListener('install', (event) => {
   console.log('[Service Worker] Installing...');
   
@@ -77,19 +179,13 @@ self.addEventListener('install', (event) => {
         const success = await cacheHelpers.addResourcesToCache(CACHE_NAME, STATIC_ASSETS);
         if (success) {
           console.log('[Service Worker] Successfully installed');
-        } else {
-          console.warn('[Service Worker] Partial install - some assets may not be cached');
+          self.skipWaiting(); // Activate immediately
         }
-        return self.skipWaiting();
-      })
-      .catch(error => {
-        console.error('[Service Worker] Install error:', error);
-        return self.skipWaiting(); // Continue even if there's an error
       })
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clear old caches
 self.addEventListener('activate', (event) => {
   console.log('[Service Worker] Activating...');
   
@@ -97,142 +193,82 @@ self.addEventListener('activate', (event) => {
     Promise.resolve()
       .then(async () => {
         await cacheHelpers.clearOldCaches();
-        console.log('[Service Worker] Now active, controlling clients');
-        return self.clients.claim();
-      })
-      .catch(error => {
-        console.error('[Service Worker] Activation error:', error);
-        return self.clients.claim(); // Continue even if there's an error
+        await self.clients.claim(); // Take control of clients immediately
+        console.log('[Service Worker] Successfully activated');
       })
   );
 });
 
-// Simplified fetch event - only handle navigation requests and static assets
+// Fetch event - handle network requests
 self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests
-  if (!event.request.url.startsWith(self.location.origin)) {
+  const request = event.request;
+  
+  // Skip non-GET requests and browser extensions
+  if (request.method !== 'GET' || !request.url.startsWith('http')) {
     return;
   }
   
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  // Use network-first strategy for all requests
+  event.respondWith(cacheHelpers.networkFirstStrategy(request));
+});
+
+// Sync event - handle background sync
+self.addEventListener('sync', (event) => {
+  console.log('[Service Worker] Background sync event:', event.tag);
   
-  // Handle page navigation - Use Network First for HTML requests
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          return cacheHelpers.putInCache(CACHE_NAME, event.request, response);
-        })
-        .catch(() => {
-          console.log('[SW] Navigation fetch failed, falling back to cache');
-          return caches.match(event.request)
-            .then(cachedResponse => cachedResponse || caches.match('/'));
-        })
-    );
-    return;
-  }
-  
-  // For assets like JS, CSS, images - use cache first, then network
-  if (event.request.url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico)$/)) {
-    event.respondWith(
-      caches.match(event.request)
-        .then(cachedResponse => {
-          if (cachedResponse) {
-            // Return cached response immediately
-            return cachedResponse;
-          }
-          
-          // If not in cache, try network
-          return fetch(event.request)
-            .then(response => {
-              return cacheHelpers.putInCache(DYNAMIC_CACHE, event.request, response);
-            })
-            .catch(error => {
-              console.error('[SW] Fetch failed:', error);
-              // For images, return a placeholder
-              if (event.request.url.match(/\.(jpg|jpeg|png|gif|svg)$/)) {
-                return caches.match('/placeholder.svg');
-              }
-              
-              // For other assets, return an error response
-              return new Response('Network error', {
-                status: 408,
-                headers: { 'Content-Type': 'text/plain' }
-              });
-            });
-        })
-    );
-    return;
+  if (event.tag === 'sync-inspections') {
+    event.waitUntil(syncHelpers.processQueuedInspections());
   }
 });
 
-// Push notification event with sound and vibration
+// Push event - handle push notifications
 self.addEventListener('push', (event) => {
-  try {
-    let payload = { title: 'New Notification', body: 'Something new happened', url: '/' };
-    
-    // Try to parse the payload
-    if (event.data) {
-      try {
-        payload = event.data.json();
-      } catch (e) {
-        payload.body = event.data.text();
-      }
-    }
-    
-    const options = {
-      body: payload.body,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      vibrate: [100, 50, 100],
-      data: {
-        url: payload.url || '/'
-      },
-      actions: [
-        {
-          action: 'view',
-          title: 'View'
-        },
-        {
-          action: 'dismiss',
-          title: 'Dismiss'
-        }
-      ]
-    };
-    
-    event.waitUntil(
-      self.registration.showNotification(payload.title, options)
-    );
-  } catch (error) {
-    console.error('[Service Worker] Push notification error:', error);
-  }
+  console.log('[Service Worker] Push notification received:', event);
+  
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || 'PPE Inspector';
+  const options = {
+    body: data.body || 'New notification',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/badge-72x72.png',
+    data: data.url || '/',
+    vibrate: [100, 50, 100],
+    tag: data.tag || 'default',
+    renotify: data.renotify || false,
+  };
+  
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Notification click event handler
+// Notification click event - handle notification clicks
 self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Notification click:', event.notification.tag);
+  
   event.notification.close();
   
-  // Handle notification action clicks
-  if (event.action === 'view') {
-    const url = event.notification.data.url || '/';
-    
-    event.waitUntil(
-      clients.matchAll({ type: 'window' }).then(clientsList => {
-        // If a tab is already open, focus it
-        for (const client of clientsList) {
-          if (client.url === url && 'focus' in client) {
-            return client.focus();
-          }
+  // Open the targeted URL when notification is clicked
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window' }).then((clientList) => {
+      const url = event.notification.data || '/';
+      
+      // If a window is already open, focus it
+      for (const client of clientList) {
+        if (client.url.includes(url) && 'focus' in client) {
+          return client.focus();
         }
-        
-        // Otherwise open a new tab
-        if (clients.openWindow) {
-          return clients.openWindow(url);
-        }
-      })
-    );
-  }
+      }
+      
+      // Otherwise open a new window
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(url);
+      }
+    })
+  );
 });
+
+// Handle unhandled errors
+self.addEventListener('error', (event) => {
+  console.error('[Service Worker] Unhandled error:', event.message, event.filename, event.lineno);
+});
+
+console.log('[Service Worker] Script loaded');

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Check, X, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,14 +15,14 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
   onStatusChange,
   disabled = false
 }) => {
+  // Improved handler with proper logging
   const handleStatusChange = (status: boolean | null) => {
-    // Log the status change to debug
-    console.log("CheckpointOptions: Setting status to:", status);
+    console.log("CheckpointOptions: Setting status to:", status, "Type:", typeof status);
     onStatusChange(status);
   };
 
-  // Log the received passed prop
-  console.log(`CheckpointOptions (ID related to parent): Received passed = ${passed} (Type: ${typeof passed})`); 
+  // Log received value for debugging
+  console.log(`CheckpointOptions: Received passed = ${passed} (Type: ${typeof passed})`); 
 
   return (
     <div className="flex gap-2">

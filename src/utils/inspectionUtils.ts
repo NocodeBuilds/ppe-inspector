@@ -94,30 +94,38 @@ export const calculateOverallResult = (
     ([_, result]) => result.passed !== undefined
   );
   
+  // If no checkpoints have been answered, return null
   if (answeredCheckpoints.length === 0) {
-    return null; // No answered checkpoints
+    console.log("No answered checkpoints, overall result: null");
+    return null;
   }
   
-  // Count results
+  // Count results by type
   const failCount = answeredCheckpoints.filter(([_, result]) => result.passed === false).length;
   const passCount = answeredCheckpoints.filter(([_, result]) => result.passed === true).length;
   const naCount = answeredCheckpoints.filter(([_, result]) => result.passed === null).length;
   
+  console.log(`Result counts - Pass: ${passCount}, Fail: ${failCount}, N/A: ${naCount}`);
+  
   // If any checkpoint fails, overall result is fail
   if (failCount > 0) {
+    console.log("Has failed checkpoints, overall result: fail");
     return 'fail';
   }
   
-  // If all checkpoints are N/A, result is null
+  // If all checkpoints are N/A, result is null (inconclusive)
   if (naCount === answeredCheckpoints.length) {
+    console.log("All checkpoints are N/A, overall result: null");
     return null;
   }
   
   // If there are any passes and no fails, result is pass
   if (passCount > 0) {
+    console.log("Has passing checkpoints and no fails, overall result: pass");
     return 'pass';
   }
   
-  // Default case
+  // Default case (shouldn't reach here but providing a fallback)
+  console.log("Default case reached, overall result: null");
   return null;
 };

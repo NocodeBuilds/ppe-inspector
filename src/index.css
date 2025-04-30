@@ -104,6 +104,7 @@
     --ring: 142.1 76.2% 36.3%;
     --warning: 38 92% 50%;
     --radius: 0.5rem;
+    --success: 142.1 76.2% 36.3%;
   }
 
   .dark {
@@ -127,6 +128,7 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 142.4 71.8% 29.2%;
     --warning: 38 92% 50%;
+    --success: 142.4 71.8% 29.2%;
   }
 }
 
@@ -201,7 +203,7 @@
     @apply right-0 bg-gradient-to-l from-background to-transparent;
   }
   
-  /* Fade in animation for content */
+  /* Transitions and animations */
   .fade-in {
     animation: fadeIn 0.3s ease-in-out;
   }
@@ -211,7 +213,6 @@
     to { opacity: 1; transform: translateY(0); }
   }
   
-  /* Card transitions */
   .slide-up {
     animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -225,5 +226,40 @@
       opacity: 1; 
       transform: translateY(0); 
     }
+  }
+  
+  /* Form field styles */
+  .form-field {
+    @apply mb-4;
+  }
+  
+  .form-field label {
+    @apply block mb-2 text-sm font-medium;
+  }
+  
+  .form-error {
+    @apply text-sm text-destructive mt-1;
+  }
+  
+  /* Button variations */
+  .btn-success {
+    @apply bg-success text-primary-foreground hover:bg-success/90;
+  }
+  
+  .btn-warning {
+    @apply bg-warning text-primary-foreground hover:bg-warning/90;
+  }
+  
+  /* Toast customizations */
+  .toast-success {
+    @apply border-success/50 bg-success/10;
+  }
+  
+  .toast-warning {
+    @apply border-warning/50 bg-warning/10;
+  }
+  
+  .toast-error {
+    @apply border-destructive/50 bg-destructive/10;
   }
 }

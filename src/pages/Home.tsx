@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Plus, Shield, Calendar, AlertTriangle, Download, FileText, AlertCircle } from 'lucide-react';
+import { Plus, Shield, Calendar, AlertTriangle, FileText, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CardOverlay from '@/components/ui/card-overlay';
 import AddPPEForm from '@/components/forms/AddPPEForm';
@@ -42,7 +43,7 @@ const Home = () => {
       setIsLoading(true);
 
       // Get current date and 10 days in the future
-      const today = new Date(); // Keep for other stats if needed
+      const today = new Date();
       const futureDate = new Date();
       futureDate.setDate(today.getDate() + 10);
       const thresholdDateISO = futureDate.toISOString();
@@ -55,8 +56,8 @@ const Home = () => {
         count: 'exact',
         head: true
       })
-      // No status filter applied here to match UpcomingInspections page logic
       .lte('next_inspection', thresholdDateISO); // Use 10-day lookahead
+      
       if (upcomingError) throw upcomingError;
 
       // Get expiring PPE count (within next year)
@@ -69,6 +70,7 @@ const Home = () => {
         count: 'exact',
         head: true
       }).or(`status.eq.expired,and(expiry_date.gte.${today.toISOString()},expiry_date.lte.${oneYearFromNow.toISOString()})`);
+      
       if (expiringError) throw expiringError;
 
       // Get flagged PPE count
@@ -79,6 +81,7 @@ const Home = () => {
         count: 'exact',
         head: true
       }).eq('status', 'flagged');
+      
       if (flaggedError) throw flaggedError;
 
       // Get total equipment count
@@ -89,7 +92,9 @@ const Home = () => {
         count: 'exact',
         head: true
       });
+      
       if (totalError) throw totalError;
+      
       setStats({
         upcomingInspections: upcomingCount || 0,
         expiringPPE: expiringCount || 0,
@@ -120,7 +125,7 @@ const Home = () => {
   const iconSize = isMobile ? 18 : 20;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-5xl mx-auto">
       {profile && (
         <div className="flex items-center justify-center mb-3">
           <div>
