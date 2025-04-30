@@ -15,7 +15,7 @@ const CheckpointOptions: React.FC<CheckpointOptionsProps> = ({
   onStatusChange,
   disabled = false
 }) => {
-  // Improved handler with proper logging
+  // Improved handler with proper null handling
   const handleStatusChange = (status: boolean | null) => {
     console.log("CheckpointOptions: Setting status to:", status, "Type:", typeof status);
     onStatusChange(status);

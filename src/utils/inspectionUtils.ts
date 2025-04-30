@@ -89,6 +89,8 @@ export const calculateOverallResult = (
   results: Record<string, { passed: boolean | null | undefined; notes: string; photoUrl?: string }>,
   checkpoints: any[]
 ): 'pass' | 'fail' | null => {
+  console.log("Calculating overall result with results:", results);
+  
   // Get all checkpoints that have been answered (not undefined)
   const answeredCheckpoints = Object.entries(results).filter(
     ([_, result]) => result.passed !== undefined
