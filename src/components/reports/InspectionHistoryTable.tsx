@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Table, 
@@ -10,37 +9,51 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { 
-  FileText, 
+  Download, 
+  ChevronDown, 
   Eye,
   Filter,
   ArrowUpDown,
-  Search
+  Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import ExportFilterModal, { ExportFilterOptions, SelectedExportFilters } from './ExportFilterModal';
 
 interface InspectionHistoryTableProps {
   inspections: any[];
   isLoading: boolean;
   onViewDetails: (id: string) => void;
+  onDownloadPDF: (id: string) => void;
+  onDownloadExcel: (id: string) => void;
   onFilterChange?: (filter: string) => void;
+  onTimeframeChange: (newTimeframe: string) => void;
+  onExport: (filterType: string, filterValue?: string) => void;
+  activeFilter: string;
+  activeTimeframe: string;
 }
+
+const inspectionExportFilters: ExportFilterOptions = {
+  ppeType: true,
+  result: true,
+  inspectionType: true,
+  dateRange: true
+};
 
 const InspectionHistoryTable: React.FC<InspectionHistoryTableProps> = ({
   inspections,
   isLoading,
   onViewDetails,
-  onFilterChange
+  onDownloadPDF,
+  onDownloadExcel,
+  onFilterChange,
+  onTimeframeChange,
+  onExport,
+  activeFilter,
+  activeTimeframe
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [sortField, setSortField] = useState<string>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
@@ -54,19 +67,8 @@ const InspectionHistoryTable: React.FC<InspectionHistoryTableProps> = ({
       setSortDirection('asc');
     }
   };
-  
+
   const filteredInspections = inspections
-    .filter(inspection => {
-      if (!searchTerm) return true;
-      
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        inspection.ppe_type?.toLowerCase().includes(searchLower) ||
-        inspection.ppe_serial?.toLowerCase().includes(searchLower) ||
-        inspection.overall_result?.toLowerCase().includes(searchLower) ||
-        inspection.inspector_name?.toLowerCase().includes(searchLower)
-      );
-    })
     .sort((a, b) => {
       if (sortField === 'date') {
         const dateA = new Date(a.date).getTime();
@@ -80,14 +82,43 @@ const InspectionHistoryTable: React.FC<InspectionHistoryTableProps> = ({
       const comparison = a[sortField].localeCompare(b[sortField]);
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  
+
   const getStatusColor = (result: string) => {
     const resultLower = result?.toLowerCase() || '';
     if (resultLower === 'pass') return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
     if (resultLower === 'fail') return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
     return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
   };
-  
+
+  const renderCell = (value: any, formatType?: 'date' | 'badge' | 'ppeType' | 'ppeSerial', inspection?: any) => {
+    if (formatType === 'ppeType') {
+      value = inspection?.ppe_type;
+    }
+    if (formatType === 'ppeSerial') {
+      value = inspection?.ppe_serial;
+    }
+
+    if (value === null || value === undefined || value === '') {
+      return <span className="text-muted-foreground">N/A</span>;
+    }
+    if (formatType === 'date' && value) {
+      const date = value instanceof Date ? value : new Date(value);
+      return !isNaN(date.getTime()) ? format(date, 'MMM d, yyyy') : <span className="text-muted-foreground">Invalid Date</span>;
+    }
+    if (formatType === 'badge' && value) {
+      const resultLower = value.toString().toLowerCase();
+      let variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" = "secondary";
+      if (resultLower === 'pass') variant = 'success';
+      else if (resultLower === 'fail') variant = 'destructive';
+      return <Badge variant={variant}>{value}</Badge>;
+    }
+    return value.toString();
+  };
+
+  const handleViewInspection = (inspectionId: string) => {
+    navigate(`/inspection/${inspectionId}`);
+  }
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -95,7 +126,7 @@ const InspectionHistoryTable: React.FC<InspectionHistoryTableProps> = ({
       </div>
     );
   }
-  
+
   if (inspections.length === 0) {
     return (
       <div className="text-center p-8 border rounded-md">
@@ -103,55 +134,21 @@ const InspectionHistoryTable: React.FC<InspectionHistoryTableProps> = ({
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 justify-between">
-        <div className="flex w-full max-w-sm items-center space-x-2">
-          <Input
-            placeholder="Search inspections..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-9"
-          />
-          <Button variant="secondary" size="sm" className="h-9">
-            <Search className="h-4 w-4 mr-1" />
-            <span className="sr-only sm:not-sr-only sm:inline">Search</span>
-          </Button>
-        </div>
-        
-        {onFilterChange && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9">
-                <Filter className="h-4 w-4 mr-1" />
-                Filter
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onFilterChange('all')}>
-                All Inspections
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onFilterChange('pass')}>
-                Passed Inspections
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onFilterChange('fail')}>
-                Failed Inspections
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onFilterChange('pre-use')}>
-                Pre-use Inspections
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onFilterChange('monthly')}>
-                Monthly Inspections
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onFilterChange('quarterly')}>
-                Quarterly Inspections
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+      <div className="flex justify-end items-center gap-4">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-9"
+          onClick={() => setIsExportModalOpen(true)} 
+          disabled={isLoading || inspections.length === 0} 
+        >
+          <Download className="h-4 w-4 mr-1" />
+          Export
+        </Button>
       </div>
-      
       <div className="rounded-md border overflow-auto max-h-[calc(100vh-300px)]">
         <Table>
           <TableHeader>
@@ -160,12 +157,12 @@ const InspectionHistoryTable: React.FC<InspectionHistoryTableProps> = ({
                 Date
                 <ArrowUpDown className="ml-1 h-3 w-3 inline" />
               </TableHead>
-              <TableHead onClick={() => handleSort('ppe_type')} className="cursor-pointer">
-                Equipment Type
-                <ArrowUpDown className="ml-1 h-3 w-3 inline" />
-              </TableHead>
               <TableHead onClick={() => handleSort('ppe_serial')} className="cursor-pointer">
                 Serial #
+                <ArrowUpDown className="ml-1 h-3 w-3 inline" />
+              </TableHead>
+              <TableHead onClick={() => handleSort('ppe_type')} className="cursor-pointer">
+                Equipment Type
                 <ArrowUpDown className="ml-1 h-3 w-3 inline" />
               </TableHead>
               <TableHead onClick={() => handleSort('overall_result')} className="cursor-pointer">
@@ -176,32 +173,20 @@ const InspectionHistoryTable: React.FC<InspectionHistoryTableProps> = ({
                 Inspector
                 <ArrowUpDown className="ml-1 h-3 w-3 inline" />
               </TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right">View</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredInspections.map((inspection) => (
-              <TableRow key={inspection.id} className="group">
-                <TableCell className="whitespace-nowrap font-medium">
-                  {format(new Date(inspection.date), 'MMM d, yyyy')}
-                </TableCell>
-                <TableCell>{inspection.ppe_type || 'Unknown'}</TableCell>
-                <TableCell>{inspection.ppe_serial || 'Unknown'}</TableCell>
+              <TableRow key={inspection.id}>
+                <TableCell>{renderCell(inspection.date, 'date')}</TableCell>
+                <TableCell>{renderCell(null, 'ppeSerial', inspection)}</TableCell>
+                <TableCell>{renderCell(null, 'ppeType', inspection)}</TableCell>
+                <TableCell>{renderCell(inspection.overall_result, 'badge')}</TableCell>
+                <TableCell>{renderCell(inspection.inspector_name)}</TableCell>
                 <TableCell>
-                  <Badge className={getStatusColor(inspection.overall_result)}>
-                    {inspection.overall_result?.toUpperCase() || 'UNKNOWN'}
-                  </Badge>
-                </TableCell>
-                <TableCell>{inspection.inspector_name || 'Unknown'}</TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onViewDetails(inspection.id)}
-                    className="h-8 w-8 p-0"
-                  >
+                  <Button variant="ghost" size="icon" onClick={() => handleViewInspection(inspection.id)}>
                     <Eye className="h-4 w-4" />
-                    <span className="sr-only">View</span>
                   </Button>
                 </TableCell>
               </TableRow>
@@ -209,6 +194,14 @@ const InspectionHistoryTable: React.FC<InspectionHistoryTableProps> = ({
           </TableBody>
         </Table>
       </div>
+      <ExportFilterModal 
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={onExport} 
+        availableFilters={inspectionExportFilters} 
+        data={inspections} 
+        dataType="inspections"
+      />
     </div>
   );
 };
