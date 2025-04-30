@@ -102,25 +102,25 @@ const ExportFilterModal: React.FC<ExportFilterModalProps> = ({
     Array.from(new Set(data.map(item => item.location).filter(Boolean) as string[])).sort()
   , [data]);
 
-  // Add more derivations for serial numbers, inspection types etc. as needed
-
+  // Fix the type issue by separating the event handling logic
   const handleFilterChange = (filterKey: keyof SelectedExportFilters, value: string | Date | null | React.ChangeEvent<HTMLInputElement>) => {
-    if (typeof value === 'object' && value !== null && 'target' in value) { // Check if it's an input change event
+    if (value !== null && typeof value === 'object' && 'target' in value) {
       // Handle Input element change (e.g., Serial Number)
-      const inputValue = (value as React.ChangeEvent<HTMLInputElement>).target.value;
+      const inputValue = value.target.value;
       setSelectedFilters(prev => ({ ...prev, [filterKey]: inputValue || undefined }));
     } else {
       // Handle Select or direct value change (e.g., Dropdowns, Date placeholders)
-      let processedValue: string | Date | undefined | null = value;
+      const processedValue = value;
 
       // Special handling for date keys from our placeholder input type="date"
       if ((filterKey === 'startDate' || filterKey === 'endDate') && typeof value === 'string') {
-        processedValue = value ? new Date(value) : null; // Parse string date, null if empty
+        const dateValue = value ? new Date(value) : null; // Parse string date, null if empty
+        setSelectedFilters(prev => ({ ...prev, [filterKey]: dateValue }));
+        return;
       } 
 
       // Treat 'all' or null/empty strings as undefined for filtering purposes
       const finalValue = processedValue === 'all' || processedValue === null || processedValue === '' ? undefined : processedValue;
-
       setSelectedFilters(prev => ({ ...prev, [filterKey]: finalValue }));
     }
   };

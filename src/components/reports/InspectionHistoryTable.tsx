@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -28,8 +29,8 @@ interface InspectionHistoryTableProps {
   onDownloadPDF: (id: string) => void;
   onDownloadExcel: (id: string) => void;
   onFilterChange?: (filter: string) => void;
-  onTimeframeChange: (newTimeframe: string) => void;
-  onExport: (filterType: string, filterValue?: string) => void;
+  onTimeframeChange?: (newTimeframe: string) => void;
+  onExport: (filters: SelectedExportFilters) => void;
   activeFilter: string;
   activeTimeframe: string;
 }
