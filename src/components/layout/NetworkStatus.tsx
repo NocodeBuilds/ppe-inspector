@@ -1,67 +1,93 @@
-import React from 'react';
-import { useNetwork } from '@/hooks/useNetwork';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { CloudOff, WifiOff, CheckCircle2 } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
 
-const NetworkStatus: React.FC = () => {
-  const { isOnline, wasOffline, resetWasOffline } = useNetwork();
+import React, { useState, useEffect } from 'react';
+import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-  // Only show reconnection status for 5 seconds
-  React.useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (wasOffline && isOnline) {
-      timer = setTimeout(() => {
-        resetWasOffline();
-      }, 5000);
-    }
-    return () => {
-      if (timer) clearTimeout(timer);
+const NetworkStatus = () => {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showOfflineAlert, setShowOfflineAlert] = useState(false);
+  const [showReconnectedToast, setShowReconnectedToast] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setShowReconnectedToast(true);
+      setTimeout(() => setShowReconnectedToast(false), 3000);
     };
-  }, [wasOffline, isOnline, resetWasOffline]);
 
-  if (!isOnline) {
+    const handleOffline = () => {
+      setIsOnline(false);
+      setShowOfflineAlert(true);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const handleRetry = () => {
+    // Try to reload resources or reconnect
+    window.location.reload();
+  };
+
+  const handleDismiss = () => {
+    setShowOfflineAlert(false);
+  };
+
+  if (!showOfflineAlert && !showReconnectedToast) return null;
+
+  if (isOnline && showReconnectedToast) {
     return (
-      <Alert 
-        variant="destructive"
-        className="fixed bottom-20 left-0 right-0 mx-auto w-[90%] max-w-md z-50 shadow-lg border-destructive"
-      >
-        <WifiOff className="h-4 w-4" />
-        <AlertTitle className="flex items-center gap-2">
-          <span className="h4">Offline</span>
-          <Badge variant="destructive" size="sm">
-            <span className="text-caption">No Connection</span>
-          </Badge>
-        </AlertTitle>
-        <AlertDescription className="text-body-sm">
-          You are currently offline. Some features may be limited until your connection is restored.
-        </AlertDescription>
-      </Alert>
+      <div className="fixed bottom-20 right-4 z-50 animate-fade-in">
+        <div className="flex items-center gap-2 bg-success text-white px-4 py-2 rounded-full shadow-lg">
+          <Wifi size={16} />
+          <span className="text-sm">Back online</span>
+        </div>
+      </div>
     );
   }
 
-  if (wasOffline && isOnline) {
+  if (!isOnline && showOfflineAlert) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 50 }}
-        className="fixed bottom-20 left-0 right-0 mx-auto w-[90%] max-w-md z-50"
-      >
-        <Alert className="bg-green-500/10 border-green-500 text-green-700 dark:text-green-400 shadow-lg">
-          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <AlertTitle className="flex items-center gap-2">
-            <span className="h4">Back Online</span>
-            <Badge variant="success" size="sm">
-              <span className="text-caption">Connected</span>
-            </Badge>
-          </AlertTitle>
-          <AlertDescription className="text-body-sm text-green-700 dark:text-green-400">
-            Your connection has been restored. All features are now available.
-          </AlertDescription>
-        </Alert>
-      </motion.div>
+      <div className="fixed top-14 inset-x-0 z-50 animate-fade-in">
+        <div className="mx-auto max-w-md px-4">
+          <div className="flex items-center justify-between bg-card border border-destructive/30 p-4 rounded-lg shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="bg-destructive/20 p-2 rounded-full">
+                <WifiOff size={18} className="text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-medium text-sm">You're offline</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Using cached data. Some features may be limited.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs px-2 h-7"
+                onClick={handleRetry}
+              >
+                <RefreshCw size={14} className="mr-1" /> Retry
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs px-2 h-7"
+                onClick={handleDismiss}
+              >
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 

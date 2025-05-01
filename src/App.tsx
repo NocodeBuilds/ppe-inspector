@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,11 +7,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeToggler";
-import { initializePWA } from "./utils/pwaUtils";
+import { initializePWA, checkForServiceWorkerUpdates, forceUpdateServiceWorker } from "./utils/pwaUtils";
 import EnhancedErrorBoundary from "./components/error/EnhancedErrorBoundary";
 import RoleProtectedRoute from "./components/auth/RoleProtectedRoute";
 import NetworkStatusListener from "./components/layout/NetworkStatusListener";
 import NetworkStatus from "./components/layout/NetworkStatus";
+import { toast } from "./hooks/use-toast";
 
 // Pages with no lazy loading to prevent flashing
 import MainLayout from "./components/layout/MainLayout";
@@ -60,14 +62,68 @@ const queryClient = new QueryClient({
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   // Set up PWA features with better error handling
   useEffect(() => {
     const setupPWA = async () => {
       try {
-        // Use enhanced PWA initialization with timeout
+        // Use enhanced PWA initialization
         await initializePWA();
         console.log("PWA initialized successfully");
+        
+        // Check for updates after initialization
+        const hasUpdate = await checkForServiceWorkerUpdates();
+        if (hasUpdate) {
+          setUpdateAvailable(true);
+        }
+        
+        // Set up event listener for future update notifications
+        const handleUpdateAvailable = () => {
+          console.log("Update available event received");
+          setUpdateAvailable(true);
+          
+          toast({
+            title: "App Update Available",
+            description: "Reload to use the latest version.",
+            action: (
+              <button
+                onClick={handleUpdateNow}
+                className="bg-primary text-white px-3 py-1 rounded-md text-xs font-medium"
+              >
+                Update Now
+              </button>
+            ),
+            duration: 0, // Don't auto-dismiss
+          });
+        };
+        
+        window.addEventListener('pwa:update-available', handleUpdateAvailable);
+        
+        // Listen for PWA installation
+        window.addEventListener('pwa:installed', () => {
+          toast({
+            title: "App Installed",
+            description: "The app has been installed successfully.",
+            variant: "success",
+          });
+        });
+        
+        // Listen for background sync completion
+        window.addEventListener('pwa:sync-completed', (e: Event) => {
+          const detail = (e as CustomEvent).detail;
+          toast({
+            title: "Background Sync Complete",
+            description: `Synced ${detail.successCount} items. ${detail.failureCount > 0 ? `${detail.failureCount} failed.` : ''}`,
+            variant: detail.failureCount > 0 ? "warning" : "success",
+          });
+        });
+        
+        return () => {
+          window.removeEventListener('pwa:update-available', handleUpdateAvailable);
+          window.removeEventListener('pwa:installed', () => {});
+          window.removeEventListener('pwa:sync-completed', () => {});
+        };
       } catch (error) {
         console.error('Error setting up PWA:', error);
       } finally {
@@ -89,6 +145,12 @@ const App = () => {
     
     setupPWA();
   }, [isLoading]);
+  
+  // Handle updating the service worker
+  const handleUpdateNow = async () => {
+    await forceUpdateServiceWorker();
+    window.location.reload();
+  };
 
   if (isLoading) {
     return <PageLoader />;

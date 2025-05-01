@@ -1,15 +1,18 @@
+
 import React, { memo, Suspense, useEffect, useState, createContext, useContext } from 'react';
 import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import { ThemeToggler } from '@/components/ThemeToggler';
 import { useAuth, useRoleAccess } from '@/hooks/useAuth';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ErrorBoundaryWithFallback from '@/components/ErrorBoundaryWithFallback';
 import { toast } from '@/hooks/use-toast';
 import LoadingSpinner from '../common/LoadingSpinner';
 import LogoIcon from '../common/LogoIcon';
 import NotificationCenter from '../notifications/NotificationCenter';
+import { checkForServiceWorkerUpdates, forceUpdateServiceWorker } from '@/utils/pwaUtils';
+import InstallPrompt from '../ui/install-prompt';
 
 export const BackNavigationContext = createContext<{
   showBackButton: boolean;
@@ -36,6 +39,29 @@ const Header = memo(({
   showBackButton: boolean,
   handleBack: () => void
 }) => {
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
+  // Check for updates periodically
+  useEffect(() => {
+    const checkForUpdates = async () => {
+      const hasUpdate = await checkForServiceWorkerUpdates();
+      setUpdateAvailable(hasUpdate);
+    };
+    
+    // Check on mount
+    checkForUpdates();
+    
+    // Set up periodic checking
+    const interval = setInterval(checkForUpdates, 30 * 60 * 1000); // Check every 30 minutes
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  const handleUpdate = async () => {
+    await forceUpdateServiceWorker();
+    window.location.reload();
+  };
+  
   return (
     <header className="sticky top-0 z-50 flex justify-between items-center px-3 py-2 border-b bg-background/80 backdrop-blur-sm">
       <div className="flex items-center">
@@ -54,6 +80,18 @@ const Header = memo(({
       </div>
       
       <div className="flex items-center gap-3">
+        {updateAvailable && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleUpdate}
+            className="flex items-center gap-1 text-xs"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Update
+          </Button>
+        )}
+        <InstallPrompt autoShow={true} />
         <ThemeToggler />
         <NotificationCenter />
       </div>
@@ -74,6 +112,31 @@ const LayoutErrorFallback = () => (
     </div>
   </div>
 );
+
+const OfflineBanner = () => {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+  
+  if (isOnline) return null;
+  
+  return (
+    <div className="bg-warning/80 text-black px-4 py-1 text-center text-xs">
+      You are currently offline. Some features may be limited.
+    </div>
+  );
+};
 
 const MainLayout = () => {
   const location = useLocation();
@@ -127,6 +190,7 @@ const MainLayout = () => {
         }}
       >
         <div className="flex flex-col min-h-screen bg-background text-foreground">
+          <OfflineBanner />
           {shouldShowNav && (
             <Header 
               profile={profile} 

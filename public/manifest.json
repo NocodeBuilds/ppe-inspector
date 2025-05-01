@@ -7,6 +7,17 @@
   "display": "standalone",
   "background_color": "#1f2937",
   "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "categories": ["productivity", "utilities", "safety"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "display_override": ["window-controls-overlay", "standalone"],
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
+  "handle_links": "preferred",
   "icons": [
     {
       "src": "/lovable-uploads/logo.png",
@@ -54,11 +65,15 @@
       "icons": [{ "src": "/lovable-uploads/logo.png", "sizes": "192x192" }]
     }
   ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "platform": "narrow",
+      "label": "PPE Inspector Home Screen"
+    }
+  ],
   "scope": "/",
-  "orientation": "portrait",
-  "categories": ["productivity", "utilities", "safety"],
-  "lang": "en-US",
-  "dir": "ltr",
-  "related_applications": [],
-  "prefer_related_applications": false
+  "id": "ppe-inspector"
 }
