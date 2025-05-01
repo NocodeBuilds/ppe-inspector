@@ -11,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { StandardCard } from '@/components/ui/standard-card';
+import { PageLayout } from '@/components/layout/PageLayout';
 
 const Home = () => {
   const [showAddPPE, setShowAddPPE] = useState(false);
@@ -125,7 +127,10 @@ const Home = () => {
   const iconSize = isMobile ? 18 : 20;
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto">
+    <PageLayout
+      title="Safety Inspection System"
+      description="Manage personal protective equipment, inspections, and compliance reports"
+    >
       {profile && (
         <div className="flex items-center justify-center mb-3">
           <div>
@@ -141,12 +146,12 @@ const Home = () => {
       ) : (
         <>
           {/* Analytics Dashboard - Compact Version */}
-          <div className="mb-6">
+          <StandardCard>
             <DashboardAnalytics className="slide-up" />
-          </div>
+          </StandardCard>
           
           {/* Section divider to create clear separation */}
-          <div className="flex items-center mb-4">
+          <div className="flex items-center my-6">
             <div className="flex-grow border-t border-border"></div>
             <span className="px-3 text-sm font-medium text-muted-foreground">Quick Actions</span>
             <div className="flex-grow border-t border-border"></div>
@@ -262,7 +267,7 @@ const Home = () => {
         </div>
         <AddPPEForm onSuccess={handleAddPPESuccess} />
       </CardOverlay>
-    </div>
+    </PageLayout>
   );
 };
 

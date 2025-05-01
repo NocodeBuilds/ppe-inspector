@@ -1,27 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import InspectionHistoryTable from './InspectionHistoryTable';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Download, 
-  FileSpreadsheet,
-  AlertTriangle,
-  CheckCircle,
-  Calendar,
-  Filter
-} from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { exportFilteredInspectionsToExcel } from '@/utils/exportUtils';
-import { generateInspectionsDateReport } from '@/utils/reportGeneratorService';
 import { Badge } from '@/components/ui/badge';
+import { StandardCard } from '@/components/ui/standard-card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SelectedExportFilters } from './ExportFilterModal';
 import { fetchCompleteInspectionData } from '@/utils/reportGenerator/reportDataFormatter';
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
-import { SelectedExportFilters } from './ExportFilterModal';
+import { exportFilteredInspectionsToExcel } from '@/utils/exportUtils';
 
 const InspectionHistory = () => {
   const [inspections, setInspections] = useState<any[]>([]);
@@ -187,34 +177,7 @@ const InspectionHistory = () => {
   };
 
   const handleViewDetails = async (id: string) => {
-    try {
-      const inspectionData = await fetchCompleteInspectionData(supabase, id);
-      
-      if (inspectionData) {
-        const confirmDownload = window.confirm('Do you want to download this inspection report?');
-        if (confirmDownload) {
-          const format = window.confirm('Click OK for PDF or Cancel for Excel');
-          if (format) {
-            await generateInspectionDetailPDF(inspectionData);
-            toast({
-              title: 'PDF Generated',
-              description: 'Inspection report has been downloaded as PDF',
-            });
-          } else {
-            await generateInspectionExcelReport(inspectionData);
-            toast({
-              title: 'Excel Generated',
-              description: 'Inspection report has been downloaded as Excel',
-            });
-          }
-        }
-      } else {
-        navigate(`/inspection/${id}`);
-      }
-    } catch (error) {
-      console.error('Error generating report from history:', error);
-      navigate(`/inspection/${id}`);
-    }
+    navigate(`/inspection/${id}`);
   };
   
   const handleFilterChange = (newFilter: string) => {
@@ -222,60 +185,52 @@ const InspectionHistory = () => {
   };
   
   return (
-    <Card className="backdrop-blur-sm bg-background/80 border-border/50">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center">
-          <Calendar className="mr-2 h-5 w-5" />
-          Inspection History
-        </CardTitle>
-        <CardDescription>
-          View and filter all completed inspections
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="px-2 py-1">
-                Total: {filteredInspections.length}
-              </Badge>
-              <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-1">
-                Pass: {filteredInspections.filter(i => i.overall_result?.toLowerCase() === 'pass').length}
-              </Badge>
-              <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 px-2 py-1">
-                Fail: {filteredInspections.filter(i => i.overall_result?.toLowerCase() === 'fail').length}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Select value={timeframe} onValueChange={setTimeframe}>
-                <SelectTrigger className="h-8 w-full sm:w-[130px]">
-                  <SelectValue placeholder="Timeframe" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="week">Past Week</SelectItem>
-                  <SelectItem value="month">Past Month</SelectItem>
-                  <SelectItem value="year">Past Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+    <StandardCard
+      title="Inspection History"
+      description="View and filter all completed inspections"
+    >
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline" className="px-2 py-1">
+              Total: {filteredInspections.length}
+            </Badge>
+            <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-1">
+              Pass: {filteredInspections.filter(i => i.overall_result?.toLowerCase() === 'pass').length}
+            </Badge>
+            <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 px-2 py-1">
+              Fail: {filteredInspections.filter(i => i.overall_result?.toLowerCase() === 'fail').length}
+            </Badge>
           </div>
           
-          <InspectionHistoryTable 
-            inspections={filteredInspections}
-            isLoading={isLoading}
-            onViewDetails={handleViewDetails}
-            onDownloadPDF={handleDownloadPDF}
-            onDownloadExcel={handleDownloadExcel}
-            onFilterChange={handleFilterChange}
-            onExport={handleExport}
-            activeFilter={filter}
-            activeTimeframe={timeframe}
-          />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Select value={timeframe} onValueChange={setTimeframe}>
+              <SelectTrigger className="h-8 w-full sm:w-[130px]">
+                <SelectValue placeholder="Timeframe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="week">Past Week</SelectItem>
+                <SelectItem value="month">Past Month</SelectItem>
+                <SelectItem value="year">Past Year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+        
+        <InspectionHistoryTable 
+          inspections={filteredInspections}
+          isLoading={isLoading}
+          onViewDetails={handleViewDetails}
+          onDownloadPDF={handleDownloadPDF}
+          onDownloadExcel={handleDownloadExcel}
+          onFilterChange={handleFilterChange}
+          onExport={handleExport}
+          activeFilter={filter}
+          activeTimeframe={timeframe}
+        />
+      </div>
+    </StandardCard>
   );
 };
 

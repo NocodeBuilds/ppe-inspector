@@ -1,15 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { PPEItem } from '@/types';
-import EquipmentCard from '@/components/equipment/EquipmentCard';
-import { Input } from '@/components/ui/input';
-import { Search, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CardOverlay from '@/components/ui/card-overlay';
 import AddPPEForm from '@/components/forms/AddPPEForm';
+import { PageLayout } from '@/components/layout/PageLayout';
+import { FilterBar } from '@/components/ui/filter-bar';
+import StandardEquipmentCard from '@/components/equipment/StandardEquipmentCard';
+import { StandardCard } from '@/components/ui/standard-card';
 import EquipmentSkeleton from '@/components/equipment/EquipmentSkeleton';
 
 const Equipment = () => {
@@ -20,8 +22,7 @@ const Equipment = () => {
   const [showAddPPE, setShowAddPPE] = useState(false);
   const [activeType, setActiveType] = useState<string>('all');
   const { toast } = useToast();
-  const navigate = useNavigate();
-
+  
   const allPPETypes = [
     'Full Body Harness',
     'Fall Arrester',
@@ -112,10 +113,6 @@ const Equipment = () => {
     return ['all', ...Array.from(typesSet)];
   };
 
-  const handleInspect = (item: PPEItem) => {
-    navigate(`/inspect/${item.id}`);
-  };
-
   const handleAddPPESuccess = () => {
     setShowAddPPE(false);
     fetchEquipment();
@@ -125,28 +122,25 @@ const Equipment = () => {
     });
   };
 
+  const headerActions = (
+    <Button onClick={() => setShowAddPPE(true)}>
+      <Plus size={18} className="mr-2" />
+      Add PPE
+    </Button>
+  );
+
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Equipment</h1>
-        <Button onClick={() => setShowAddPPE(true)}>
-          <Plus size={18} className="mr-2" />
-          Add PPE
-        </Button>
-      </div>
+    <PageLayout
+      title="Equipment"
+      headerActions={headerActions}
+    >
+      <FilterBar
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search by serial number, type or brand..."
+      />
       
-      <div className="mb-6">
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            type="text"
-            placeholder="Search by serial number, type or brand..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
+      <StandardCard>
         <Tabs defaultValue="all" value={activeType} onValueChange={setActiveType}>
           <div className="relative overflow-hidden mb-4">
             <TabsList className="flex overflow-x-auto pb-2 -mb-2 no-scrollbar snap-x whitespace-nowrap">
@@ -168,11 +162,10 @@ const Equipment = () => {
             ) : filteredItems.length > 0 ? (
               <div className="space-y-4">
                 {filteredItems.map((item) => (
-                  <EquipmentCard
+                  <StandardEquipmentCard
                     key={item.id}
                     item={item}
                     type="equipment"
-                    onInspect={() => handleInspect(item)}
                   />
                 ))}
               </div>
@@ -186,7 +179,7 @@ const Equipment = () => {
             )}
           </TabsContent>
         </Tabs>
-      </div>
+      </StandardCard>
       
       <CardOverlay show={showAddPPE} onClose={() => setShowAddPPE(false)}>
         <div className="mb-4 flex justify-between items-center">
@@ -202,7 +195,7 @@ const Equipment = () => {
         </div>
         <AddPPEForm onSuccess={handleAddPPESuccess} />
       </CardOverlay>
-    </div>
+    </PageLayout>
   );
 };
 
