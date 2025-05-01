@@ -13,6 +13,7 @@ interface PageLayoutProps {
   backButton?: boolean;
   backUrl?: string;
   className?: string;
+  icon?: React.ReactNode;
 }
 
 export function PageLayout({
@@ -23,6 +24,7 @@ export function PageLayout({
   backButton = false,
   backUrl,
   className,
+  icon,
 }: PageLayoutProps) {
   const navigate = useNavigate();
 
@@ -43,9 +45,12 @@ export function PageLayout({
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
-          <div>
-            <h1 className="text-2xl font-bold">{title}</h1>
-            {description && <p className="text-muted-foreground">{description}</p>}
+          <div className="flex items-center gap-2">
+            {icon && <span className="flex-shrink-0">{icon}</span>}
+            <div>
+              <h1 className="text-2xl font-bold">{title}</h1>
+              {description && <p className="text-muted-foreground">{description}</p>}
+            </div>
           </div>
         </div>
         {headerActions && (
