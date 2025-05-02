@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Dialog,
@@ -8,7 +9,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { PPEItem } from '@/integrations/supabase/client';
+import { PPEItem } from '@/integrations/supabase/clientTypes';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistance } from 'date-fns';
 

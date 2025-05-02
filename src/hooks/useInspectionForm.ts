@@ -7,7 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
-import { PPEItem } from '@/types/ppe';
+import { PPEItem } from '@/integrations/supabase/clientTypes';
 import { InspectionType } from '@/integrations/supabase/clientTypes';
 import { usePPEData } from '@/hooks/usePPEData';
 import { calculateOverallResult } from '@/utils/inspectionUtils';
@@ -136,9 +136,9 @@ export const useInspectionForm = () => {
           type: data.type as any,
           date: new Date().toISOString(),
           overall_result: finalResult,
+          result: finalResult, // Also set result field as required by DB schema
           signature_url: data.signatureUrl,
-          notes: data.notes,
-          result: finalResult // Set both fields for compatibility
+          notes: data.notes
         })
         .select()
         .single();
@@ -148,7 +148,7 @@ export const useInspectionForm = () => {
       const resultsToInsert = data.checkpointResults.map(result => ({
         inspection_id: inspection.id,
         checkpoint_id: result.checkpointId,
-        passed: result.passed, // This now properly handles null values
+        passed: result.passed,
         notes: result.notes || null,
         photo_url: result.photoUrl || null
       }));

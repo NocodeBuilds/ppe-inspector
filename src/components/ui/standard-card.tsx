@@ -1,55 +1,43 @@
 
 import React from 'react';
-import { 
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter
-} from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
-interface StandardCardProps {
-  title?: React.ReactNode;
+export interface StandardCardProps {
+  children?: React.ReactNode;
+  title?: string;
   description?: React.ReactNode;
-  headerAction?: React.ReactNode;
   footer?: React.ReactNode;
-  children: React.ReactNode;
   className?: string;
-  contentClassName?: string;
-  headerClassName?: string;
+  icon?: React.ReactNode;
 }
 
-export function StandardCard({
+export const StandardCard: React.FC<StandardCardProps> = ({
+  children,
   title,
   description,
-  headerAction,
   footer,
-  children,
-  className,
-  contentClassName,
-  headerClassName,
-}: StandardCardProps) {
+  className = '',
+  icon
+}) => {
   return (
-    <Card className={cn("backdrop-blur-sm bg-background/80 border-border/50", className)}>
-      {(title || description || headerAction) && (
-        <CardHeader className={cn("pb-2 flex flex-row items-start justify-between", headerClassName)}>
-          <div>
-            {title && <CardTitle className="text-lg">{title}</CardTitle>}
-            {description && <CardDescription>{description}</CardDescription>}
-          </div>
-          {headerAction && (
-            <div className="flex items-center space-x-2">
-              {headerAction}
+    <Card className={`overflow-hidden ${className}`}>
+      {(title || description || icon) && (
+        <CardHeader className="pb-3">
+          {title && (
+            <div className="flex items-center gap-2">
+              {icon && <div className="text-muted-foreground">{icon}</div>}
+              <CardTitle>{title}</CardTitle>
             </div>
           )}
+          {description && <CardDescription>{description}</CardDescription>}
         </CardHeader>
       )}
-      <CardContent className={cn("pt-3", contentClassName)}>
-        {children}
-      </CardContent>
-      {footer && <CardFooter className="border-t pt-3 px-6">{footer}</CardFooter>}
+      
+      {children && <CardContent className="pt-2">{children}</CardContent>}
+      
+      {footer && <CardFooter>{footer}</CardFooter>}
     </Card>
   );
-}
+};
+
+export default StandardCard;

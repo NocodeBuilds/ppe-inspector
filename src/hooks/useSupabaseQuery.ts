@@ -99,9 +99,4 @@ export const fetchProfileData = async (userId: string) => {
   return data;
 };
 
-export const fetchExtendedProfileData = async () => {
-  const { data, error } = await supabase.rpc('get_extended_profile');
-  
-  if (error && error.code !== 'PGRST116') throw error;
-  return data;
-};
+// Removed the problematic fetchExtendedProfileData function as it seems to be causing issues

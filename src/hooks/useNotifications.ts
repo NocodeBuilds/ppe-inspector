@@ -1,10 +1,9 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase, Notification } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-
-type NotificationVariant = 'success' | 'error' | 'warning' | 'info';
+import { Notification, NotificationType } from '@/integrations/supabase/clientTypes';
 
 type NotificationOptions = {
   description?: string;
@@ -75,13 +74,17 @@ export function useNotifications() {
   // Display UI toast notification
   const showNotification = (
     title: string, 
-    variant: NotificationVariant = 'info',
+    variant: NotificationType = 'info',
     options?: NotificationOptions
   ) => {
+    // Map 'error' variant to 'destructive' for UI toast
+    const toastVariant = variant === 'error' ? 'destructive' : 
+                         (variant === 'info' ? 'default' : variant);
+    
     toast({
       title,
       description: options?.description,
-      variant: variant === 'info' ? 'default' : variant,
+      variant: toastVariant,
       duration: options?.duration || 5000
     });
   };
@@ -90,7 +93,7 @@ export function useNotifications() {
   const addDatabaseNotification = async (
     title: string,
     message: string,
-    type: NotificationVariant = 'info'
+    type: NotificationType = 'info'
   ) => {
     if (!user) return;
 

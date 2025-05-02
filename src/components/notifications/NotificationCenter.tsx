@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Bell, X, CheckCheck, Info, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,13 +18,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { Notification } from '@/integrations/supabase/clientTypes';
 
 interface NotificationItemProps {
   id: string;
   title: string;
   message: string;
   type: 'warning' | 'info' | 'success' | 'error';
-  createdAt: Date;
+  createdAt: string;
   read: boolean;
   onMarkAsRead: (id: string) => void;
   onDelete: (id: string) => void;
@@ -84,7 +86,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
           </div>
           <p className="text-caption">{message}</p>
           <p className="text-caption mt-1">
-            {formatDistanceToNow(createdAt, { addSuffix: true })}
+            {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
           </p>
         </div>
       </div>
@@ -99,8 +101,7 @@ const NotificationCenter: React.FC = () => {
     isLoading,
     markAsRead, 
     markAllAsRead, 
-    deleteNotification,
-    deleteAllNotifications 
+    deleteNotification
   } = useNotifications();
 
   return (
@@ -133,25 +134,13 @@ const NotificationCenter: React.FC = () => {
             )}
             
             {notifications.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    className="text-destructive text-body-sm cursor-pointer"
-                    onClick={deleteAllNotifications}
-                  >
-                    Delete all notifications
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             )}
           </div>
         </div>
@@ -174,14 +163,14 @@ const NotificationCenter: React.FC = () => {
               <p className="text-caption">No notifications</p>
             </div>
           ) : (
-            notifications.map((notification) => (
+            notifications.map((notification: Notification) => (
               <NotificationItem
                 key={notification.id}
                 id={notification.id}
                 title={notification.title}
                 message={notification.message}
                 type={notification.type}
-                createdAt={notification.createdAt}
+                createdAt={notification.created_at}
                 read={notification.read}
                 onMarkAsRead={markAsRead}
                 onDelete={deleteNotification}
