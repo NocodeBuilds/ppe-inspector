@@ -81,6 +81,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "inspection_results_checkpoint_id_fkey"
+            columns: ["checkpoint_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_checkpoints"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inspection_results_inspection_id_fkey"
             columns: ["inspection_id"]
             isOneToOne: false
@@ -262,6 +269,7 @@ export type Database = {
       }
       ppe_items: {
         Row: {
+          batch_number: string | null
           brand: string
           created_at: string | null
           expiry_date: string
@@ -278,6 +286,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          batch_number?: string | null
           brand: string
           created_at?: string | null
           expiry_date: string
@@ -294,6 +303,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          batch_number?: string | null
           brand?: string
           created_at?: string | null
           expiry_date?: string
@@ -313,6 +323,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           department: string | null
           email: string | null
@@ -327,6 +338,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null
@@ -341,6 +353,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null

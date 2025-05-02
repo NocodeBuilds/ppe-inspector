@@ -9,6 +9,7 @@ export interface StandardCardProps {
   footer?: React.ReactNode;
   className?: string;
   icon?: React.ReactNode;
+  headerAction?: React.ReactNode;
 }
 
 export const StandardCard: React.FC<StandardCardProps> = ({
@@ -17,18 +18,20 @@ export const StandardCard: React.FC<StandardCardProps> = ({
   description,
   footer,
   className = '',
-  icon
+  icon,
+  headerAction
 }) => {
   return (
     <Card className={`overflow-hidden ${className}`}>
       {(title || description || icon) && (
         <CardHeader className="pb-3">
-          {title && (
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {icon && <div className="text-muted-foreground">{icon}</div>}
-              <CardTitle>{title}</CardTitle>
+              {title && <CardTitle>{title}</CardTitle>}
             </div>
-          )}
+            {headerAction && <div>{headerAction}</div>}
+          </div>
           {description && <CardDescription>{description}</CardDescription>}
         </CardHeader>
       )}

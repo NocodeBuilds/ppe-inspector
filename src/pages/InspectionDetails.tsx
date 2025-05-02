@@ -37,13 +37,14 @@ import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionD
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
 import { useNetwork } from '@/hooks/useNetwork';
 import PageHeader from '@/components/common/PageHeader';
+import { safeExtract } from '@/utils/errorHandlers';
 
 interface InspectionCheckpoint {
   id: string;
   description: string;
   passed: boolean | null;
   notes: string | null;
-  photo_url: string | null;
+  photoUrl: string | null;
 }
 
 interface InspectionDetails {
@@ -109,7 +110,7 @@ const InspectionDetails = () => {
         throw new Error('Inspection not found');
       }
       
-      const { data: checkpointsData, error: checkpointsError } = await supabase
+      const { data: checkpointResults, error: checkpointError } = await supabase
         .from('inspection_results')
         .select(`
           id,
@@ -120,15 +121,29 @@ const InspectionDetails = () => {
         `)
         .eq('inspection_id', inspectionId);
       
-      if (checkpointsError) throw checkpointsError;
+      if (checkpointError) throw checkpointError;
       
-      const formattedCheckpoints: InspectionCheckpoint[] = checkpointsData?.map(result => ({
-        id: result.id,
-        description: result.inspection_checkpoints?.description || 'Unknown checkpoint',
-        passed: result.passed,
-        notes: result.notes,
-        photo_url: result.photo_url,
-      })) || [];
+      // Update data access using safeExtract
+      const checkpoints = checkpointResults.map(result => {
+        return {
+          id: result.id,
+          description: safeExtract(result.checkpoints, 'description', 'Unknown checkpoint'),
+          passed: result.passed,
+          notes: result.notes || '',
+          photoUrl: result.photo_url
+        };
+      });
+      
+      // Get inspector and PPE item details
+      const inspectorName = safeExtract(inspection.profiles, 'full_name', 'Unknown Inspector');
+      const ppeType = safeExtract(inspection.ppe_items, 'type', 'Unknown Type');
+      const serialNumber = safeExtract(inspection.ppe_items, 'serial_number', 'Unknown');
+      const brand = safeExtract(inspection.ppe_items, 'brand', 'Unknown');
+      const model = safeExtract(inspection.ppe_items, 'model_number', 'Unknown');
+      const siteName = safeExtract(inspection.profiles, 'site_name', 'Unknown Site');
+      const manufacturingDate = safeExtract(inspection.ppe_items, 'manufacturing_date', null);
+      const expiryDate = safeExtract(inspection.ppe_items, 'expiry_date', null);
+      const batchNumber = safeExtract(inspection.ppe_items, 'batch_number', 'N/A');
       
       const detailedInspection: InspectionDetails = {
         id: inspectionData.id,
@@ -138,16 +153,16 @@ const InspectionDetails = () => {
         notes: inspectionData.notes,
         signature_url: inspectionData.signature_url,
         inspector_id: inspectionData.inspector_id || '',
-        inspector_name: inspectionData.profiles?.full_name || 'Unknown',
-        ppe_type: inspectionData.ppe_items?.type || 'Unknown',
-        ppe_serial: inspectionData.ppe_items?.serial_number || 'Unknown',
-        ppe_brand: inspectionData.ppe_items?.brand || 'Unknown',
-        ppe_model: inspectionData.ppe_items?.model_number || 'Unknown',
-        site_name: inspectionData.profiles?.site_name || 'Unknown Site',
-        manufacturing_date: inspectionData.ppe_items?.manufacturing_date || 'N/A',
-        expiry_date: inspectionData.ppe_items?.expiry_date || 'N/A',
-        batch_number: inspectionData.ppe_items?.batch_number ? String(inspectionData.ppe_items.batch_number) : 'N/A',
-        checkpoints: formattedCheckpoints,
+        inspector_name: inspectorName,
+        ppe_type: ppeType,
+        ppe_serial: serialNumber,
+        ppe_brand: brand,
+        ppe_model: model,
+        site_name: siteName,
+        manufacturing_date: manufacturingDate,
+        expiry_date: expiryDate,
+        batch_number: batchNumber,
+        checkpoints: checkpoints,
       };
       
       setInspection(detailedInspection);
@@ -479,11 +494,11 @@ const InspectionDetails = () => {
                       <p className="text-xs text-muted-foreground mt-1">{checkpoint.notes}</p>
                     )}
                     
-                    {checkpoint.photo_url && (
+                    {checkpoint.photoUrl && (
                       <div className="mt-2 relative">
                         <div className="w-full h-24 bg-muted rounded-md overflow-hidden">
                           <img 
-                            src={checkpoint.photo_url} 
+                            src={checkpoint.photoUrl} 
                             alt={`Checkpoint ${index + 1} photo`} 
                             className="w-full h-full object-cover"
                           />

@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { InspectionCheckpoint } from '@/types';
+import { safeExtract } from '@/utils/errorHandlers';
 import CheckpointItem from '@/components/inspection/CheckpointItem';
 import SignatureCanvas from '@/components/inspection/SignatureCanvas';
 import InspectionSuccessDialog from '@/components/inspection/InspectionSuccessDialog';
@@ -118,18 +119,27 @@ const InspectionForm = () => {
       
       if (data) {
         console.log('PPE Item data:', data); // Debug log
-        setPpeItem({
-          id: data.id,
-          serialNumber: data.serial_number,
-          type: toPPEType(data.type),
-          brand: data.brand,
-          modelNumber: data.model_number,
-          batch_number: data.batch_number ? String(data.batch_number) : '',
-          manufacturing_date: data.manufacturing_date,
-          expiry_date: data.expiry_date
-        });
+        const id = safeExtract(data, 'id', '');
+        const serialNumber = safeExtract(data, 'serial_number', 'Unknown');
+        const type = safeExtract(data, 'type', '');
+        const brand = safeExtract(data, 'brand', '');
+        const modelNumber = safeExtract(data, 'model_number', '');
+        const batchNumber = safeExtract(data, 'batch_number', '');
+        const manufacturingDate = safeExtract(data, 'manufacturing_date', '');
+        const expiryDate = safeExtract(data, 'expiry_date', '');
         
-        await fetchCheckpoints(data.type);
+        setPpeItem({
+          id: id,
+          serialNumber: serialNumber,
+          type: toPPEType(type),
+          brand: brand,
+          modelNumber: modelNumber,
+          batch_number: batchNumber ? String(batchNumber) : '',
+          manufacturing_date: manufacturingDate,
+          expiry_date: expiryDate
+        } as any);
+        
+        await fetchCheckpoints(type);
       } else {
         throw new Error('PPE item not found');
       }

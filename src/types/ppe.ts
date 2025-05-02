@@ -18,6 +18,15 @@ export interface PPEItem {
   batch_number?: string;
   created_at: string;
   updated_at: string;
+  
+  // Camel case aliases for compatibility with existing code
+  get serialNumber(): string { return this.serial_number; }
+  get modelNumber(): string { return this.model_number || ''; }
+  get manufacturingDate(): string { return this.manufacturing_date || ''; }
+  get expiryDate(): string { return this.expiry_date || ''; }
+  get nextInspection(): string { return this.next_inspection || ''; }
+  get createdAt(): string { return this.created_at; }
+  get updatedAt(): string { return this.updated_at; }
 }
 
 // Profile type definition
@@ -35,6 +44,15 @@ export interface Profile {
   mobile?: string | null;
   created_at?: string;
   updated_at?: string;
+  
+  // Camel case aliases for compatibility with existing code
+  get createdAt(): string { return this.created_at || ''; }
+  get updatedAt(): string { return this.updated_at || ''; }
+  get fullName(): string { return this.full_name || ''; }
+  get avatarUrl(): string { return this.avatar_url || ''; }
+  get employeeId(): string { return this.employee_id || ''; }
+  get siteName(): string { return this.site_name || ''; }
+  get employeeRole(): string { return this.employee_role || ''; }
 }
 
 // Notification type
@@ -46,4 +64,7 @@ export interface Notification {
   type: 'success' | 'error' | 'warning' | 'info';
   read: boolean;
   created_at: string;
+  
+  // Camel case aliases
+  get createdAt(): string { return this.created_at; }
 }

@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { Notification, NotificationType } from '@/integrations/supabase/clientTypes';
+import { Notification, NotificationType, NotificationVariant } from '@/integrations/supabase/clientTypes';
 
 type NotificationOptions = {
   description?: string;
@@ -72,20 +71,14 @@ export function useNotifications() {
   }, [user]);
 
   // Display UI toast notification
-  const showNotification = (
-    title: string, 
-    variant: NotificationType = 'info',
-    options?: NotificationOptions
-  ) => {
-    // Map 'error' variant to 'destructive' for UI toast
-    const toastVariant = variant === 'error' ? 'destructive' : 
-                         (variant === 'info' ? 'default' : variant);
+  const showToastNotification = (title: string, variant: NotificationVariant = 'default', options: NotificationOptions = {}) => {
+    const toastVariant = variant === 'error' ? 'destructive' : variant;
     
     toast({
       title,
-      description: options?.description,
+      description: options.description,
       variant: toastVariant,
-      duration: options?.duration || 5000
+      duration: options.duration || 5000,
     });
   };
 
@@ -109,7 +102,7 @@ export function useNotifications() {
       if (error) throw error;
     } catch (error: any) {
       console.error('Failed to add notification:', error);
-      showNotification('Failed to save notification', 'error');
+      showToastNotification('Failed to save notification', 'error');
     }
   };
 
@@ -182,7 +175,7 @@ export function useNotifications() {
     notifications,
     unreadCount,
     isLoading,
-    showNotification,
+    showToastNotification,
     addDatabaseNotification,
     markAsRead,
     markAllAsRead,
