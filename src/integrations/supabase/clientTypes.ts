@@ -5,17 +5,16 @@ import { Tables, Enums } from './types';
 // Re-export common types that are used across the app
 export type Profile = {
   id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  role: AppRole | null;
-  created_at: string;
-  updated_at: string;
-  // Profile fields directly in profiles table
-  employee_id: string | null;
-  site_name: string | null;
-  department: string | null;
-  Employee_Role: string | null;
-  email: string | null;
+  email?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  employee_id?: string | null;
+  site_name?: string | null;
+  department?: string | null;
+  Employee_Role?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type PPEItem = Tables<'ppe_items'>;

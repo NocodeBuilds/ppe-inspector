@@ -9,6 +9,93 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      inspection_checkpoints: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string
+          guidance_notes: string | null
+          id: string
+          order_num: number | null
+          ppe_type: string
+          reference_photo_url: string | null
+          required: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description: string
+          guidance_notes?: string | null
+          id?: string
+          order_num?: number | null
+          ppe_type: string
+          reference_photo_url?: string | null
+          required?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string
+          guidance_notes?: string | null
+          id?: string
+          order_num?: number | null
+          ppe_type?: string
+          reference_photo_url?: string | null
+          required?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      inspection_results: {
+        Row: {
+          checkpoint_id: string
+          created_at: string | null
+          id: string
+          inspection_id: string | null
+          notes: string | null
+          passed: boolean | null
+          photo_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          checkpoint_id: string
+          created_at?: string | null
+          id?: string
+          inspection_id?: string | null
+          notes?: string | null
+          passed?: boolean | null
+          photo_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          checkpoint_id?: string
+          created_at?: string | null
+          id?: string
+          inspection_id?: string | null
+          notes?: string | null
+          passed?: boolean | null
+          photo_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_results_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "flagged_issues_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_results_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inspection_templates_new: {
         Row: {
           checkpoints: string[]
@@ -50,41 +137,44 @@ export type Database = {
       }
       inspections: {
         Row: {
-          comments: string | null
           created_at: string | null
           date: string | null
           id: string
           images: string[] | null
           inspector_id: string | null
+          notes: string | null
+          overall_result: string | null
           ppe_id: string | null
           result: string
-          signature: string | null
+          signature_url: string | null
           type: string
           updated_at: string | null
         }
         Insert: {
-          comments?: string | null
           created_at?: string | null
           date?: string | null
           id?: string
           images?: string[] | null
           inspector_id?: string | null
+          notes?: string | null
+          overall_result?: string | null
           ppe_id?: string | null
           result: string
-          signature?: string | null
+          signature_url?: string | null
           type: string
           updated_at?: string | null
         }
         Update: {
-          comments?: string | null
           created_at?: string | null
           date?: string | null
           id?: string
           images?: string[] | null
           inspector_id?: string | null
+          notes?: string | null
+          overall_result?: string | null
           ppe_id?: string | null
           result?: string
-          signature?: string | null
+          signature_url?: string | null
           type?: string
           updated_at?: string | null
         }
@@ -119,6 +209,36 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string | null
+          read: boolean | null
+          title: string
+          type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          read?: boolean | null
+          title: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          read?: boolean | null
+          title?: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ppe_checkpoints: {
         Row: {
           created_at: string | null
@@ -151,6 +271,7 @@ export type Database = {
           last_inspection: string | null
           manufacturing_date: string
           model_number: string
+          next_inspection: string | null
           serial_number: string
           status: string | null
           type: string
@@ -166,6 +287,7 @@ export type Database = {
           last_inspection?: string | null
           manufacturing_date: string
           model_number: string
+          next_inspection?: string | null
           serial_number: string
           status?: string | null
           type: string
@@ -181,6 +303,7 @@ export type Database = {
           last_inspection?: string | null
           manufacturing_date?: string
           model_number?: string
+          next_inspection?: string | null
           serial_number?: string
           status?: string | null
           type?: string
@@ -192,6 +315,9 @@ export type Database = {
         Row: {
           created_at: string | null
           department: string | null
+          email: string | null
+          employee_id: string | null
+          employee_role: string | null
           full_name: string | null
           id: string
           mobile: string | null
@@ -203,6 +329,9 @@ export type Database = {
         Insert: {
           created_at?: string | null
           department?: string | null
+          email?: string | null
+          employee_id?: string | null
+          employee_role?: string | null
           full_name?: string | null
           id: string
           mobile?: string | null
@@ -214,6 +343,9 @@ export type Database = {
         Update: {
           created_at?: string | null
           department?: string | null
+          email?: string | null
+          employee_id?: string | null
+          employee_role?: string | null
           full_name?: string | null
           id?: string
           mobile?: string | null
@@ -416,19 +548,48 @@ export type Database = {
       }
       flagged_issues_view: {
         Row: {
-          comments: string | null
-          failure_reason: string | null
           failure_remarks: string | null
           id: string | null
           inspection_date: string | null
           inspector_id: string | null
           inspector_name: string | null
+          notes: string | null
+          ppe_id: string | null
           ppe_type: string | null
           result: string | null
           serial_number: string | null
           status: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "inspections_ppe_id_fkey"
+            columns: ["ppe_id"]
+            isOneToOne: false
+            referencedRelation: "expiring_ppe_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_ppe_id_fkey"
+            columns: ["ppe_id"]
+            isOneToOne: false
+            referencedRelation: "ppe_analytics_view"
+            referencedColumns: ["ppe_id"]
+          },
+          {
+            foreignKeyName: "inspections_ppe_id_fkey"
+            columns: ["ppe_id"]
+            isOneToOne: false
+            referencedRelation: "ppe_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_ppe_id_fkey"
+            columns: ["ppe_id"]
+            isOneToOne: false
+            referencedRelation: "upcoming_inspections_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ppe_analytics_view: {
         Row: {
@@ -462,7 +623,16 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "inspector" | "user"
+      inspection_type: "pre-use" | "monthly" | "quarterly"
+      ppe_status:
+        | "active"
+        | "expired"
+        | "flagged"
+        | "due"
+        | "inspected"
+        | "out-of-service"
+        | "maintenance"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -577,6 +747,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "inspector", "user"],
+      inspection_type: ["pre-use", "monthly", "quarterly"],
+      ppe_status: [
+        "active",
+        "expired",
+        "flagged",
+        "due",
+        "inspected",
+        "out-of-service",
+        "maintenance",
+      ],
+    },
   },
 } as const

@@ -7,7 +7,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
-import { PPEItem, InspectionType } from '@/integrations/supabase/client';
+import { PPEItem } from '@/types/ppe';
+import { InspectionType } from '@/integrations/supabase/clientTypes';
 import { usePPEData } from '@/hooks/usePPEData';
 import { calculateOverallResult } from '@/utils/inspectionUtils';
 
@@ -132,11 +133,12 @@ export const useInspectionForm = () => {
         .insert({
           ppe_id: ppeId,
           inspector_id: user.id,
-          type: data.type as InspectionType,
+          type: data.type as any,
           date: new Date().toISOString(),
           overall_result: finalResult,
           signature_url: data.signatureUrl,
-          notes: data.notes
+          notes: data.notes,
+          result: finalResult // Set both fields for compatibility
         })
         .select()
         .single();
