@@ -28,7 +28,16 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
   retryCount = 0,
   maxRetries = 3,
 }) => {
-  const navigate = useNavigate();
+  let navigate;
+  
+  // Try to access the navigate function, but don't throw if we're outside a router context
+  try {
+    // @ts-ignore - We'll handle the case where this throws
+    navigate = useNavigate();
+  } catch (e) {
+    // If we're outside a router context, navigate will be undefined
+    console.log('Navigation not available in this context');
+  }
   
   // Log the error for debugging
   useEffect(() => {
@@ -48,8 +57,13 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
                             error.message.includes('API');
   
   const handleGoHome = () => {
-    navigate('/');
-    resetErrorBoundary();
+    if (navigate) {
+      navigate('/');
+      resetErrorBoundary();
+    } else {
+      // Fallback for when navigate is not available - redirect using window.location
+      window.location.href = '/';
+    }
   };
   
   const isMaxRetriesReached = retryCount >= maxRetries;

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import ErrorFallback from './ErrorFallback';
+import { BrowserRouter } from 'react-router-dom';
 
 interface EnhancedErrorBoundaryProps {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ interface EnhancedErrorBoundaryProps {
   logErrors?: boolean;
   retry?: boolean;
   maxRetries?: number;
+  withRouter?: boolean;
 }
 
 /**
@@ -28,6 +30,7 @@ interface EnhancedErrorBoundaryProps {
  * @param logErrors - Whether to log errors to the console (default: true)
  * @param retry - Whether to automatically retry after an error (default: false)
  * @param maxRetries - Maximum number of automatic retries (default: 3)
+ * @param withRouter - Whether to wrap the fallback in a Router (default: true)
  */
 const EnhancedErrorBoundary: React.FC<EnhancedErrorBoundaryProps> = ({
   children,
@@ -39,6 +42,7 @@ const EnhancedErrorBoundary: React.FC<EnhancedErrorBoundaryProps> = ({
   logErrors = true,
   retry = false,
   maxRetries = 3,
+  withRouter = true,
 }) => {
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState<Error | null>(null);
@@ -97,20 +101,33 @@ const EnhancedErrorBoundary: React.FC<EnhancedErrorBoundaryProps> = ({
     }
   }, [retry, lastError, retryCount, maxRetries, component]);
   
+  // Create a fallback component with or without Router context
+  const FallbackComponent = (props: any) => {
+    if (fallback) {
+      return <>{fallback}</>;
+    }
+    
+    // If withRouter is true, wrap the ErrorFallback in a BrowserRouter
+    const ErrorFallbackComponent = (
+      <ErrorFallback 
+        {...props} 
+        componentName={component} 
+        retryCount={retryCount}
+        maxRetries={maxRetries}
+      />
+    );
+    
+    // Only wrap in a router if asked to do so
+    if (withRouter) {
+      return <BrowserRouter>{ErrorFallbackComponent}</BrowserRouter>;
+    }
+    
+    return ErrorFallbackComponent;
+  };
+  
   return (
     <ErrorBoundary
-      FallbackComponent={(props) => 
-        fallback ? (
-          <>{fallback}</>
-        ) : (
-          <ErrorFallback 
-            {...props} 
-            componentName={component} 
-            retryCount={retryCount}
-            maxRetries={maxRetries}
-          />
-        )
-      }
+      FallbackComponent={FallbackComponent}
       onError={handleError}
       resetKeys={resetKeys}
       onReset={handleReset}
