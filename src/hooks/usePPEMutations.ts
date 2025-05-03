@@ -84,11 +84,11 @@ export function usePPEMutations(refetchPPE: () => void) {
   // Mutation to create a new PPE item
   const createPPEMutation = useSupabaseMutation<PPEItem, PPECreateInput>(
     async (ppeData) => {
-      const { imageFile, ...ppeItem } = ppeData;
+      const { imageFile, ...ppeInputData } = ppeData;
       
       // Make sure all required fields are provided
-      if (!ppeItem.brand || !ppeItem.type || !ppeItem.serial_number || 
-          !ppeItem.model_number || !ppeItem.manufacturing_date || !ppeItem.expiry_date) {
+      if (!ppeInputData.brand || !ppeInputData.type || !ppeInputData.serial_number || 
+          !ppeInputData.model_number || !ppeInputData.manufacturing_date || !ppeInputData.expiry_date) {
         throw new Error('Missing required PPE fields');
       }
       
@@ -97,7 +97,7 @@ export function usePPEMutations(refetchPPE: () => void) {
       }
       
       // Check if expiry date is valid
-      const expiryDate = new Date(ppeItem.expiry_date);
+      const expiryDate = new Date(ppeInputData.expiry_date);
       const currentDate = new Date();
       
       // Calculate status based on expiry date
@@ -111,13 +111,13 @@ export function usePPEMutations(refetchPPE: () => void) {
       const { data, error } = await supabase
         .from('ppe_items')
         .insert({
-          brand: ppeItem.brand,
-          type: ppeItem.type,
-          serial_number: ppeItem.serial_number,
-          model_number: ppeItem.model_number,
-          manufacturing_date: ppeItem.manufacturing_date,
-          expiry_date: ppeItem.expiry_date,
-          batch_number: ppeItem.batch_number || '',
+          brand: ppeInputData.brand,
+          type: ppeInputData.type,
+          serial_number: ppeInputData.serial_number,
+          model_number: ppeInputData.model_number,
+          manufacturing_date: ppeInputData.manufacturing_date,
+          expiry_date: ppeInputData.expiry_date,
+          batch_number: ppeInputData.batch_number || '',
           created_by: user.id,
           status: status,
           next_inspection: nextInspection.toISOString(),
@@ -130,11 +130,14 @@ export function usePPEMutations(refetchPPE: () => void) {
       if (error) throw error;
       
       // Then, if there's an image file, upload it and update the PPE item
+      const baseItem = data;
+      let updatedData = data;
+      
       if (imageFile && data.id) {
         const imageUrl = await compressAndUploadImage(imageFile, data.id);
         
         if (imageUrl) {
-          const { data: updatedData, error: updateError } = await supabase
+          const { data: updatedItem, error: updateError } = await supabase
             .from('ppe_items')
             .update({ image_url: imageUrl })
             .eq('id', data.id)
@@ -142,35 +145,38 @@ export function usePPEMutations(refetchPPE: () => void) {
             .single();
           
           if (updateError) throw updateError;
-          
-          // Convert the database format to PPEItem format
-          const ppeItem: PPEItem = {
-            ...updatedData,
-            serialNumber: updatedData.serial_number,
-            modelNumber: updatedData.model_number || '',
-            manufacturingDate: updatedData.manufacturing_date || '',
-            expiryDate: updatedData.expiry_date || '',
-            nextInspection: updatedData.next_inspection || '',
-            lastInspection: updatedData.last_inspection || '',
-            createdAt: updatedData.created_at,
-            updatedAt: updatedData.updated_at
-          };
-          
-          return ppeItem;
+          updatedData = updatedItem;
         }
       }
       
-      // Convert the database format to PPEItem format
+      // Convert the database format to PPEItem format with typed properties
       const ppeItem: PPEItem = {
-        ...data,
-        serialNumber: data.serial_number,
-        modelNumber: data.model_number || '',
-        manufacturingDate: data.manufacturing_date || '',
-        expiryDate: data.expiry_date || '',
-        nextInspection: data.next_inspection || '',
-        lastInspection: data.last_inspection || '',
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
+        ...updatedData,
+        id: updatedData.id,
+        serial_number: updatedData.serial_number,
+        type: updatedData.type,
+        brand: updatedData.brand || '',
+        model_number: updatedData.model_number || '',
+        manufacturing_date: updatedData.manufacturing_date || '',
+        expiry_date: updatedData.expiry_date || '',
+        status: updatedData.status as PPEStatus,
+        image_url: updatedData.image_url || '',
+        next_inspection: updatedData.next_inspection || '',
+        last_inspection: updatedData.last_inspection || '',
+        inspection_frequency: updatedData.inspection_frequency || '',
+        batch_number: updatedData.batch_number || '',
+        created_at: updatedData.created_at,
+        updated_at: updatedData.updated_at,
+        
+        // Additional properties required by PPEItem interface
+        serialNumber: updatedData.serial_number,
+        modelNumber: updatedData.model_number || '',
+        manufacturingDate: updatedData.manufacturing_date || '',
+        expiryDate: updatedData.expiry_date || '',
+        nextInspection: updatedData.next_inspection || '',
+        lastInspection: updatedData.last_inspection || '',
+        createdAt: updatedData.created_at,
+        updatedAt: updatedData.updated_at
       };
       
       return ppeItem;

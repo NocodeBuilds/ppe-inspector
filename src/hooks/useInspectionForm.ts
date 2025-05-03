@@ -1,231 +1,298 @@
-
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { useNavigate, useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useNotifications } from '@/hooks/useNotifications';
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { PPEItem, PPEStatus } from '@/types/ppe';
-import { usePPEData } from '@/hooks/usePPEData';
-import { calculateOverallResult } from '@/utils/inspectionUtils';
+import { supabase } from '@/integrations/supabase/client';
+import { InspectionCheckpoint, InspectionDetails, PPEItem } from '@/types/ppe';
+import { useToast } from '@/hooks/use-toast';
+import { useNotifications } from '@/hooks/useNotifications';
 
-// Define the form schema
-const inspectionFormSchema = z.object({
-  type: z.enum(['pre-use', 'monthly', 'quarterly']),
-  notes: z.string().optional(),
-  signatureUrl: z.string().optional(),
-  overallResult: z.enum(['pass', 'fail', 'maintenance-required']).nullable(),
-  checkpointResults: z.array(z.object({
-    checkpointId: z.string(),
-    passed: z.boolean().nullable(),
-    notes: z.string().optional(),
-    photoUrl: z.string().optional(),
-  }))
-});
+interface UseInspectionFormProps {
+  ppeId: string | undefined;
+  onSuccess?: () => void;
+  onError?: (message: string) => void;
+}
 
-export type InspectionFormValues = z.infer<typeof inspectionFormSchema>;
-
-export const useInspectionForm = () => {
-  const { ppeId } = useParams<{ ppeId: string }>();
-  const [ppeItem, setPpeItem] = useState<PPEItem | null>(null);
-  const [checkpoints, setCheckpoints] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export const useInspectionForm = ({ ppeId, onSuccess, onError }: UseInspectionFormProps = {}) => {
+  const [inspectionType, setInspectionType] = useState<string>('pre-use');
+  const [overallResult, setOverallResult] = useState<string>('pass');
+  const [notes, setNotes] = useState<string>('');
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [checkpoints, setCheckpoints] = useState<InspectionCheckpoint[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const { user } = useAuth();
+  const [ppeItem, setPpeItem] = useState<PPEItem | null>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [inspectorName, setInspectorName] = useState<string>('');
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const { showToastNotification } = useNotifications();
-  const { getPPEById, updatePPEStatus } = usePPEData();
 
-  // Initialize form with proper handling for null values
-  const form = useForm<InspectionFormValues>({
-    resolver: zodResolver(inspectionFormSchema),
-    defaultValues: {
-      type: 'pre-use',
-      notes: '',
-      overallResult: null,
-      checkpointResults: []
-    }
-  });
+  // Fetch checkpoints based on PPE type
+  const fetchCheckpoints = useCallback(async (ppeType: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('inspection_checkpoints')
+        .select('*')
+        .eq('ppe_type', ppeType);
 
-  // Load PPE data and checkpoints
-  useEffect(() => {
-    const loadData = async () => {
-      if (!ppeId) {
-        showToastNotification('Error', 'destructive', {
-          description: 'No PPE ID provided'
+      if (error) {
+        console.error('Error fetching checkpoints:', error);
+        showToastNotification('Error', 'error', {
+          description: `Failed to fetch checkpoints: ${error.message}`
         });
-        navigate('/start-inspection');
+        if (onError) onError(error.message);
         return;
       }
-      setIsLoading(true);
-      try {
-        const ppe = await getPPEById(ppeId);
-        if (!ppe) {
-          throw new Error('PPE not found');
-        }
-        
-        // Ensure the status is properly typed
-        const typedPpe: PPEItem = {
-          ...ppe,
-          status: ppe.status as PPEStatus
-        };
-        
-        setPpeItem(typedPpe);
 
-        const { data: checkpointData, error: checkpointError } = await supabase
-          .from('inspection_checkpoints')
-          .select('*')
-          .eq('ppe_type', ppe.type);
+      // Initialize the checkpoints with a 'passed' status
+      const initialCheckpoints = data.map(checkpoint => ({
+        ...checkpoint,
+        passed: null,
+        notes: '',
+        photo_url: null
+      }));
+      setCheckpoints(initialCheckpoints);
+    } catch (error: any) {
+      console.error('Unexpected error fetching checkpoints:', error);
+      showToastNotification('Error', 'error', {
+        description: `Unexpected error fetching checkpoints: ${error.message}`
+      });
+      if (onError) onError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [onError, showToastNotification]);
 
-        if (checkpointError) throw checkpointError;
-        
-        setCheckpoints(checkpointData || []);
+  // Fetch PPE item details
+  const fetchPPEItem = useCallback(async (ppeId: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('ppe_items')
+        .select('*')
+        .eq('id', ppeId)
+        .single();
 
-        if (ppe) {
-          // Initialize each checkpoint with explicit null value for passed
-          form.setValue('checkpointResults', (checkpointData || []).map(checkpoint => ({
-            checkpointId: checkpoint.id,
-            passed: null,
-            notes: '',
-            photoUrl: '',
-          })));
-        }
-
-      } catch (error: any) {
-        console.error('Error loading inspection data:', error);
-        showToastNotification('Error', 'destructive', {
-          description: `Failed to load inspection data: ${error.message}`
+      if (error) {
+        console.error('Error fetching PPE item:', error);
+        showToastNotification('Error', 'error', {
+          description: `Failed to fetch PPE item: ${error.message}`
         });
-        navigate('/start-inspection');
-      } finally {
-        setIsLoading(false);
+        if (onError) onError(error.message);
+        return;
       }
-    };
 
-    loadData();
-  }, [ppeId, form, navigate, showToastNotification, getPPEById]);
+      setPpeItem(data);
+      fetchCheckpoints(data.type);
+    } catch (error: any) {
+      console.error('Unexpected error fetching PPE item:', error);
+      showToastNotification('Error', 'error', {
+        description: `Unexpected error fetching PPE item: ${error.message}`
+      });
+      if (onError) onError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchCheckpoints, onError, showToastNotification]);
 
-  // Handle form submission with improved null handling
-  const onSubmit = async (data: InspectionFormValues) => {
-    if (!user || !ppeItem) return;
-    
+  // Handle checkpoint updates
+  const updateCheckpoint = useCallback((id: string, field: string, value: any) => {
+    setCheckpoints(prevCheckpoints =>
+      prevCheckpoints.map(checkpoint =>
+        checkpoint.id === id ? { ...checkpoint, [field]: value } : checkpoint
+      )
+    );
+  }, []);
+
+  // Handle signature clear
+  const clearSignature = () => {
+    setSignatureData(null);
+  };
+
+  // Handle form submission
+  const handleSubmit = async () => {
+    if (!user?.id || !ppeId || !ppeItem) {
+      showToastNotification('Error', 'error', {
+        description: 'User not authenticated or PPE item not loaded.'
+      });
+      if (onError) onError('User not authenticated or PPE item not loaded.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      console.log('Submitting inspection form data:', data);
+      // Validate that all required checkpoints have been filled
+      const requiredCheckpoints = checkpoints.filter(checkpoint => checkpoint.required);
+      const incompleteCheckpoints = requiredCheckpoints.filter(checkpoint => checkpoint.passed === null);
 
-      // Calculate overall result using the utility function
-      const resultsMap: Record<string, { passed: boolean | null | undefined; notes: string; photoUrl?: string }> = {};
-      data.checkpointResults.forEach(result => {
-        resultsMap[result.checkpointId] = {
-          passed: result.passed,
-          notes: result.notes || '',
-          photoUrl: result.photoUrl
-        };
-      });
-      
-      // Use the utility function to calculate the overall result
-      const calculatedResult = calculateOverallResult(resultsMap, checkpoints);
-      
-      // Override with the form value if provided, otherwise use calculated value
-      const finalResult = data.overallResult || calculatedResult;
-      console.log('Final overall result:', finalResult);
+      if (incompleteCheckpoints.length > 0) {
+        showToastNotification('Error', 'error', {
+          description: 'Please complete all required checkpoints.'
+        });
+        if (onError) onError('Please complete all required checkpoints.');
+        return;
+      }
 
-      const { data: inspection, error: inspectionError } = await supabase
+      // Upload the photo to Supabase storage
+      let photoUrl = null;
+      if (photo) {
+        const filePath = `inspection-photos/${ppeId}-${Date.now()}.png`;
+        const fileContent = photo.split(',')[1];
+        const file = new Buffer(fileContent, 'base64');
+
+        const { error: uploadError } = await supabase.storage
+          .from('inspection-photos')
+          .upload(filePath, file, {
+            contentType: 'image/png',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Error uploading photo:', uploadError);
+          showToastNotification('Error', 'error', {
+            description: `Failed to upload photo: ${uploadError.message}`
+          });
+          if (onError) onError(`Failed to upload photo: ${uploadError.message}`);
+          return;
+        }
+
+        photoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/inspection-photos/${filePath}`;
+      }
+
+      // Upload the signature to Supabase storage
+      let signatureUrl = null;
+      if (signatureData) {
+        const filePath = `signatures/${ppeId}-${Date.now()}.png`;
+        const fileContent = signatureData.split(',')[1];
+        const file = new Buffer(fileContent, 'base64');
+
+        const { error: uploadError } = await supabase.storage
+          .from('signatures')
+          .upload(filePath, file, {
+            contentType: 'image/png',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Error uploading signature:', uploadError);
+          showToastNotification('Error', 'error', {
+            description: `Failed to upload signature: ${uploadError.message}`
+          });
+          if (onError) onError(`Failed to upload signature: ${uploadError.message}`);
+          return;
+        }
+
+        signatureUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/signatures/${filePath}`;
+      }
+
+      // Insert the inspection data into the database
+      const { data: inspectionData, error: inspectionError } = await supabase
         .from('inspections')
         .insert({
           ppe_id: ppeId,
           inspector_id: user.id,
-          type: data.type,
           date: new Date().toISOString(),
-          overall_result: finalResult,
-          result: finalResult, // Also set result field as required by DB schema
-          signature_url: data.signatureUrl,
-          notes: data.notes
+          type: inspectionType,
+          overall_result: overallResult,
+          notes: notes,
+          signature_url: signatureUrl,
+          images: photoUrl ? [photoUrl] : [],
         })
         .select()
         .single();
 
-      if (inspectionError) throw inspectionError;
+      if (inspectionError) {
+        console.error('Error inserting inspection:', inspectionError);
+        showToastNotification('Error', 'error', {
+          description: `Failed to create inspection: ${inspectionError.message}`
+        });
+        if (onError) onError(`Failed to create inspection: ${inspectionError.message}`);
+        return;
+      }
 
-      const resultsToInsert = data.checkpointResults.map(result => ({
-        inspection_id: inspection.id,
-        checkpoint_id: result.checkpointId,
-        passed: result.passed,
-        notes: result.notes || null,
-        photo_url: result.photoUrl || null
+      // Insert the inspection results into the database
+      const inspectionResults = checkpoints.map(checkpoint => ({
+        inspection_id: inspectionData.id,
+        checkpoint_id: checkpoint.id,
+        passed: checkpoint.passed,
+        notes: checkpoint.notes,
+        photo_url: checkpoint.photo_url
       }));
 
       const { error: resultsError } = await supabase
         .from('inspection_results')
-        .insert(resultsToInsert);
+        .insert(inspectionResults);
 
-      if (resultsError) throw resultsError;
-
-      const now = new Date();
-      let nextInspectionDate: Date;
-      
-      switch (data.type) {
-        case 'pre-use':
-          nextInspectionDate = new Date(now);
-          nextInspectionDate.setDate(nextInspectionDate.getDate() + 1);
-          break;
-        case 'monthly':
-          nextInspectionDate = new Date(now);
-          nextInspectionDate.setMonth(nextInspectionDate.getMonth() + 1);
-          break;
-        case 'quarterly':
-          nextInspectionDate = new Date(now);
-          nextInspectionDate.setMonth(nextInspectionDate.getMonth() + 3);
-          break;
-        default:
-          nextInspectionDate = new Date(now);
-          nextInspectionDate.setMonth(nextInspectionDate.getMonth() + 1);
+      if (resultsError) {
+        console.error('Error inserting inspection results:', resultsError);
+        showToastNotification('Error', 'error', {
+          description: `Failed to save inspection results: ${resultsError.message}`
+        });
+        if (onError) onError(`Failed to save inspection results: ${resultsError.message}`);
+        return;
       }
 
-      // Update PPE status based on the final result
-      if (finalResult === 'fail') {
-        updatePPEStatus({ id: ppeId, status: 'flagged' });
-      } else if (data.overallResult === 'maintenance-required') {
-        updatePPEStatus({ id: ppeId, status: 'maintenance' });
-      } else if (finalResult === 'pass') {
-        updatePPEStatus({ id: ppeId, status: 'active' });
-      }
+      // Update the PPE item's next inspection date
+      const nextInspectionDate = new Date();
+      nextInspectionDate.setMonth(nextInspectionDate.getMonth() + 3);
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('ppe_items')
         .update({
-          last_inspection: now.toISOString(),
           next_inspection: nextInspectionDate.toISOString(),
-          updated_at: now.toISOString()
+          status: overallResult === 'pass' ? 'inspected' : 'flagged'
         })
         .eq('id', ppeId);
 
-      showToastNotification('Success', 'success', {
-        description: 'Inspection completed successfully'
-      });
-      
-      setShowSuccess(true);
+      if (updateError) {
+        console.error('Error updating PPE item:', updateError);
+        showToastNotification('Error', 'error', {
+          description: `Failed to update PPE item: ${updateError.message}`
+        });
+        if (onError) onError(`Failed to update PPE item: ${updateError.message}`);
+        return;
+      }
 
-    } catch (error: any) {
-      console.error('Error submitting inspection:', error);
-      showToastNotification('Error', 'destructive', {
-        description: `Failed to submit inspection: ${error.message}`
+      showToastNotification('Success', 'success', {
+        description: 'Inspection submitted successfully!'
       });
+      if (onSuccess) onSuccess();
+      navigate('/upcoming');
+    } catch (error: any) {
+      console.error('Unexpected error during submission:', error);
+      showToastNotification('Error', 'error', {
+        description: `Unexpected error during submission: ${error.message}`
+      });
+      if (onError) onError(`Unexpected error during submission: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return {
-    form,
-    ppeItem,
+    inspectionType,
+    setInspectionType,
+    overallResult,
+    setOverallResult,
+    notes,
+    setNotes,
+    signatureData,
+    setSignatureData,
     checkpoints,
+    setCheckpoints,
     isLoading,
     isSubmitting,
-    showSuccess,
-    onSubmit: form.handleSubmit(onSubmit)
+    ppeItem,
+    photo,
+    setPhoto,
+    inspectorName,
+    setInspectorName,
+    fetchCheckpoints,
+    fetchPPEItem,
+    updateCheckpoint,
+    clearSignature,
+    handleSubmit
   };
 };

@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,8 @@ import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { StandardCard } from '@/components/ui/standard-card';
 import { PageLayout } from '@/components/layout/PageLayout';
+import { Shield, Calendar, AlertTriangle, AlertCircle, FileText, Plus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const Home = () => {
   const [showAddPPE, setShowAddPPE] = useState(false);
@@ -257,15 +260,14 @@ const Home = () => {
         </>
       )}
 
-      <CardOverlay show={showAddPPE} onClose={() => setShowAddPPE(false)}>
-        <div className="mb-2 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-primary">Add New PPE</h2>
-          <Button variant="ghost" size="sm" onClick={() => setShowAddPPE(false)} className="h-7 w-7 p-0 rounded-full">
-            ✕
-          </Button>
-        </div>
-        <AddPPEForm onSuccess={handleAddPPESuccess} />
-      </CardOverlay>
+      <Dialog open={showAddPPE} onOpenChange={setShowAddPPE}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add New Equipment</DialogTitle>
+          </DialogHeader>
+          <AddPPEForm onPPECreated={handleAddPPESuccess} />
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 };

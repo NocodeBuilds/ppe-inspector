@@ -1,154 +1,135 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Printer, ChevronLeft, FileSpreadsheet } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { InspectionDetails as InspectionDetailType } from '@/types/ppe';
+import { StandardCard } from '@/components/ui/standard-card';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { FileText, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { InspectionDetails as InspectionDetailsType } from '@/types/ppe';
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/pdfGenerator';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/excelGenerator';
-import { format } from 'date-fns';
 
-const InspectionDetails = () => {
-  const { id: inspectionId } = useParams<{ id: string }>();
-  const [inspection, setInspection] = useState<InspectionDetailType | null>(null);
+// Interface for the inspection details page
+interface InspectionDetailPageProps {}
+
+const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const [inspection, setInspection] = useState<InspectionDetailsType | null>(null);
 
   useEffect(() => {
-    if (!inspectionId) {
-      navigate('/');
-      return;
-    }
-    fetchInspectionDetails(inspectionId);
-  }, [inspectionId, navigate]);
-
-  const fetchInspectionDetails = async (inspectionId: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const { data: inspectionData, error: inspectionError } = await supabase
-        .from('inspections')
-        .select(`
-          id,
-          date,
-          type,
-          overall_result,
-          notes,
-          signature_url,
-          inspector_id,
-          profiles:inspector_id(full_name, site_name),
-          ppe_items:ppe_id(type, serial_number, brand, model_number, manufacturing_date, expiry_date, batch_number)
-        `)
-        .eq('id', inspectionId)
-        .single();
-      
-      if (inspectionError) throw inspectionError;
-      
-      if (!inspectionData) {
-        throw new Error('Inspection not found');
+    const fetchInspectionDetails = async () => {
+      if (!id) {
+        setError('No inspection ID provided');
+        setIsLoading(false);
+        return;
       }
-      
-      const { data: checkpointResults, error: checkpointError } = await supabase
-        .from('inspection_results')
-        .select(`
-          id,
-          passed,
-          notes,
-          photo_url,
-          inspection_checkpoints:checkpoint_id(id, description)
-        `)
-        .eq('inspection_id', inspectionId);
-      
-      if (checkpointError) throw checkpointError;
-      
-      // Process the checkpoint results safely
-      const checkpoints = checkpointResults?.map(result => {
-        const checkpoint = result.inspection_checkpoints || { id: '', description: 'Unknown checkpoint' };
-        
-        return {
-          id: checkpoint.id,
-          description: checkpoint.description,
-          passed: result.passed,
-          notes: result.notes || '',
-          photoUrl: result.photo_url,
-          photo_url: result.photo_url // Add both versions for compatibility
-        };
-      }) || [];
-      
-      // Use nullish coalescing for safety
-      const profiles = inspectionData.profiles || {};
-      const ppe_items = inspectionData.ppe_items || {};
-      
-      // Extract data safely
-      const inspectorName = profiles.full_name || 'Unknown Inspector';
-      const siteName = profiles.site_name || 'Unknown Site';
-      const ppeType = ppe_items.type || 'Unknown Type';
-      const serialNumber = ppe_items.serial_number || 'Unknown';
-      const brand = ppe_items.brand || 'Unknown';
-      const modelNumber = ppe_items.model_number || 'Unknown';
-      const manufacturingDate = ppe_items.manufacturing_date || null;
-      const expiryDate = ppe_items.expiry_date || null;
-      const batchNumber = ppe_items.batch_number || 'N/A';
-      
-      // Create the detailed inspection object
-      const detailedInspection: InspectionDetailType = {
-        id: inspectionData.id,
-        date: inspectionData.date,
-        type: inspectionData.type,
-        overall_result: inspectionData.overall_result,
-        notes: inspectionData.notes,
-        signature_url: inspectionData.signature_url,
-        inspector_id: inspectionData.inspector_id || '',
-        inspector_name: inspectorName,
-        ppe_type: ppeType,
-        ppe_serial: serialNumber,
-        ppe_brand: brand,
-        ppe_model: modelNumber,
-        site_name: siteName,
-        manufacturing_date: manufacturingDate,
-        expiry_date: expiryDate,
-        batch_number: batchNumber,
-        checkpoints: checkpoints,
-        photoUrl: null // Add this property to match the interface
-      };
-      
-      setInspection(detailedInspection);
-    } catch (error: any) {
-      console.error('Error fetching inspection details:', error);
-      setError(error.message || 'Failed to load inspection details');
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to load inspection details',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handleExportPDF = async () => {
+      try {
+        setIsLoading(true);
+
+        // Fetch the inspection with related data
+        const { data, error: fetchError } = await supabase
+          .from('inspections')
+          .select(`
+            *,
+            profiles:inspector_id(*),
+            ppe_items:ppe_id(*)
+          `)
+          .eq('id', id)
+          .single();
+
+        if (fetchError) throw fetchError;
+        if (!data) throw new Error('Inspection not found');
+
+        // Now fetch the checkpoint results
+        const { data: checkpointsData, error: checkpointsError } = await supabase
+          .from('inspection_results')
+          .select(`
+            *,
+            inspection_checkpoints:checkpoint_id(*)
+          `)
+          .eq('inspection_id', id);
+
+        if (checkpointsError) throw checkpointsError;
+
+        // Map the checkpoints to the format expected by the InspectionDetails type
+        const mappedCheckpoints = checkpointsData.map(result => ({
+          id: result.id,
+          description: result.inspection_checkpoints?.description || '',
+          passed: result.passed || false,
+          notes: result.notes || '',
+          photo_url: result.photo_url || null
+        }));
+
+        // Create the inspection details object
+        const inspectionDetails: InspectionDetailsType = {
+          id: data.id,
+          date: data.date,
+          type: data.type,
+          overall_result: data.overall_result,
+          notes: data.notes || '',
+          signature_url: data.signature_url || null,
+          inspector_id: data.inspector_id,
+          inspector_name: data.profiles?.full_name || 'Unknown',
+          site_name: data.profiles?.site_name || 'Unknown',
+          ppe_type: data.ppe_items?.type || 'Unknown',
+          ppe_serial: data.ppe_items?.serial_number || 'Unknown',
+          ppe_brand: data.ppe_items?.brand || 'Unknown',
+          ppe_model: data.ppe_items?.model_number || 'Unknown',
+          manufacturing_date: data.ppe_items?.manufacturing_date || null,
+          expiry_date: data.ppe_items?.expiry_date || null,
+          batch_number: data.ppe_items?.batch_number || '',
+          checkpoints: mappedCheckpoints,
+          photoUrl: ''  // Add this empty property to satisfy the type
+        };
+
+        setInspection(inspectionDetails);
+      } catch (err: any) {
+        console.error('Error fetching inspection details:', err);
+        setError(err.message || 'Failed to load inspection details');
+        toast({
+          title: 'Error',
+          description: 'Failed to load inspection details',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchInspectionDetails();
+  }, [id, toast]);
+
+  const handleDownloadPDF = async () => {
     if (!inspection) return;
-    
+
+    setIsExporting(true);
     try {
-      setIsExporting(true);
-      await generateInspectionDetailPDF(inspection);
+      // Prepare the data for PDF generation
+      const inspectionData = {
+        ...inspection,
+        photoUrl: inspection.photoUrl || '',
+      };
+
+      // Generate the PDF
+      await generateInspectionDetailPDF(inspectionData);
       toast({
         title: 'PDF Generated',
         description: 'Inspection report has been downloaded as PDF',
       });
-    } catch (error) {
-      console.error('PDF generation error:', error);
+    } catch (error: any) {
+      console.error('Error generating PDF report:', error);
       toast({
         title: 'PDF Generation Failed',
-        description: 'Could not generate PDF report',
+        description: error.message || 'Could not generate PDF report',
         variant: 'destructive',
       });
     } finally {
@@ -156,21 +137,28 @@ const InspectionDetails = () => {
     }
   };
 
-  const handleExportExcel = async () => {
+  const handleDownloadExcel = async () => {
     if (!inspection) return;
-    
+
+    setIsExporting(true);
     try {
-      setIsExporting(true);
-      await generateInspectionExcelReport(inspection);
+      // Prepare the data for Excel generation
+      const inspectionData = {
+        ...inspection,
+        photoUrl: inspection.photoUrl || '',
+      };
+
+      // Generate the Excel report
+      await generateInspectionExcelReport(inspectionData);
       toast({
         title: 'Excel Generated',
         description: 'Inspection report has been downloaded as Excel',
       });
-    } catch (error) {
-      console.error('Excel generation error:', error);
+    } catch (error: any) {
+      console.error('Error generating Excel report:', error);
       toast({
         title: 'Excel Generation Failed',
-        description: 'Could not generate Excel report',
+        description: error.message || 'Could not generate Excel report',
         variant: 'destructive',
       });
     } finally {
@@ -178,163 +166,142 @@ const InspectionDetails = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="animate-pulse space-y-4">
+          <div className="h-10 bg-gray-300 rounded w-1/2"></div>
+          <div className="h-24 bg-gray-300 rounded"></div>
+          <div className="h-64 bg-gray-300 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !inspection) {
+    return (
+      <div className="container mx-auto p-4">
+        <StandardCard title="Error" icon={AlertTriangle}>
+          <p className="text-red-500">{error || 'Failed to load inspection details'}</p>
+          <Button onClick={() => navigate(-1)} className="mt-4">Go Back</Button>
+        </StandardCard>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 py-6">
-      <Button onClick={() => navigate(-1)} variant="ghost" className="mb-4">
-        <ChevronLeft className="mr-2 h-4 w-4" />
-        Back
-      </Button>
-      
-      {isLoading && <p>Loading inspection details...</p>}
-      {error && <p className="text-red-500">Error: {error}</p>}
-      
-      {inspection && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Inspection Details</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <strong>Inspection ID:</strong>
-                <p>{inspection.id}</p>
-              </div>
-              <div>
-                <strong>Date:</strong>
-                <p>{format(new Date(inspection.date), 'MMM d, yyyy')}</p>
-              </div>
-              <div>
-                <strong>Type:</strong>
-                <p>{inspection.type}</p>
-              </div>
-              <div>
-                <strong>Overall Result:</strong>
-                <p>{inspection.overall_result}</p>
-              </div>
-              <div>
-                <strong>Inspector:</strong>
-                <p>{inspection.inspector_name}</p>
-              </div>
-              <div>
-                <strong>Site:</strong>
-                <p>{inspection.site_name}</p>
-              </div>
-            </div>
-            
-            <div className="border-t py-4">
-              <h4 className="text-lg font-semibold mb-2">PPE Details</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <strong>Type:</strong>
-                  <p>{inspection.ppe_type}</p>
-                </div>
-                <div>
-                  <strong>Serial Number:</strong>
-                  <p>{inspection.ppe_serial}</p>
-                </div>
-                <div>
-                  <strong>Brand:</strong>
-                  <p>{inspection.ppe_brand}</p>
-                </div>
-                <div>
-                  <strong>Model:</strong>
-                  <p>{inspection.ppe_model}</p>
-                </div>
-                <div>
-                  <strong>Manufacturing Date:</strong>
-                  <p>{inspection.manufacturing_date ? format(new Date(inspection.manufacturing_date), 'MMM d, yyyy') : 'N/A'}</p>
-                </div>
-                <div>
-                  <strong>Expiry Date:</strong>
-                  <p>{inspection.expiry_date ? format(new Date(inspection.expiry_date), 'MMM d, yyyy') : 'N/A'}</p>
-                </div>
-                <div>
-                  <strong>Batch Number:</strong>
-                  <p>{inspection.batch_number}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="border-t py-4">
-              <h4 className="text-lg font-semibold mb-2">Checkpoints</h4>
-              {inspection.checkpoints.length > 0 ? (
-                <ul className="list-disc pl-5">
-                  {inspection.checkpoints.map((checkpoint) => (
-                    <li key={checkpoint.id} className="mb-2">
-                      <strong>{checkpoint.description}</strong>
-                      <p>Result: {checkpoint.passed === null ? 'N/A' : checkpoint.passed ? 'Pass' : 'Fail'}</p>
-                      {checkpoint.notes && <p>Notes: {checkpoint.notes}</p>}
-                      {checkpoint.photoUrl && (
-                        <img
-                          src={checkpoint.photoUrl}
-                          alt="Checkpoint"
-                          className="mt-2 rounded-md max-h-40 object-contain"
-                        />
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No checkpoints available for this inspection.</p>
-              )}
-            </div>
-            
-            {inspection.notes && (
-              <div className="border-t py-4">
-                <h4 className="text-lg font-semibold mb-2">Notes</h4>
-                <p>{inspection.notes}</p>
-              </div>
-            )}
-            
-            {inspection.signature_url && (
-              <div className="border-t py-4">
-                <h4 className="text-lg font-semibold mb-2">Signature</h4>
-                <img
-                  src={inspection.signature_url}
-                  alt="Signature"
-                  className="max-h-20 object-contain"
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-      
-      {inspection && (
-        <div className="flex justify-end mt-4 gap-2">
-          <Button
-            onClick={handleExportPDF}
-            disabled={isExporting}
-          >
-            {isExporting ? (
-              <>
-                Generating PDF...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" />
-                Export to PDF
-              </>
-            )}
-          </Button>
+    <div className="container mx-auto p-4">
+      <StandardCard
+        title={`Inspection Details - ${inspection.ppe_type}`}
+        description={`Inspection on ${format(new Date(inspection.date), 'PPP')}`}
+      >
+        <div className="flex flex-col md:flex-row md:justify-between mb-6">
+          <div>
+            <h3 className="text-lg font-semibold">Equipment Information</h3>
+            <p><span className="font-medium">Serial Number:</span> {inspection.ppe_serial}</p>
+            <p><span className="font-medium">Type:</span> {inspection.ppe_type}</p>
+            <p><span className="font-medium">Brand:</span> {inspection.ppe_brand}</p>
+            <p><span className="font-medium">Model:</span> {inspection.ppe_model}</p>
+          </div>
           
+          <div className="mt-4 md:mt-0">
+            <h3 className="text-lg font-semibold">Inspection Information</h3>
+            <p><span className="font-medium">Date:</span> {format(new Date(inspection.date), 'PPP')}</p>
+            <p><span className="font-medium">Inspector:</span> {inspection.inspector_name}</p>
+            <p><span className="font-medium">Type:</span> {inspection.type}</p>
+            <p>
+              <span className="font-medium">Result:</span>{' '}
+              <span className={inspection.overall_result.toLowerCase() === 'pass' ? 'text-green-600' : 'text-red-600'}>
+                {inspection.overall_result.toUpperCase()}
+              </span>
+            </p>
+          </div>
+          
+          <div className="mt-4 md:mt-0 flex flex-col space-y-2">
+            <Button
+              onClick={handleDownloadPDF}
+              disabled={isExporting}
+              className="flex items-center justify-center"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Download PDF
+            </Button>
+            
+            <Button
+              onClick={handleDownloadExcel}
+              disabled={isExporting}
+              variant="outline"
+              className="flex items-center justify-center"
+            >
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Download Excel
+            </Button>
+          </div>
+        </div>
+        
+        {inspection.notes && (
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold">Notes</h3>
+            <p className="bg-muted p-3 rounded-md">{inspection.notes}</p>
+          </div>
+        )}
+        
+        <div>
+          <h3 className="text-lg font-semibold mb-3">Inspection Checkpoints</h3>
+          <div className="border rounded-md overflow-hidden">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Description</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 w-24">Result</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {inspection.checkpoints.map((checkpoint) => (
+                  <tr key={checkpoint.id}>
+                    <td className="px-4 py-3 text-sm">{checkpoint.description}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        checkpoint.passed === null
+                          ? 'bg-gray-200 text-gray-800'
+                          : checkpoint.passed
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {checkpoint.passed === null ? 'N/A' : checkpoint.passed ? 'PASS' : 'FAIL'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">{checkpoint.notes || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        {inspection.signature_url && (
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-2">Inspector Signature</h3>
+            <div className="border rounded-md p-4 max-w-xs">
+              <img
+                src={inspection.signature_url}
+                alt="Inspector Signature"
+                className="max-h-24 object-contain"
+              />
+            </div>
+          </div>
+        )}
+        
+        <div className="mt-6 flex justify-end">
           <Button
-            onClick={handleExportExcel}
-            disabled={isExporting}
+            variant="outline"
+            onClick={() => navigate(-1)}
           >
-            {isExporting ? (
-              <>
-                Generating Excel...
-              </>
-            ) : (
-              <>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Export to Excel
-              </>
-            )}
+            Go Back
           </Button>
         </div>
-      )}
+      </StandardCard>
     </div>
   );
 };

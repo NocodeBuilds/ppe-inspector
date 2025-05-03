@@ -9,7 +9,7 @@ type ProfileFormData = {
   employee_id: string;
   site_name: string;
   department: string;
-  Employee_Role: string;
+  employee_role: string;
 };
 
 export const useProfileForm = () => {
@@ -24,7 +24,7 @@ export const useProfileForm = () => {
     employee_id: '',
     site_name: '',
     department: '',
-    Employee_Role: '',
+    employee_role: '',
   });
   
   const [avatar, setAvatar] = useState<File | null>(null);
@@ -55,12 +55,17 @@ export const useProfileForm = () => {
 
     // Populate form with existing data
     if (profile) {
+      const profileData = {
+        ...profile,
+        employee_role: profile?.employee_role || '',
+      };
+
       setFormData({
-        full_name: profile.full_name || '',
-        employee_id: profile.employee_id || '',
-        site_name: profile.site_name || '',
-        department: profile.department || '',
-        Employee_Role: profile.Employee_Role || '',
+        full_name: profileData.full_name || '',
+        employee_id: profileData.employee_id || '',
+        site_name: profileData.site_name || '',
+        department: profileData.department || '',
+        employee_role: profileData.employee_role || '',
       });
     }
 
@@ -121,7 +126,7 @@ export const useProfileForm = () => {
             employee_id: formData.employee_id,
             site_name: formData.site_name,
             department: formData.department,
-            Employee_Role: formData.Employee_Role,
+            employee_role: formData.employee_role,
           })
           .eq('id', profile.id);
 

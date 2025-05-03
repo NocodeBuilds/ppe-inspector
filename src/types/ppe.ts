@@ -19,7 +19,7 @@ export interface PPEItem {
   created_at: string;
   updated_at: string;
   
-  // Using getter properties for compatibility with existing code
+  // Properties with different casing
   serialNumber: string;
   modelNumber: string;
   manufacturingDate: string;
@@ -95,7 +95,6 @@ export interface InspectionCheckpoint {
   description: string;
   passed: boolean | null;
   notes: string | null;
-  photoUrl?: string | null;
   photo_url?: string | null;
 }
 
@@ -119,22 +118,4 @@ export interface InspectionDetails {
   batch_number: string;
   checkpoints: InspectionCheckpoint[];
   photoUrl?: string | null;
-}
-
-// Create interfaces for specific component needs to avoid type conflicts
-export interface PPEItemForComponents {
-  id: string;
-  serial_number: string;
-  type: string;
-  brand: string;
-  model_number: string;
-  manufacturing_date: string;
-  expiry_date: string;
-  status: PPEStatus;
-  image_url?: string;
-  batch_number?: string;
-  next_inspection?: string;
-  last_inspection?: string;
-  created_at: string;
-  updated_at: string;
 }
