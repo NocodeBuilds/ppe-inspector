@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
-import { Notification, NotificationType, NotificationVariant } from '@/integrations/supabase/clientTypes';
+import { toast } from '@/hooks/use-toast';
+import { Notification, NotificationType, NotificationVariant } from '@/types/ppe';
 
 type NotificationOptions = {
   description?: string;
@@ -171,6 +172,26 @@ export function useNotifications() {
     }
   };
 
+  // Delete all notifications
+  const deleteAllNotifications = async () => {
+    if (!user || notifications.length === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (error: any) {
+      console.error('Failed to delete all notifications:', error);
+    }
+  };
+
   return {
     notifications,
     unreadCount,
@@ -179,6 +200,7 @@ export function useNotifications() {
     addDatabaseNotification,
     markAsRead,
     markAllAsRead,
-    deleteNotification
+    deleteNotification,
+    deleteAllNotifications
   };
 }

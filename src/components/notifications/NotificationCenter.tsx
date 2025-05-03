@@ -18,13 +18,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Notification } from '@/integrations/supabase/clientTypes';
+import { Notification, NotificationType } from '@/types/ppe';
 
 interface NotificationItemProps {
   id: string;
   title: string;
   message: string;
-  type: 'warning' | 'info' | 'success' | 'error';
+  type: NotificationType;
   createdAt: string;
   read: boolean;
   onMarkAsRead: (id: string) => void;
@@ -101,7 +101,8 @@ const NotificationCenter: React.FC = () => {
     isLoading,
     markAsRead, 
     markAllAsRead, 
-    deleteNotification
+    deleteNotification,
+    deleteAllNotifications
   } = useNotifications();
 
   return (
@@ -138,6 +139,7 @@ const NotificationCenter: React.FC = () => {
                 variant="ghost" 
                 size="icon"
                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                onClick={deleteAllNotifications}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

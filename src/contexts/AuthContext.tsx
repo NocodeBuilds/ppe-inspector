@@ -1,86 +1,116 @@
 
-import React, { createContext, useEffect, ReactNode, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { Profile } from '@/integrations/supabase/client';
-import { useAuthSession } from '@/hooks/useAuthSession';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 import { useProfile } from '@/hooks/useProfile';
-import { useAuthActions } from '@/hooks/useAuthActions';
-import { toast } from '@/hooks/use-toast';
-type AuthContextType = {
-  session: Session | null;
+import { Profile } from '@/types/ppe';
+
+interface AuthContextType {
   user: User | null;
-  profile: Profile | null;
+  session: Session | null;
   isLoading: boolean;
+  isInitialized: boolean;
+  profile: Profile | null;
+  profileLoading: boolean;
+  profileError: string | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  refreshProfile: () => Promise<void>;
-  updatePassword: (newPassword: string) => Promise<void>;
-};
+  refreshProfile: () => void;
+}
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  // Use React.useState to ensure React is available
-  const [initialized, setInitialized] = React.useState(false);
-  
-  // Use our custom hooks to separate concerns
-  const { session, user, isLoading: sessionLoading } = useAuthSession();
-  const { profile, refreshProfile, isLoading: profileLoading } = useProfile(user?.id);
-  const { 
-    isLoading: authActionsLoading, 
-    signIn, 
-    signUp, 
-    signOut, 
-    resetPassword, 
-    updatePassword 
-  } = useAuthActions();
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const { profile, isLoading: profileLoading, error: profileError, refetchProfile } = useProfile();
 
-  // Combined loading state
-  const isLoading = sessionLoading || profileLoading || authActionsLoading;
-  
-  // Set initialized after first render
   useEffect(() => {
-    setInitialized(true);
-  }, []);
-  
-  // Log role for debugging
-  useEffect(() => {
-    if (profile && profile.role) {
-      console.log(`User role loaded from profile: ${profile.role}`);
-    }
-  }, [profile]);
-  
-  // Check if profile is missing when user is authenticated
-  useEffect(() => {
-    // Wait for loading to complete
-    if (isLoading) return;
+    const initializeAuth = async () => {
+      setIsLoading(true);
+      try {
+        // Get the current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
+        // Update states
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Set up the auth state listener
+        const { data: { subscription } } = await supabase.auth.onAuthStateChange(
+          (event, newSession) => {
+            setSession(newSession);
+            setUser(newSession?.user ?? null);
+            
+            // We don't need to setIsLoading here as it's only needed on the initial load
+          }
+        );
+        
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+      } finally {
+        setIsLoading(false);
+        setIsInitialized(true);
+      }
+    };
     
-    // If user is logged in but no profile found
-    if (user && !profile && !sessionLoading && !profileLoading) {
-      console.error("User authenticated but profile not found. This may indicate a database issue.");
-      toast({
-        title: "Profile Error",
-        description: "Your user profile could not be loaded. Please contact support.",
-        variant: "destructive",
-      });
-    }
-  }, [user, profile, isLoading, sessionLoading, profileLoading]);
+    initializeAuth();
+  }, []);
 
-  // Create the combined auth context value
-  const value: AuthContextType = {
-    session,
-    user,
-    profile,
-    isLoading,
-    signIn,
-    signUp,
-    signOut,
-    resetPassword,
-    refreshProfile,
-    updatePassword,
+  const signIn = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Error signing in:", error.message);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  const signOut = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error signing out:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      isLoading, 
+      isInitialized,
+      profile,
+      profileLoading,
+      profileError,
+      signIn, 
+      signOut,
+      refreshProfile: refetchProfile
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

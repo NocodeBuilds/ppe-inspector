@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,8 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
-import { PPEItem } from '@/integrations/supabase/clientTypes';
-import { InspectionType } from '@/integrations/supabase/clientTypes';
+import { PPEItem, PPEStatus } from '@/types/ppe';
 import { usePPEData } from '@/hooks/usePPEData';
 import { calculateOverallResult } from '@/utils/inspectionUtils';
 
@@ -36,7 +36,7 @@ export const useInspectionForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { showNotification } = useNotifications();
+  const { showToastNotification } = useNotifications();
   const { getPPEById, updatePPEStatus } = usePPEData();
 
   // Initialize form with proper handling for null values
@@ -54,7 +54,7 @@ export const useInspectionForm = () => {
   useEffect(() => {
     const loadData = async () => {
       if (!ppeId) {
-        showNotification('Error', 'error', {
+        showToastNotification('Error', 'error', {
           description: 'No PPE ID provided'
         });
         navigate('/start-inspection');
@@ -67,7 +67,13 @@ export const useInspectionForm = () => {
           throw new Error('PPE not found');
         }
         
-        setPpeItem(ppe);
+        // Ensure the status is properly typed
+        const typedPpe: PPEItem = {
+          ...ppe,
+          status: ppe.status as PPEStatus
+        };
+        
+        setPpeItem(typedPpe);
 
         const { data: checkpointData, error: checkpointError } = await supabase
           .from('inspection_checkpoints')
@@ -90,7 +96,7 @@ export const useInspectionForm = () => {
 
       } catch (error: any) {
         console.error('Error loading inspection data:', error);
-        showNotification('Error', 'error', {
+        showToastNotification('Error', 'error', {
           description: `Failed to load inspection data: ${error.message}`
         });
         navigate('/start-inspection');
@@ -100,7 +106,7 @@ export const useInspectionForm = () => {
     };
 
     loadData();
-  }, [ppeId, form, navigate, showNotification, getPPEById]);
+  }, [ppeId, form, navigate, showToastNotification, getPPEById]);
 
   // Handle form submission with improved null handling
   const onSubmit = async (data: InspectionFormValues) => {
@@ -132,7 +138,7 @@ export const useInspectionForm = () => {
         .insert({
           ppe_id: ppeId,
           inspector_id: user.id,
-          type: data.type as any,
+          type: data.type,
           date: new Date().toISOString(),
           overall_result: finalResult,
           result: finalResult, // Also set result field as required by DB schema
@@ -197,7 +203,7 @@ export const useInspectionForm = () => {
         })
         .eq('id', ppeId);
 
-      showNotification('Success', 'success', {
+      showToastNotification('Success', 'success', {
         description: 'Inspection completed successfully'
       });
       
@@ -205,7 +211,7 @@ export const useInspectionForm = () => {
 
     } catch (error: any) {
       console.error('Error submitting inspection:', error);
-      showNotification('Error', 'error', {
+      showToastNotification('Error', 'error', {
         description: `Failed to submit inspection: ${error.message}`
       });
     } finally {

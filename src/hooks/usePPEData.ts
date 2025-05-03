@@ -1,8 +1,8 @@
 
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { PPEItem, PPEStatus } from '@/integrations/supabase/client';
-import { useToast } from './use-toast';
+import { PPEItem, PPEStatus } from '@/types/ppe';
+import { useToast } from '@/hooks/use-toast';
 
 export function usePPEData() {
   const [isUploading, setIsUploading] = useState(false);
@@ -25,7 +25,7 @@ export function usePPEData() {
     model_number: string;
     manufacturing_date: string;
     expiry_date: string;
-    batch_number?: number;
+    batch_number?: string; // Changed from number to string
     first_use?: string;
     imageFile?: File;
   }) => {
@@ -56,19 +56,17 @@ export function usePPEData() {
 
       const { data, error } = await supabase
         .from('ppe_items')
-        .insert([
-          {
-            brand,
-            type,
-            serial_number,
-            model_number,
-            manufacturing_date,
-            expiry_date,
-            image_url: imageUrl,
-            batch_number,
-            first_use,
-          },
-        ])
+        .insert({
+          brand,
+          type,
+          serial_number,
+          model_number,
+          manufacturing_date,
+          expiry_date,
+          image_url: imageUrl,
+          batch_number,
+          first_use,
+        })
         .select();
 
       if (error) {
@@ -145,7 +143,7 @@ export function usePPEData() {
       
       // If we found an exact match, return it
       if (exactMatch && exactMatch.length > 0) {
-        return exactMatch;
+        return exactMatch as PPEItem[];
       }
 
       // If no exact match, try a more permissive search but with stricter pattern
@@ -156,7 +154,7 @@ export function usePPEData() {
 
       if (fuzzyError) throw fuzzyError;
       
-      return fuzzyMatch || [];
+      return fuzzyMatch as PPEItem[] || [];
     } catch (error) {
       console.error('Error getting PPE by serial number:', error);
       throw error;
@@ -203,7 +201,7 @@ export function usePPEData() {
       }
 
       if (error) throw error;
-      return data;
+      return data as PPEItem;
     } catch (error) {
       console.error('Error getting PPE by ID:', error);
       throw error;

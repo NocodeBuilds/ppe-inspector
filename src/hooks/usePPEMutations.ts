@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useSupabaseMutation } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
-import { PPEItem, PPEStatus } from '@/integrations/supabase/client';
+import { PPEItem, PPEStatus } from '@/types/ppe';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
  */
 export function usePPEMutations(refetchPPE: () => void) {
   const { user } = useAuth();
-  const { showNotification } = useNotifications();
+  const { showToastNotification } = useNotifications();
   const [isUploading, setIsUploading] = useState(false);
 
   // Mutation to update PPE status
@@ -30,13 +30,13 @@ export function usePPEMutations(refetchPPE: () => void) {
     },
     {
       onSuccess: () => {
-        showNotification('Success', 'success', {
+        showToastNotification('Success', 'success', {
           description: 'PPE status updated successfully'
         });
         refetchPPE();
       },
       onError: (error: any) => {
-        showNotification('Error', 'error', {
+        showToastNotification('Error', 'error', {
           description: `Failed to update PPE status: ${error.message}`
         });
       },
@@ -73,7 +73,7 @@ export function usePPEMutations(refetchPPE: () => void) {
       return data.publicUrl;
     } catch (error: any) {
       console.error('Error uploading image:', error);
-      showNotification('Error', 'error', {
+      showToastNotification('Error', 'error', {
         description: `Failed to upload image: ${error.message}`
       });
       return null;
@@ -150,13 +150,13 @@ export function usePPEMutations(refetchPPE: () => void) {
     },
     {
       onSuccess: () => {
-        showNotification('Success', 'success', {
+        showToastNotification('Success', 'success', {
           description: 'PPE item created successfully'
         });
         refetchPPE();
       },
       onError: (error: any) => {
-        showNotification('Error', 'error', {
+        showToastNotification('Error', 'error', {
           description: `Failed to create PPE item: ${error.message}`
         });
       },

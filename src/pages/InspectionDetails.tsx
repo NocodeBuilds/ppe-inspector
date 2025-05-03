@@ -1,538 +1,167 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  User, 
-  AlertTriangle, 
-  CheckCircle, 
-  FileText, 
-  Loader2, 
-  Share2,
-  Camera,
-  Download,
-  MessageSquare,
-  Mail,
-  FileSpreadsheet
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { Separator } from '@/components/ui/separator';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-} from '@/components/ui/dropdown-menu';
-import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
-import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
-import { useNetwork } from '@/hooks/useNetwork';
-import PageHeader from '@/components/common/PageHeader';
-import { safeExtract } from '@/utils/errorHandlers';
 
-interface InspectionCheckpoint {
-  id: string;
-  description: string;
-  passed: boolean | null;
-  notes: string | null;
-  photoUrl: string | null;
-}
-
-interface InspectionDetails {
-  id: string;
-  date: string;
-  type: string;
-  overall_result: string;
-  notes: string | null;
-  signature_url: string | null;
-  inspector_name: string;
-  inspector_id: string;
-  ppe_type: string;
-  ppe_serial: string;
-  ppe_brand: string;
-  ppe_model: string;
-  site_name: string;
-  manufacturing_date: string;
-  expiry_date: string;
-  batch_number: string;
-  checkpoints: InspectionCheckpoint[];
-}
-
-const InspectionDetails = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [inspection, setInspection] = useState<InspectionDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
-  const [shareFormat, setShareFormat] = useState<'pdf' | 'excel'>('pdf');
-  const { isOnline } = useNetwork();
-  
-  useEffect(() => {
-    if (id) {
-      fetchInspectionDetails(id);
+// Update only the fetchInspectionDetails method
+const fetchInspectionDetails = async (inspectionId: string) => {
+  try {
+    setIsLoading(true);
+    setError(null);
+    
+    const { data: inspectionData, error: inspectionError } = await supabase
+      .from('inspections')
+      .select(`
+        id,
+        date,
+        type,
+        overall_result,
+        notes,
+        signature_url,
+        inspector_id,
+        profiles:inspector_id(full_name, site_name),
+        ppe_items:ppe_id(type, serial_number, brand, model_number, manufacturing_date, expiry_date, batch_number)
+      `)
+      .eq('id', inspectionId)
+      .single();
+    
+    if (inspectionError) throw inspectionError;
+    
+    if (!inspectionData) {
+      throw new Error('Inspection not found');
     }
-  }, [id]);
-  
-  const fetchInspectionDetails = async (inspectionId: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
+    
+    const { data: checkpointResults, error: checkpointError } = await supabase
+      .from('inspection_results')
+      .select(`
+        id,
+        passed,
+        notes,
+        photo_url,
+        inspection_checkpoints:checkpoint_id(id, description)
+      `)
+      .eq('inspection_id', inspectionId);
+    
+    if (checkpointError) throw checkpointError;
+    
+    // Process the checkpoint results
+    const checkpoints = checkpointResults?.map(result => {
+      const inspection_checkpoint = result.inspection_checkpoints || { id: '', description: 'Unknown checkpoint' };
       
-      const { data: inspectionData, error: inspectionError } = await supabase
-        .from('inspections')
-        .select(`
-          id,
-          date,
-          type,
-          overall_result,
-          notes,
-          signature_url,
-          inspector_id,
-          profiles(full_name, site_name),
-          ppe_items(type, serial_number, brand, model_number, manufacturing_date, expiry_date, batch_number)
-        `)
-        .eq('id', inspectionId)
-        .single();
-      
-      if (inspectionError) throw inspectionError;
-      
-      if (!inspectionData) {
-        throw new Error('Inspection not found');
-      }
-      
-      const { data: checkpointResults, error: checkpointError } = await supabase
-        .from('inspection_results')
-        .select(`
-          id,
-          passed,
-          notes,
-          photo_url,
-          inspection_checkpoints(id, description)
-        `)
-        .eq('inspection_id', inspectionId);
-      
-      if (checkpointError) throw checkpointError;
-      
-      // Update data access using safeExtract
-      const checkpoints = checkpointResults.map(result => {
-        return {
-          id: result.id,
-          description: safeExtract(result.checkpoints, 'description', 'Unknown checkpoint'),
-          passed: result.passed,
-          notes: result.notes || '',
-          photoUrl: result.photo_url
-        };
-      });
-      
-      // Get inspector and PPE item details
-      const inspectorName = safeExtract(inspection.profiles, 'full_name', 'Unknown Inspector');
-      const ppeType = safeExtract(inspection.ppe_items, 'type', 'Unknown Type');
-      const serialNumber = safeExtract(inspection.ppe_items, 'serial_number', 'Unknown');
-      const brand = safeExtract(inspection.ppe_items, 'brand', 'Unknown');
-      const model = safeExtract(inspection.ppe_items, 'model_number', 'Unknown');
-      const siteName = safeExtract(inspection.profiles, 'site_name', 'Unknown Site');
-      const manufacturingDate = safeExtract(inspection.ppe_items, 'manufacturing_date', null);
-      const expiryDate = safeExtract(inspection.ppe_items, 'expiry_date', null);
-      const batchNumber = safeExtract(inspection.ppe_items, 'batch_number', 'N/A');
-      
-      const detailedInspection: InspectionDetails = {
-        id: inspectionData.id,
-        date: inspectionData.date,
-        type: inspectionData.type,
-        overall_result: inspectionData.overall_result,
-        notes: inspectionData.notes,
-        signature_url: inspectionData.signature_url,
-        inspector_id: inspectionData.inspector_id || '',
-        inspector_name: inspectorName,
-        ppe_type: ppeType,
-        ppe_serial: serialNumber,
-        ppe_brand: brand,
-        ppe_model: model,
-        site_name: siteName,
-        manufacturing_date: manufacturingDate,
-        expiry_date: expiryDate,
-        batch_number: batchNumber,
-        checkpoints: checkpoints,
+      return {
+        id: inspection_checkpoint.id,
+        description: inspection_checkpoint.description,
+        passed: result.passed,
+        notes: result.notes || '',
+        photoUrl: result.photo_url,
+        photo_url: result.photo_url // Add both versions for compatibility
       };
-      
-      setInspection(detailedInspection);
-    } catch (error: any) {
-      console.error('Error fetching inspection details:', error);
-      setError(error.message || 'Failed to load inspection details');
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to load inspection details',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleExportPDF = async () => {
-    if (!inspection) return;
+    }) || [];
     
-    try {
-      setIsExporting(true);
-      await generateInspectionDetailPDF(inspection);
-      toast({
-        title: 'PDF Generated',
-        description: 'Inspection report has been downloaded as PDF',
-      });
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      toast({
-        title: 'PDF Generation Failed',
-        description: 'Could not generate PDF report',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-  
-  const handleExportExcel = async () => {
-    if (!inspection) return;
+    // Extract data safely using nullish coalescing
+    const inspectorName = inspectionData.profiles?.full_name || 'Unknown Inspector';
+    const siteName = inspectionData.profiles?.site_name || 'Unknown Site';
+    const ppeType = inspectionData.ppe_items?.type || 'Unknown Type';
+    const serialNumber = inspectionData.ppe_items?.serial_number || 'Unknown';
+    const brand = inspectionData.ppe_items?.brand || 'Unknown';
+    const modelNumber = inspectionData.ppe_items?.model_number || 'Unknown';
+    const manufacturingDate = inspectionData.ppe_items?.manufacturing_date || null;
+    const expiryDate = inspectionData.ppe_items?.expiry_date || null;
+    const batchNumber = inspectionData.ppe_items?.batch_number || 'N/A';
     
-    try {
-      setIsExporting(true);
-      await generateInspectionExcelReport(inspection);
-      toast({
-        title: 'Excel Generated',
-        description: 'Inspection report has been downloaded as Excel',
-      });
-    } catch (error) {
-      console.error('Excel generation error:', error);
-      toast({
-        title: 'Excel Generation Failed',
-        description: 'Could not generate Excel report',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-  
-  const handleShareWhatsApp = async () => {
-    if (!inspection || !isOnline) return;
+    // Create the detailed inspection object
+    const detailedInspection = {
+      id: inspectionData.id,
+      date: inspectionData.date,
+      type: inspectionData.type,
+      overall_result: inspectionData.overall_result,
+      notes: inspectionData.notes,
+      signature_url: inspectionData.signature_url,
+      inspector_id: inspectionData.inspector_id || '',
+      inspector_name: inspectorName,
+      ppe_type: ppeType,
+      ppe_serial: serialNumber,
+      ppe_brand: brand,
+      ppe_model: modelNumber,
+      site_name: siteName,
+      manufacturing_date: manufacturingDate,
+      expiry_date: expiryDate,
+      batch_number: batchNumber,
+      checkpoints: checkpoints,
+    };
     
-    try {
-      setIsExporting(true);
-      
-      if (shareFormat === 'pdf') {
-        await handleExportPDF();
-      } else {
-        await handleExportExcel();
-      }
-      
-      const message = 
-        `Inspection Report (${shareFormat.toUpperCase()})\n` +
-        `PPE: ${inspection.ppe_type} (${inspection.ppe_serial})\n` +
-        `Date: ${format(new Date(inspection.date), 'MMM d, yyyy')}\n` +
-        `Result: ${inspection.overall_result.toUpperCase() || 'UNKNOWN'}\n` +
-        `Inspector: ${inspection.inspector_name}\n` +
-        `\nPlease check the attached ${shareFormat.toUpperCase()} file for details.`;
-      
-      const encodedMessage = encodeURIComponent(message);
-      
-      window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
-      
-      toast({
-        title: 'Share via WhatsApp',
-        description: `WhatsApp opened with ${shareFormat.toUpperCase()} report details`,
-      });
-    } catch (error) {
-      console.error('WhatsApp share error:', error);
-      toast({
-        title: 'Share Failed',
-        description: 'Could not share via WhatsApp',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-  
-  const handleShareEmail = async () => {
-    if (!inspection || !isOnline) return;
-    
-    try {
-      setIsExporting(true);
-      
-      if (shareFormat === 'pdf') {
-        await handleExportPDF();
-      } else {
-        await handleExportExcel();
-      }
-      
-      const subject = `Inspection Report - ${inspection.ppe_type} (${inspection.ppe_serial})`;
-      
-      const body = 
-        `Inspection Report (${shareFormat.toUpperCase()})\n\n` +
-        `PPE: ${inspection.ppe_type} (${inspection.ppe_serial})\n` +
-        `Date: ${format(new Date(inspection.date), 'MMM d, yyyy')}\n` +
-        `Result: ${inspection.overall_result.toUpperCase() || 'UNKNOWN'}\n` +
-        `Inspector: ${inspection.inspector_name}\n\n` +
-        `Please check the attached ${shareFormat.toUpperCase()} file for details.`;
-      
-      const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      
-      window.open(mailtoLink, '_blank');
-      
-      toast({
-        title: 'Share via Email',
-        description: `Email client opened with ${shareFormat.toUpperCase()} report details`,
-      });
-    } catch (error) {
-      console.error('Email share error:', error);
-      toast({
-        title: 'Share Failed',
-        description: 'Could not share via email',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-  
-  const getResultBadge = (result: string) => {
-    const resultLower = result?.toLowerCase() || '';
-    
-    if (resultLower === 'pass') {
-      return (
-        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-          <CheckCircle className="h-3.5 w-3.5 mr-1" />
-          PASS
-        </Badge>
-      );
-    }
-    
-    if (resultLower === 'fail') {
-      return (
-        <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
-          <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-          FAIL
-        </Badge>
-      );
-    }
-    
-    return (
-      <Badge variant="outline">
-        UNKNOWN
-      </Badge>
-    );
-  };
-  
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin mb-2" />
-        <p className="text-muted-foreground">Loading inspection details...</p>
-      </div>
-    );
+    setInspection(detailedInspection);
+  } catch (error: any) {
+    console.error('Error fetching inspection details:', error);
+    setError(error.message || 'Failed to load inspection details');
+    toast({
+      title: 'Error',
+      description: error.message || 'Failed to load inspection details',
+      variant: 'destructive',
+    });
+  } finally {
+    setIsLoading(false);
   }
-  
-  if (error || !inspection) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <AlertTriangle className="h-10 w-10 text-destructive mb-2" />
-        <h3 className="text-lg font-semibold mb-1">Inspection Not Found</h3>
-        <p className="text-muted-foreground mb-4">{error || 'Could not load inspection details'}</p>
-        <Button variant="outline" onClick={() => navigate('/reports')}>
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to Reports
-        </Button>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="space-y-6 px-4 md:px-0">
-      <PageHeader 
-        title="Inspection Details" 
-        showBackButton={true}
-        rightElement={
-          <div className="flex flex-wrap gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    Format
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuRadioGroup value={shareFormat} onValueChange={(v) => setShareFormat(v as 'pdf' | 'excel')}>
-                      <DropdownMenuRadioItem value="pdf">PDF</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="excel">Excel</DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuItem onClick={handleShareWhatsApp}>
-                  Share via WhatsApp
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleShareEmail}>
-                  Share via Email
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <Button variant="outline" size="sm" className="h-9" onClick={handleExportExcel}>
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Excel
-            </Button>
-            
-            <Button size="sm" className="h-9" onClick={handleExportPDF}>
-              <FileText className="h-4 w-4 mr-2" />
-              PDF
-            </Button>
-          </div>
-        }
-      />
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">{inspection.ppe_type}</h3>
-                  <p className="text-sm text-muted-foreground">Serial: {inspection.ppe_serial}</p>
-                </div>
-                <div>{getResultBadge(inspection.overall_result)}</div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Date</p>
-                  <p className="font-medium">{format(new Date(inspection.date), 'PPP')}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Type</p>
-                  <p className="font-medium capitalize">{inspection.type}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Brand</p>
-                  <p className="font-medium">{inspection.ppe_brand}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Model</p>
-                  <p className="font-medium">{inspection.ppe_model}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Batch Number</p>
-                  <p className="font-medium">{inspection.batch_number}</p>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <div className="flex items-center text-sm">
-                  <User className="h-4 w-4 mr-1" />
-                  <p className="text-muted-foreground mr-1">Inspector:</p>
-                  <p className="font-medium">{inspection.inspector_name}</p>
-                </div>
-                <div className="flex items-center text-sm mt-1">
-                  <Calendar className="h-4 w-4 mr-1" />
-                  <p className="text-muted-foreground mr-1">Site:</p>
-                  <p className="font-medium">{inspection.site_name}</p>
-                </div>
-              </div>
-              
-              {inspection.notes && (
-                <>
-                  <Separator />
-                  <div>
-                    <p className="text-sm text-muted-foreground flex items-center">
-                      <MessageSquare className="h-4 w-4 mr-1" />
-                      Notes
-                    </p>
-                    <p className="text-sm mt-1">{inspection.notes}</p>
-                  </div>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="text-lg font-semibold mb-3">Checkpoints</h3>
-            
-            {inspection.checkpoints.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No checkpoint data available</p>
-            ) : (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                {inspection.checkpoints.map((checkpoint, index) => (
-                  <div key={checkpoint.id} className="border rounded-md p-3">
-                    <div className="flex justify-between items-start">
-                      <p className="font-medium text-sm">{index + 1}. {checkpoint.description}</p>
-                      <Badge className={
-                        checkpoint.passed === null ? "bg-gray-100 text-gray-800" : 
-                        checkpoint.passed ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                      }>
-                        {checkpoint.passed === null ? "N/A" : checkpoint.passed ? "PASS" : "FAIL"}
-                      </Badge>
-                    </div>
-                    
-                    {checkpoint.notes && (
-                      <p className="text-xs text-muted-foreground mt-1">{checkpoint.notes}</p>
-                    )}
-                    
-                    {checkpoint.photoUrl && (
-                      <div className="mt-2 relative">
-                        <div className="w-full h-24 bg-muted rounded-md overflow-hidden">
-                          <img 
-                            src={checkpoint.photoUrl} 
-                            alt={`Checkpoint ${index + 1} photo`} 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <Badge className="absolute bottom-1 right-1 flex items-center bg-black/70">
-                          <Camera className="h-3 w-3 mr-1" />
-                          Photo
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-      
-      {inspection.signature_url && (
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="text-sm font-semibold mb-2">Inspector Signature</h3>
-            <div className="border rounded-md p-4 bg-muted/30">
-              <img 
-                src={inspection.signature_url} 
-                alt="Inspector signature" 
-                className="max-h-20 mx-auto"
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
 };
 
-export default InspectionDetails;
+// Also fix the generate PDF method to use StandardInspectionData
+const handleExportPDF = async () => {
+  if (!inspection) return;
+  
+  try {
+    setIsExporting(true);
+    // Convert to StandardInspectionData format
+    const inspectionData = {
+      ...inspection,
+      photo_url: inspection.photoUrl,
+      checkpoints: inspection.checkpoints.map(cp => ({
+        ...cp,
+        photo_url: cp.photoUrl || cp.photo_url || null,
+      }))
+    };
+    
+    await generateInspectionDetailPDF(inspectionData as any);
+    toast({
+      title: 'PDF Generated',
+      description: 'Inspection report has been downloaded as PDF',
+    });
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    toast({
+      title: 'PDF Generation Failed',
+      description: 'Could not generate PDF report',
+      variant: 'destructive',
+    });
+  } finally {
+    setIsExporting(false);
+  }
+};
+
+// Fix the generate Excel method in the same way
+const handleExportExcel = async () => {
+  if (!inspection) return;
+  
+  try {
+    setIsExporting(true);
+    // Convert to StandardInspectionData format
+    const inspectionData = {
+      ...inspection,
+      photo_url: inspection.photoUrl,
+      checkpoints: inspection.checkpoints.map(cp => ({
+        ...cp,
+        photo_url: cp.photoUrl || cp.photo_url || null,
+      }))
+    };
+    
+    await generateInspectionExcelReport(inspectionData as any);
+    toast({
+      title: 'Excel Generated',
+      description: 'Inspection report has been downloaded as Excel',
+    });
+  } catch (error) {
+    console.error('Excel generation error:', error);
+    toast({
+      title: 'Excel Generation Failed',
+      description: 'Could not generate Excel report',
+      variant: 'destructive',
+    });
+  } finally {
+    setIsExporting(false);
+  }
+};

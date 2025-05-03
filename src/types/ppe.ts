@@ -10,7 +10,7 @@ export interface PPEItem {
   model_number?: string;
   manufacturing_date?: string;
   expiry_date?: string;
-  status: string;
+  status: PPEStatus;
   image_url?: string;
   next_inspection?: string | null;
   last_inspection?: string | null;
@@ -25,9 +25,13 @@ export interface PPEItem {
   get manufacturingDate(): string { return this.manufacturing_date || ''; }
   get expiryDate(): string { return this.expiry_date || ''; }
   get nextInspection(): string { return this.next_inspection || ''; }
+  get lastInspection(): string { return this.last_inspection || ''; }
   get createdAt(): string { return this.created_at; }
   get updatedAt(): string { return this.updated_at; }
 }
+
+// Defining PPE status as an enum type for better type safety
+export type PPEStatus = 'active' | 'expired' | 'flagged' | 'due' | 'inspected' | 'out-of-service' | 'maintenance';
 
 // Profile type definition
 export interface Profile {
@@ -67,4 +71,17 @@ export interface Notification {
   
   // Camel case aliases
   get createdAt(): string { return this.created_at; }
+}
+
+// Defining variant types for notifications and toast
+export type NotificationVariant = 'default' | 'destructive' | 'success' | 'warning';
+export type NotificationType = 'success' | 'error' | 'warning' | 'info';
+
+export interface InspectionCheckpoint {
+  id: string;
+  description: string;
+  passed: boolean | null;
+  notes: string | null;
+  photoUrl: string | null;
+  photo_url?: string | null;  // Add both versions for compatibility
 }

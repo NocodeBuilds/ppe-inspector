@@ -448,10 +448,11 @@ const InspectionForm = () => {
       const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
         .insert({
-          ppe_id: ppeItem?.id,
-          type: inspectionTypeEnum,
+          ppe_id: ppeId,
+          type: inspectionType,
           date: new Date().toISOString(),
-          overall_result: overallResult || 'pass',
+          overall_result: overallResult,
+          result: overallResult, // Added result field to match the DB schema requirement
           notes: notes,
           signature_url: signature,
           inspector_id: user.id,

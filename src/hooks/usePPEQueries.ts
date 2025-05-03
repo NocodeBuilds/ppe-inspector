@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
-import { PPEItem } from '@/integrations/supabase/client';
+import { PPEItem } from '@/types/ppe';
 import { useNotifications } from '@/hooks/useNotifications';
 
 /**
@@ -10,7 +10,7 @@ import { useNotifications } from '@/hooks/useNotifications';
  * Separated from mutations for better code organization
  */
 export function usePPEQueries() {
-  const { showNotification } = useNotifications();
+  const { showToastNotification } = useNotifications();
 
   // Query to fetch all PPE items
   const {
@@ -69,12 +69,12 @@ export function usePPEQueries() {
       return data as PPEItem[];
     } catch (error: any) {
       console.error('Error fetching PPE by serial number:', error);
-      showNotification('Error', 'error', {
+      showToastNotification('Error', 'error', {
         description: `Failed to fetch PPE data: ${error.message}`
       });
       return [];
     }
-  }, [showNotification]);
+  }, [showToastNotification]);
 
   // Function to get PPE by ID - improved error handling with better fallback
   const getPPEById = useCallback(async (id: string) => {
@@ -147,12 +147,12 @@ export function usePPEQueries() {
       return result as PPEItem;
     } catch (error: any) {
       console.error('Error getting PPE by ID:', error);
-      showNotification('Error', 'error', {
+      showToastNotification('Error', 'error', {
         description: `Failed to fetch PPE data: ${error.message}`
       });
       return null;
     }
-  }, [showNotification]);
+  }, [showToastNotification]);
 
   return {
     ppeItems,
