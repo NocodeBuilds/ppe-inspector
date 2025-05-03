@@ -73,12 +73,13 @@ export function useNotifications() {
 
   // Display UI toast notification
   const showToastNotification = (title: string, variant: NotificationVariant = 'default', options: NotificationOptions = {}) => {
+    // Map 'error' to 'destructive' if needed
     const toastVariant = variant === 'error' ? 'destructive' : variant;
     
     toast({
       title,
       description: options.description,
-      variant: toastVariant,
+      variant: toastVariant as 'default' | 'destructive' | 'success', // Cast to the expected type
       duration: options.duration || 5000,
     });
   };

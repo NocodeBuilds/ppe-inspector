@@ -16,13 +16,13 @@ import {
   type ToasterToast as PrimitiveToasterToast,
 } from "@/components/ui/use-toast-primitive"
 
-export type ToastType = "default" | "destructive" | "success" | "warning"
+export type NotificationVariant = "default" | "destructive" | "success" | "warning" | "error";
 
 export interface NotificationOptions {
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
-  variant?: ToastType
+  variant?: NotificationVariant
 }
 
 // Re-export the hooks and toast function

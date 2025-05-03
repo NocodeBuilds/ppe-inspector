@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -36,7 +35,7 @@ const ReportsPage = lazy(() => import(/* webpackChunkName: "reports-page" */ "./
 const StartInspection = lazy(() => import(/* webpackChunkName: "start-inspection-page" */ "./pages/StartInspection"));
 const ManualInspection = lazy(() => import(/* webpackChunkName: "manual-inspection-page" */ "./pages/ManualInspection"));
 const FlaggedIssues = lazy(() => import(/* webpackChunkName: "flagged-issues-page" */ "./pages/FlaggedIssues"));
-const InspectionDetails = lazy(() => import(/* webpackChunkName: "inspection-details-page" */ "./pages/InspectionDetails"));
+const InspectionDetailsPage = lazy(() => import(/* webpackChunkName: "inspection-details-page" */ "./pages/InspectionDetails"));
 
 // Loading component for Suspense with better UI
 const PageLoader = () => (
@@ -196,7 +195,7 @@ const App = () => {
                       <Route path="start-inspection" element={<StartInspection />} />
                       <Route path="inspect/new" element={<ManualInspection />} />
                       <Route path="inspect/:ppeId" element={<InspectionForm />} />
-                      <Route path="inspection/:id" element={<InspectionDetails />} />
+                      <Route path="inspection/:id" element={<InspectionDetailsPage />} />
                       <Route path="analytics" element={
                         <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
                           <Analytics />

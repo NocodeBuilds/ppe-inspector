@@ -74,7 +74,7 @@ export interface Notification {
 }
 
 // Defining variant types for notifications and toast
-export type NotificationVariant = 'default' | 'destructive' | 'success' | 'warning';
+export type NotificationVariant = 'default' | 'destructive' | 'success' | 'warning' | 'error';
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 
 export interface InspectionCheckpoint {
@@ -84,4 +84,25 @@ export interface InspectionCheckpoint {
   notes: string | null;
   photoUrl: string | null;
   photo_url?: string | null;  // Add both versions for compatibility
+}
+
+// Interface for complete inspection details
+export interface InspectionDetails {
+  id: string;
+  date: string;
+  type: string;
+  overall_result: string;
+  notes: string | null;
+  signature_url: string | null;
+  inspector_id: string;
+  inspector_name: string;
+  ppe_type: string;
+  ppe_serial: string;
+  ppe_brand: string;
+  ppe_model: string;
+  site_name: string;
+  manufacturing_date: string | null;
+  expiry_date: string | null;
+  batch_number: string;
+  checkpoints: InspectionCheckpoint[];
 }

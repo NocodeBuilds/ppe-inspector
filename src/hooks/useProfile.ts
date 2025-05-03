@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/types/ppe';
 import { useAuth } from '@/hooks/useAuth';
-import { safeExtract } from '@/utils/errorHandlers';
 
 export const useProfile = () => {
   const { user } = useAuth();
@@ -33,7 +32,7 @@ export const useProfile = () => {
       }
 
       if (data) {
-        // Convert database fields to match Profile interface
+        // Convert database fields to match Profile interface with getters
         const profileData: Profile = {
           id: data.id,
           email: data.email,
@@ -64,7 +63,13 @@ export const useProfile = () => {
   };
 
   useEffect(() => {
-    fetchProfile();
+    if (user) {
+      console.log(`Fetching profile for: ${user.id}`);
+      fetchProfile();
+    } else {
+      setProfile(null);
+      setIsLoading(false);
+    }
   }, [user]);
 
   return { profile, isLoading, error, refetchProfile: fetchProfile };

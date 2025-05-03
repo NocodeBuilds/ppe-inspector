@@ -54,7 +54,7 @@ export const useInspectionForm = () => {
   useEffect(() => {
     const loadData = async () => {
       if (!ppeId) {
-        showToastNotification('Error', 'error', {
+        showToastNotification('Error', 'destructive', {
           description: 'No PPE ID provided'
         });
         navigate('/start-inspection');
@@ -96,7 +96,7 @@ export const useInspectionForm = () => {
 
       } catch (error: any) {
         console.error('Error loading inspection data:', error);
-        showToastNotification('Error', 'error', {
+        showToastNotification('Error', 'destructive', {
           description: `Failed to load inspection data: ${error.message}`
         });
         navigate('/start-inspection');
@@ -211,7 +211,7 @@ export const useInspectionForm = () => {
 
     } catch (error: any) {
       console.error('Error submitting inspection:', error);
-      showToastNotification('Error', 'error', {
+      showToastNotification('Error', 'destructive', {
         description: `Failed to submit inspection: ${error.message}`
       });
     } finally {

@@ -18,7 +18,7 @@ interface AuthContextType {
   refreshProfile: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -62,6 +62,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     initializeAuth();
   }, []);
+
+  // If we have a user but no profile, log a warning
+  useEffect(() => {
+    if (user && !profileLoading && !profile) {
+      console.error("User authenticated but profile not found. This may indicate a database issue.");
+    }
+  }, [user, profile, profileLoading]);
 
   const signIn = async (email: string, password: string) => {
     setIsLoading(true);
