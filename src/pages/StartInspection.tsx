@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -66,8 +65,26 @@ const StartInspection = () => {
     try {
       console.log('Searching for serial number:', serial);
       
-      // Get PPE items and ensure they have the right type
-      const ppeItems = await getPPEBySerialNumber(serial) as unknown as PPEItem[];
+      // Get PPE items and convert them to the right type
+      const results = await getPPEBySerialNumber(serial);
+      const ppeItems = results ? results.map(item => ({
+        id: item.id || '',
+        serial_number: item.serial_number || item.serialNumber || '',
+        type: item.type || '',
+        brand: item.brand || '',
+        model_number: item.model_number || item.modelNumber || '',
+        manufacturing_date: item.manufacturing_date || item.manufacturingDate || '',
+        expiry_date: item.expiry_date || item.expiryDate || '',
+        status: item.status || 'unknown',
+        image_url: item.image_url || item.imageUrl || '',
+        next_inspection: item.next_inspection || item.nextInspection || null,
+        last_inspection: item.last_inspection || item.lastInspection || null,
+        inspection_frequency: item.inspection_frequency || '',
+        batch_number: item.batch_number || '',
+        created_at: item.created_at || item.createdAt || '',
+        updated_at: item.updated_at || item.updatedAt || ''
+      })) : [];
+      
       console.log('Found PPE items:', ppeItems);
       
       if (!ppeItems || ppeItems.length === 0) {

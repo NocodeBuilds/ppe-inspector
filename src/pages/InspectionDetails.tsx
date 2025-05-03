@@ -64,7 +64,7 @@ const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
         // Map the checkpoints to the format expected by the InspectionDetails type
         const mappedCheckpoints = checkpointsData.map(result => ({
           id: result.id,
-          description: result.inspection_checkpoints?.description || '',
+          description: safeGet(result.inspection_checkpoints, {}).description || '',
           passed: result.passed || false,
           notes: result.notes || '',
           photo_url: result.photo_url || null
@@ -81,7 +81,7 @@ const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
           overall_result: data.overall_result,
           notes: data.notes || '',
           signature_url: data.signature_url || null,
-          inspector_id: data.inspector_id || '',
+          inspector_id: safeGet(data, {}).inspector_id || '',
           inspector_name: safeGet(inspector, {}).full_name || 'Unknown',
           site_name: safeGet(inspector, {}).site_name || 'Unknown',
           ppe_type: safeGet(ppeItem, {}).type || 'Unknown',

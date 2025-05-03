@@ -21,6 +21,7 @@ export interface StandardInspectionData {
     description: string;
     result: string;
     notes?: string;
+    photo_url?: string | null;
   }[];
 }
 
@@ -59,7 +60,7 @@ export async function fetchCompleteInspectionData(inspectionId: string): Promise
   // Map the checkpoints to the format expected by the InspectionDetails type
   const mappedCheckpoints = checkpointsData.map(result => ({
     id: result.id,
-    description: result.inspection_checkpoints?.description || '',
+    description: safeGet(result.inspection_checkpoints, {}).description || '',
     passed: result.passed || false,
     notes: result.notes || '',
     photo_url: result.photo_url || null
@@ -110,7 +111,8 @@ export function formatInspectionForReport(inspection: InspectionDetails): Standa
       id: cp.id,
       description: cp.description,
       result: cp.passed === true ? 'PASS' : cp.passed === false ? 'FAIL' : 'N/A',
-      notes: cp.notes || ''
+      notes: cp.notes || '',
+      photo_url: cp.photo_url || null
     }))
   };
 }
