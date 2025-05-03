@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { InspectionCheckpoint, InspectionDetails, PPEItem } from '@/types/ppe';
+import { InspectionCheckpoint, InspectionDetails, PPEItem, PPEStatus } from '@/types/ppe';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/hooks/useNotifications';
 
@@ -13,7 +13,7 @@ interface UseInspectionFormProps {
   onError?: (message: string) => void;
 }
 
-export const useInspectionForm = ({ ppeId = '', onSuccess, onError }: UseInspectionFormProps = {}) => {
+export const useInspectionForm = ({ ppeId = '', onSuccess, onError }: UseInspectionFormProps) => {
   const [inspectionType, setInspectionType] = useState<string>('pre-use');
   const [overallResult, setOverallResult] = useState<string>('pass');
   const [notes, setNotes] = useState<string>('');
@@ -96,7 +96,7 @@ export const useInspectionForm = ({ ppeId = '', onSuccess, onError }: UseInspect
         model_number: data.model_number || '',
         manufacturing_date: data.manufacturing_date || '',
         expiry_date: data.expiry_date || '',
-        status: data.status,
+        status: data.status as PPEStatus,
         image_url: data.image_url || '',
         next_inspection: data.next_inspection || '',
         last_inspection: data.last_inspection || '',
@@ -156,7 +156,7 @@ export const useInspectionForm = ({ ppeId = '', onSuccess, onError }: UseInspect
     setIsSubmitting(true);
     try {
       // Validate that all required checkpoints have been filled
-      const requiredCheckpoints = checkpoints.filter(checkpoint => checkpoint.required);
+      const requiredCheckpoints = checkpoints.filter(checkpoint => checkpoint.required === true);
       const incompleteCheckpoints = requiredCheckpoints.filter(checkpoint => checkpoint.passed === null);
 
       if (incompleteCheckpoints.length > 0) {

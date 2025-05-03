@@ -34,7 +34,7 @@ interface AddPPEFormProps {
   onPPECreated?: () => void;
 }
 
-export const AddPPEForm: React.FC<AddPPEFormProps> = ({ onPPECreated }) => {
+const AddPPEForm: React.FC<AddPPEFormProps> = ({ onPPECreated }) => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,7 +71,10 @@ export const AddPPEForm: React.FC<AddPPEFormProps> = ({ onPPECreated }) => {
     try {
       // Convert dates to ISO strings for the backend
       const formData: PPECreateInput = {
-        ...values,
+        type: values.type,
+        serial_number: values.serial_number,
+        brand: values.brand,
+        model_number: values.model_number,
         batch_number: values.batch_number?.toString() || '',
         manufacturing_date: values.manufacturing_date.toISOString(),
         expiry_date: values.expiry_date.toISOString(),
@@ -183,7 +186,7 @@ export const AddPPEForm: React.FC<AddPPEFormProps> = ({ onPPECreated }) => {
                 <DatePicker
                   date={field.value}
                   onDateChange={field.onChange}
-                  disabled={date => date > new Date()}
+                  disabled={(date) => date > new Date()}
                 />
                 <FormMessage />
               </FormItem>
@@ -226,9 +229,9 @@ export const AddPPEForm: React.FC<AddPPEFormProps> = ({ onPPECreated }) => {
               <FormItem className="flex flex-col">
                 <FormLabel>First Use Date</FormLabel>
                 <DatePicker
-                  date={field.value || undefined}
+                  date={field.value}
                   onDateChange={field.onChange}
-                  disabled={date => date > new Date()}
+                  disabled={(date) => date > new Date()}
                 />
                 <FormMessage />
               </FormItem>
@@ -291,5 +294,6 @@ export const AddPPEForm: React.FC<AddPPEFormProps> = ({ onPPECreated }) => {
   );
 };
 
-// Make sure AddPPEForm is properly exported
+// Make sure to properly export both named and default exports
+export { AddPPEForm };
 export default AddPPEForm;

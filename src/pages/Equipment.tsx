@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AddPPEForm } from '@/components/forms/AddPPEForm';
+import AddPPEForm from '@/components/forms/AddPPEForm';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from '@/components/equipment/columns';
 import { usePPE } from '@/hooks/usePPE';
@@ -17,7 +17,7 @@ const Equipment = () => {
   const { ppeItems, isLoadingPPE, ppeError, refetchPPE } = usePPE();
 
   if (ppeError) {
-    return <div>Error: {ppeError.toString()}</div>;
+    return <div>Error: {typeof ppeError === 'boolean' ? 'Failed to load equipment data' : ppeError.toString()}</div>;
   }
 
   return (

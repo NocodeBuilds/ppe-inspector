@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { useNotifications } from '@/hooks/useNotifications';
-import { InspectionHistory } from '@/components/reports/InspectionHistory';
+import InspectionHistory from '@/components/reports/InspectionHistory';
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('history');

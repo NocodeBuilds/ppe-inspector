@@ -1,236 +1,208 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { useProfile } from '@/hooks/useProfile';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Avatar } from '@/components/ui/avatar';
-import { useProfileForm } from '@/hooks/useProfileForm';
 
 const EditProfile = () => {
   const navigate = useNavigate();
+  const { formData, handleInputChange, isLoading, isSaving, error } = useProfile();
   const { toast } = useToast();
-  const { user, profile } = useAuth();
-  const { updateProfile, isLoading } = useProfileForm();
 
-  const formSchema = z.object({
-    full_name: z.string().min(2, 'Full name must be at least 2 characters'),
-    email: z.string().email('Invalid email address'),
-    employee_id: z.string().optional(),
-    site_name: z.string().optional(),
-    department: z.string().optional(),
-    employee_role: z.string().optional(),
-    mobile: z.string().optional(),
-  });
-
-  // Define form with validation
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      full_name: profile?.full_name || '',
-      email: user?.email || '',
-      employee_id: profile?.employee_id || '',
-      site_name: profile?.site_name || '',
-      department: profile?.department || '',
-      employee_role: profile?.employee_role || '',
-      mobile: profile?.mobile || '',
-    },
-  });
-
-  useEffect(() => {
-    // Update form values when profile is loaded
-    if (profile) {
-      form.reset({
-        full_name: profile.full_name || '',
-        email: profile.email || user?.email || '',
-        employee_id: profile.employee_id || '',
-        site_name: profile.site_name || '',
-        department: profile.department || '',
-        employee_role: profile.employee_role || '',
-        mobile: profile.mobile || '',
-      });
-    }
-  }, [profile, user, form]);
-
-  const onSubmit = async (formData: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     try {
-      const result = await updateProfile(formData);
-      if (result) {
-        toast({
-          title: 'Profile updated',
-          description: 'Your profile has been updated successfully',
-        });
-        navigate('/profile');
+      // Assuming updateProfile is provided by the profile hook context
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.full_name,
+          mobile: formData.mobile,
+          site_name: formData.site_name,
+          department: formData.department,
+          employee_id: formData.employee_id,
+          employee_role: formData.employee_role,
+        })
+        .eq('id', formData.id);
+      
+      if (error) {
+        throw error;
       }
-    } catch (error: any) {
+      
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to update profile',
+        title: 'Profile Updated',
+        description: 'Your profile has been successfully updated.',
+      });
+      
+      navigate('/settings');
+    } catch (err: any) {
+      console.error('Error updating profile:', err);
+      toast({
+        title: 'Update Failed',
+        description: err.message || 'Failed to update profile. Please try again.',
         variant: 'destructive',
       });
     }
   };
 
-  if (!profile) {
-    return (
-      <div className="container mx-auto p-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-center">
-              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const handleAvatarUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) {
+      return;
+    }
+    
+    try {
+      const file = e.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const filePath = `avatars/${formData.id}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('user-avatars')
+        .upload(filePath, file, { upsert: true });
+        
+      if (uploadError) {
+        throw uploadError;
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from('user-avatars')
+        .getPublicUrl(filePath);
+        
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: urlData.publicUrl })
+        .eq('id', formData.id);
+        
+      if (updateError) {
+        throw updateError;
+      }
+      
+      // Update local state
+      handleInputChange({
+        target: { name: 'avatar_url', value: urlData.publicUrl }
+      } as ChangeEvent<HTMLInputElement>);
+      
+      toast({
+        title: 'Avatar Updated',
+        description: 'Your profile picture has been updated.',
+      });
+    } catch (err: any) {
+      console.error('Error uploading avatar:', err);
+      toast({
+        title: 'Upload Failed',
+        description: err.message || 'Failed to upload avatar. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
-    <div className="container mx-auto p-4 max-w-2xl">
-      <Card className="shadow-lg">
+    <div className="container max-w-2xl mx-auto py-8 px-4">
+      <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Edit Profile</CardTitle>
+          <CardDescription>Update your personal information</CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="flex flex-col items-center mb-6">
-                <Avatar
-                  className="w-24 h-24 mb-2"
-                  src={profile.avatar_url || ''}
-                  alt={profile.full_name || 'User'}
-                  fallback={profile.full_name?.[0] || 'U'}
-                />
-                {/* Avatar upload would go here in a real implementation */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-6 items-center">
+              <Avatar className="w-20 h-20">
+                <AvatarImage src={formData.avatar_url || ''} alt="Profile" />
+                <AvatarFallback>{formData.full_name?.charAt(0) || 'U'}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <Label htmlFor="avatar" className="block text-sm font-medium">
+                  Profile Photo
+                </Label>
+                <Input id="avatar" type="file" accept="image/*" onChange={handleAvatarUpload} />
               </div>
-
-              <FormField
-                control={form.control}
-                name="full_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Your full name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="email"
-                        placeholder="your.email@example.com"
-                        disabled={true} // Email typically shouldn't be changed here
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="employee_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Employee ID</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Employee ID" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+            </div>
+            
+            <Separator />
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="full_name">Full Name</Label>
+                <Input
+                  id="full_name"
+                  name="full_name"
+                  value={formData.full_name || ''}
+                  onChange={handleInputChange}
+                  placeholder="Your full name"
                 />
-
-                <FormField
-                  control={form.control}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="mobile">Mobile Number</Label>
+                <Input
+                  id="mobile"
                   name="mobile"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mobile Number</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Mobile number" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  value={formData.mobile || ''}
+                  onChange={handleInputChange}
+                  placeholder="Your mobile number"
                 />
-
-                <FormField
-                  control={form.control}
-                  name="site_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Site Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Site name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="employee_id">Employee ID</Label>
+                <Input
+                  id="employee_id"
+                  name="employee_id"
+                  value={formData.employee_id || ''}
+                  onChange={handleInputChange}
+                  placeholder="Your employee ID"
                 />
-
-                <FormField
-                  control={form.control}
-                  name="department"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Department</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Department" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="employee_role">Role</Label>
+                <Input
+                  id="employee_role"
                   name="employee_role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Job Role</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Job role" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  value={formData.employee_role || ''}
+                  onChange={handleInputChange}
+                  placeholder="Your role"
                 />
               </div>
-
-              <div className="flex justify-between pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/profile')}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? 'Saving...' : 'Save Changes'}
-                </Button>
+              
+              <div className="space-y-2">
+                <Label htmlFor="department">Department</Label>
+                <Input
+                  id="department"
+                  name="department"
+                  value={formData.department || ''}
+                  onChange={handleInputChange}
+                  placeholder="Your department"
+                />
               </div>
-            </form>
-          </Form>
+              
+              <div className="space-y-2">
+                <Label htmlFor="site_name">Site</Label>
+                <Input
+                  id="site_name"
+                  name="site_name"
+                  value={formData.site_name || ''}
+                  onChange={handleInputChange}
+                  placeholder="Your site location"
+                />
+              </div>
+            </div>
+          </form>
         </CardContent>
+        <CardFooter className="flex justify-between">
+          <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

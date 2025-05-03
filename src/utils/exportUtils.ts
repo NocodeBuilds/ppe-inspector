@@ -1,153 +1,194 @@
 
+import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { PPEItem } from '@/types/ppe';
 
-interface InspectionDataForExport {
-  id: string;
-  date: string;
-  type: string;
-  overall_result: string;
-  inspector_name: string;
-  ppe_type: string;
-  ppe_serial: string;
-  ppe_brand: string;
-  ppe_model: string;
+/**
+ * Exports filtered inspections to Excel file
+ * @param inspections - The filtered inspections data to export
+ * @param filenamePrefix - Optional prefix for the export filename
+ */
+export function exportFilteredInspectionsToExcel(inspections: any[], filenamePrefix = 'InspectionHistory') {
+  try {
+    // Transform data for better Excel formatting
+    const formattedData = inspections.map(item => ({
+      'Date': format(new Date(item.date), 'yyyy-MM-dd'),
+      'Type': item.type,
+      'Result': item.overall_result,
+      'Inspector': item.inspector_name,
+      'Equipment Type': item.ppe_type,
+      'Serial Number': item.ppe_serial,
+      'Brand': item.ppe_brand,
+      'Model': item.ppe_model
+    }));
+    
+    // Create a worksheet and workbook
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Inspections");
+    
+    // Set column widths
+    const columnWidths = [
+      { wch: 12 }, // Date
+      { wch: 10 }, // Type
+      { wch: 6 }, // Result
+      { wch: 20 }, // Inspector
+      { wch: 20 }, // Equipment Type
+      { wch: 15 }, // Serial Number
+      { wch: 15 }, // Brand
+      { wch: 15 }  // Model
+    ];
+    worksheet["!cols"] = columnWidths;
+    
+    // Generate filename with date
+    const currentDate = format(new Date(), 'yyyy-MM-dd');
+    const filename = `${filenamePrefix}_${currentDate}.xlsx`;
+    
+    // Write and download
+    XLSX.writeFile(workbook, filename);
+    return filename;
+  } catch (error) {
+    console.error('Error exporting inspections to Excel:', error);
+    throw error;
+  }
 }
 
 /**
- * Export inspection data to Excel format
+ * Generates and exports inspector report with stats
  */
-export const exportFilteredInspectionsToExcel = (
-  inspections: InspectionDataForExport[], 
-  filenamePrefix: string = 'InspectionReport'
-) => {
-  if (!inspections || inspections.length === 0) {
-    throw new Error('No inspection data to export');
-  }
-
-  // CSV Headers
-  const headers = [
-    'ID',
-    'Date',
-    'Type',
-    'Result',
-    'Inspector',
-    'Equipment Type',
-    'Serial Number',
-    'Brand',
-    'Model'
-  ];
-
-  // Convert data to CSV rows
-  const csvRows = [
-    headers.join(','), // Header row
-    ...inspections.map(inspection => {
-      const date = inspection.date ? format(new Date(inspection.date), 'yyyy-MM-dd') : 'N/A';
-      const type = inspection.type || 'N/A';
-      const result = inspection.overall_result || 'N/A';
-      const inspectorName = (inspection.inspector_name || 'Unknown').replace(/,/g, ' '); 
-      const ppeType = (inspection.ppe_type || 'Unknown').replace(/,/g, ' ');
-      const serialNumber = (inspection.ppe_serial || 'Unknown').replace(/,/g, ' ');
-      const brand = (inspection.ppe_brand || 'Unknown').replace(/,/g, ' ');
-      const model = (inspection.ppe_model || 'Unknown').replace(/,/g, ' ');
-
-      return [
-        inspection.id,
-        date,
-        type,
-        result,
-        inspectorName,
-        ppeType,
-        serialNumber,
-        brand,
-        model
-      ].join(',');
-    })
-  ];
-
-  // Create CSV content
-  const csvContent = `data:text/csv;charset=utf-8,${csvRows.join('\n')}`;
-  
-  // Create filename with date stamp
-  const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
-  const filename = `${filenamePrefix}_${timestamp}.csv`;
-
-  // Create download link
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement('a');
-  link.setAttribute('href', encodedUri);
-  link.setAttribute('download', filename);
-  document.body.appendChild(link);
-  
-  // Download file
-  link.click();
-  
-  // Cleanup
-  document.body.removeChild(link);
-};
-
-/**
- * Utility function to fetch complete inspection data for reporting
- */
-export async function fetchCompleteInspectionData(supabase, inspectionId) {
+export async function generateInspectorReport(startDate: Date, endDate: Date) {
   try {
-    // Fetch inspection with related data
-    const { data, error } = await supabase
+    // Fetch inspections within date range
+    const { data: inspectionsData, error: inspectionsError } = await supabase
       .from('inspections')
       .select(`
-        id, date, type, overall_result, notes, signature_url,
+        id, date, type, overall_result, notes,
         profiles:inspector_id(*),
-        ppe_items:ppe_id(*)
+        ppe_items:ppe_id(type, serial_number)
       `)
-      .eq('id', inspectionId)
-      .single();
+      .gte('date', startDate.toISOString())
+      .lte('date', endDate.toISOString());
       
-    if (error) throw error;
-    if (!data) throw new Error('Inspection not found');
+    if (inspectionsError) throw inspectionsError;
     
-    // Fetch checkpoint results
-    const { data: checkpointsData, error: checkpointsError } = await supabase
-      .from('inspection_results')
-      .select(`
-        id, passed, notes, photo_url,
-        inspection_checkpoints:checkpoint_id(description)
-      `)
-      .eq('inspection_id', inspectionId);
+    // Group by inspector and calculate stats
+    const inspectorStats = {};
+    
+    inspectionsData.forEach(inspection => {
+      const inspector = inspection.profiles || {};
+      const inspectorId = inspection.inspector_id;
       
-    if (checkpointsError) throw checkpointsError;
+      if (!inspectorId) return;
+      
+      if (!inspectorStats[inspectorId]) {
+        inspectorStats[inspectorId] = {
+          inspectorName: inspector.full_name || 'Unknown',
+          role: inspector.Employee_Role || 'Unknown',
+          department: inspector.department || 'Unknown',
+          totalInspections: 0,
+          passCount: 0,
+          failCount: 0,
+          byType: {}
+        };
+      }
+      
+      const stats = inspectorStats[inspectorId];
+      stats.totalInspections++;
+      
+      if (inspection.overall_result === 'pass') {
+        stats.passCount++;
+      } else {
+        stats.failCount++;
+      }
+      
+      // Count by inspection type
+      const type = inspection.type || 'unknown';
+      if (!stats.byType[type]) {
+        stats.byType[type] = 0;
+      }
+      stats.byType[type]++;
+    });
     
-    // Create inspection details object
-    const inspector = data.profiles || {};
-    const ppeItem = data.ppe_items || {};
+    // Format data for Excel
+    const reportRows = Object.values(inspectorStats).map((stats: any) => ({
+      'Inspector Name': stats.inspectorName,
+      'Role': stats.role,
+      'Department': stats.department,
+      'Total Inspections': stats.totalInspections,
+      'Pass': stats.passCount,
+      'Fail': stats.failCount,
+      'Pass Rate': stats.totalInspections > 0 
+        ? `${(stats.passCount / stats.totalInspections * 100).toFixed(1)}%` 
+        : 'N/A',
+      'Pre-Use Inspections': stats.byType['pre-use'] || 0,
+      'Monthly Inspections': stats.byType['monthly'] || 0,
+      'Quarterly Inspections': stats.byType['quarterly'] || 0
+    }));
     
-    return {
-      id: data.id,
-      date: data.date,
-      type: data.type,
-      overall_result: data.overall_result,
-      notes: data.notes || '',
-      signature_url: data.signature_url || null,
-      inspector_id: data.inspector_id,
-      inspector_name: inspector.full_name || 'Unknown',
-      site_name: inspector.site_name || 'Unknown',
-      department: inspector.department || 'Unknown',
-      employee_role: inspector.employee_role || 'Unknown',
-      ppe_type: ppeItem.type || 'Unknown',
-      ppe_serial: ppeItem.serial_number || 'Unknown',
-      ppe_brand: ppeItem.brand || 'Unknown',
-      ppe_model: ppeItem.model_number || 'Unknown',
-      manufacturing_date: ppeItem.manufacturing_date || null,
-      expiry_date: ppeItem.expiry_date || null,
-      batch_number: ppeItem.batch_number || '',
-      checkpoints: checkpointsData.map(cp => ({
-        id: cp.id,
-        description: cp.inspection_checkpoints?.description || '',
-        passed: cp.passed,
-        notes: cp.notes || '',
-        photo_url: cp.photo_url || null
-      }))
-    };
+    // Create and download Excel
+    const worksheet = XLSX.utils.json_to_sheet(reportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Inspector Report");
+    
+    const filename = `Inspector_Report_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+    
+    return filename;
   } catch (error) {
-    console.error('Error fetching complete inspection data:', error);
+    console.error('Error generating inspector report:', error);
+    throw error;
+  }
+}
+
+/**
+ * Exports filtered PPE items to Excel
+ * @param ppeItems - The filtered PPE items to export
+ * @param filenamePrefix - Optional prefix for the file name
+ */
+export function exportFilteredPPEToExcel(ppeItems: PPEItem[], filenamePrefix = 'PPE_Inventory') {
+  try {
+    // Transform data for better Excel formatting
+    const formattedData = ppeItems.map(item => ({
+      'Type': item.type,
+      'Serial Number': item.serialNumber,
+      'Brand': item.brand || '',
+      'Model': item.modelNumber || '',
+      'Manufacturing Date': item.manufacturingDate ? format(new Date(item.manufacturingDate), 'yyyy-MM-dd') : '',
+      'Expiry Date': item.expiryDate ? format(new Date(item.expiryDate), 'yyyy-MM-dd') : '',
+      'Status': item.status,
+      'Next Inspection': item.nextInspection ? format(new Date(item.nextInspection), 'yyyy-MM-dd') : '',
+      'Last Inspection': item.lastInspection ? format(new Date(item.lastInspection), 'yyyy-MM-dd') : ''
+    }));
+    
+    // Create worksheet and workbook
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "PPE Inventory");
+    
+    // Set column widths
+    const columnWidths = [
+      { wch: 20 }, // Type
+      { wch: 15 }, // Serial Number
+      { wch: 15 }, // Brand
+      { wch: 15 }, // Model
+      { wch: 15 }, // Manufacturing Date
+      { wch: 15 }, // Expiry Date
+      { wch: 10 }, // Status
+      { wch: 15 }, // Next Inspection
+      { wch: 15 }  // Last Inspection
+    ];
+    worksheet["!cols"] = columnWidths;
+    
+    // Generate filename with date
+    const currentDate = format(new Date(), 'yyyy-MM-dd');
+    const filename = `${filenamePrefix}_${currentDate}.xlsx`;
+    
+    // Write and download
+    XLSX.writeFile(workbook, filename);
+    return filename;
+  } catch (error) {
+    console.error('Error exporting PPE items to Excel:', error);
     throw error;
   }
 }

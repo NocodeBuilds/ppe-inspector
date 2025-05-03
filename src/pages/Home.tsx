@@ -1,10 +1,11 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { AddPPEForm } from '@/components/forms/AddPPEForm';
+import AddPPEForm from '@/components/forms/AddPPEForm';
 
 const Home = () => {
   const [open, setOpen] = useState(false);

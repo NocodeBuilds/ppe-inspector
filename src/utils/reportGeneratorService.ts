@@ -1,15 +1,16 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { InspectionDetails } from '@/types/ppe';
+import { generateInspectionDetailPDF } from './reportGenerator/pdfGenerator';
+import { generateInspectionExcelReport } from './reportGenerator/excelGenerator';
 
 /**
  * Utility function to fetch complete inspection data for reporting
  */
-export async function fetchCompleteInspectionData(supabaseClient, inspectionId: string): Promise<InspectionDetails | null> {
+export async function fetchCompleteInspectionData(inspectionId: string): Promise<InspectionDetails | null> {
   try {
     // Fetch inspection with related data
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabase
       .from('inspections')
       .select(`
         id, date, type, overall_result, notes, signature_url,
@@ -23,7 +24,7 @@ export async function fetchCompleteInspectionData(supabaseClient, inspectionId: 
     if (!data) throw new Error('Inspection not found');
     
     // Fetch checkpoint results
-    const { data: checkpointsData, error: checkpointsError } = await supabaseClient
+    const { data: checkpointsData, error: checkpointsError } = await supabase
       .from('inspection_results')
       .select(`
         id, passed, notes, photo_url,
@@ -101,6 +102,75 @@ export function generateInspectionsDateReport(inspections: any[], dateRange: str
     };
   } catch (error) {
     console.error('Error generating date report:', error);
+    throw error;
+  }
+}
+
+/**
+ * Generate a report for a specific PPE item
+ */
+export async function generatePPEItemReport(ppeId: string): Promise<boolean> {
+  try {
+    // Get the latest inspection for this PPE item
+    const { data: inspectionData, error: inspectionError } = await supabase
+      .from('inspections')
+      .select('id')
+      .eq('ppe_id', ppeId)
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (inspectionError) throw inspectionError;
+    
+    if (!inspectionData) {
+      // No inspection found for this PPE, generate basic PPE report
+      const { data: ppeData, error: ppeError } = await supabase
+        .from('ppe_items')
+        .select('*')
+        .eq('id', ppeId)
+        .single();
+        
+      if (ppeError) throw ppeError;
+      
+      // Create a simple report with PPE details
+      const ppeReport = {
+        serialNumber: ppeData.serial_number,
+        type: ppeData.type,
+        brand: ppeData.brand,
+        modelNumber: ppeData.model_number,
+        manufacturingDate: ppeData.manufacturing_date,
+        expiryDate: ppeData.expiry_date,
+        status: ppeData.status,
+        lastInspection: ppeData.last_inspection || 'Never',
+        nextInspection: ppeData.next_inspection || 'Not scheduled'
+      };
+      
+      // Create a simple Excel report for the PPE item
+      const blob = new Blob([JSON.stringify(ppeReport, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `PPE_${ppeData.serial_number}_${format(new Date(), 'yyyy-MM-dd')}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      return true;
+    }
+    
+    // Use existing inspection to generate report
+    const inspectionDetails = await fetchCompleteInspectionData(inspectionData.id);
+    
+    if (!inspectionDetails) {
+      throw new Error('Failed to fetch inspection details for report');
+    }
+    
+    // Generate PDF report by default
+    await generateInspectionDetailPDF(inspectionDetails);
+    
+    return true;
+  } catch (error) {
+    console.error('Error generating PPE item report:', error);
     throw error;
   }
 }

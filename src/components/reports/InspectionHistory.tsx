@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Download, 
   FileSpreadsheet,
@@ -64,11 +63,11 @@ export const InspectionHistory = () => {
           date: item.date,
           type: item.type,
           overall_result: item.overall_result,
-          inspector_name: inspector.full_name || 'Unknown',
-          ppe_type: ppeItem.type || 'Unknown',
-          ppe_serial: ppeItem.serial_number || 'Unknown',
-          ppe_brand: ppeItem.brand || 'Unknown',
-          ppe_model: ppeItem.model_number || 'Unknown'
+          inspector_name: inspector?.full_name || 'Unknown',
+          ppe_type: ppeItem?.type || 'Unknown',
+          ppe_serial: ppeItem?.serial_number || 'Unknown',
+          ppe_brand: ppeItem?.brand || 'Unknown',
+          ppe_model: ppeItem?.model_number || 'Unknown'
         };
       });
       
@@ -157,8 +156,8 @@ export const InspectionHistory = () => {
       const { data, error } = await supabase
         .from('inspections')
         .select(`
-          id, date, type, overall_result, notes, signature_url,
-          profiles:inspector_id(full_name, site_name),
+          id, date, type, overall_result, notes, signature_url, inspector_id,
+          profiles:inspector_id(*),
           ppe_items:ppe_id(type, serial_number, brand, model_number, manufacturing_date, expiry_date, batch_number)
         `)
         .eq('id', id)
@@ -177,7 +176,7 @@ export const InspectionHistory = () => {
         
       if (checkpointsError) throw checkpointsError;
         
-      // Create inspection details object
+      // Create inspection details object with safe fallbacks
       const inspector = data.profiles || {};
       const ppeItem = data.ppe_items || {};
         
@@ -189,15 +188,15 @@ export const InspectionHistory = () => {
         notes: data.notes || '',
         signature_url: data.signature_url || null,
         inspector_id: data.inspector_id,
-        inspector_name: inspector.full_name || 'Unknown',
-        site_name: inspector.site_name || 'Unknown',
-        ppe_type: ppeItem.type || 'Unknown',
-        ppe_serial: ppeItem.serial_number || 'Unknown',
-        ppe_brand: ppeItem.brand || 'Unknown',
-        ppe_model: ppeItem.model_number || 'Unknown',
-        manufacturing_date: ppeItem.manufacturing_date || null,
-        expiry_date: ppeItem.expiry_date || null,
-        batch_number: ppeItem.batch_number || '',
+        inspector_name: inspector?.full_name || 'Unknown',
+        site_name: inspector?.site_name || 'Unknown',
+        ppe_type: ppeItem?.type || 'Unknown',
+        ppe_serial: ppeItem?.serial_number || 'Unknown',
+        ppe_brand: ppeItem?.brand || 'Unknown',
+        ppe_model: ppeItem?.model_number || 'Unknown',
+        manufacturing_date: ppeItem?.manufacturing_date || null,
+        expiry_date: ppeItem?.expiry_date || null,
+        batch_number: ppeItem?.batch_number || '',
         photoUrl: '',
         checkpoints: checkpointsData.map(cp => ({
           id: cp.id,
@@ -228,8 +227,8 @@ export const InspectionHistory = () => {
       const { data, error } = await supabase
         .from('inspections')
         .select(`
-          id, date, type, overall_result, notes, signature_url,
-          profiles:inspector_id(full_name, site_name),
+          id, date, type, overall_result, notes, signature_url, inspector_id,
+          profiles:inspector_id(*),
           ppe_items:ppe_id(type, serial_number, brand, model_number, manufacturing_date, expiry_date, batch_number)
         `)
         .eq('id', id)
@@ -248,7 +247,7 @@ export const InspectionHistory = () => {
         
       if (checkpointsError) throw checkpointsError;
         
-      // Create inspection details object
+      // Create inspection details object with safe fallbacks
       const inspector = data.profiles || {};
       const ppeItem = data.ppe_items || {};
         
@@ -260,15 +259,15 @@ export const InspectionHistory = () => {
         notes: data.notes || '',
         signature_url: data.signature_url || null,
         inspector_id: data.inspector_id,
-        inspector_name: inspector.full_name || 'Unknown',
-        site_name: inspector.site_name || 'Unknown',
-        ppe_type: ppeItem.type || 'Unknown',
-        ppe_serial: ppeItem.serial_number || 'Unknown',
-        ppe_brand: ppeItem.brand || 'Unknown',
-        ppe_model: ppeItem.model_number || 'Unknown',
-        manufacturing_date: ppeItem.manufacturing_date || null,
-        expiry_date: ppeItem.expiry_date || null,
-        batch_number: ppeItem.batch_number || '',
+        inspector_name: inspector?.full_name || 'Unknown',
+        site_name: inspector?.site_name || 'Unknown',
+        ppe_type: ppeItem?.type || 'Unknown',
+        ppe_serial: ppeItem?.serial_number || 'Unknown',
+        ppe_brand: ppeItem?.brand || 'Unknown',
+        ppe_model: ppeItem?.model_number || 'Unknown',
+        manufacturing_date: ppeItem?.manufacturing_date || null,
+        expiry_date: ppeItem?.expiry_date || null,
+        batch_number: ppeItem?.batch_number || '',
         photoUrl: '',
         checkpoints: checkpointsData.map(cp => ({
           id: cp.id,

@@ -96,6 +96,11 @@ export interface InspectionCheckpoint {
   passed: boolean | null;
   notes: string | null;
   photo_url?: string | null;
+  required?: boolean;
+  order_num?: number;
+  category?: string;
+  guidance_notes?: string;
+  reference_photo_url?: string;
 }
 
 // Interface for complete inspection details
