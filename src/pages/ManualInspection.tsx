@@ -1,272 +1,201 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PPEType } from '@/types/index';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import { Search, Scan } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePPE } from '@/hooks/usePPE';
-import { standardPPETypes } from '@/components/equipment/ConsolidatedPPETypeFilter';
-import { X } from "lucide-react";
-import { DatePicker } from '@/components/ui/date-picker';
-
-// Define form schema
-const formSchema = z.object({
-  serialNumber: z.string().min(1, "Serial number is required"),
-  type: z.string().min(1, "PPE type is required"),
-  brand: z.string().min(1, "Brand is required"),
-  modelNumber: z.string().min(1, "Model number is required"),
-  manufacturingDate: z.date({
-    required_error: "Manufacturing date is required",
-  }),
-  expiryDate: z.date({
-    required_error: "Expiry date is required",
-  }),
-});
-
-type FormValues = z.infer<typeof formSchema>;
 
 const ManualInspection = () => {
+  const [ppeTypes, setPpeTypes] = useState<string[]>([]);
+  const [selectedType, setSelectedType] = useState<string>('');
+  const [serialNumber, setSerialNumber] = useState<string>('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { createPPE, getPPEBySerialNumber } = usePPE();
+  const { user } = useAuth();
+  const { getPPEBySerialNumber } = usePPE();
 
-  // Initialize form with default dates
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      serialNumber: "",
-      type: "",
-      brand: "",
-      modelNumber: "",
-      manufacturingDate: new Date(),
-      expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-    }
-  });
-
-  // Form submission handler
-  const onSubmit = async (values: FormValues) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // First, check if PPE with serial number exists
-      const ppeItems = await getPPEBySerialNumber(values.serialNumber);
-      
-      if (ppeItems && ppeItems.length > 0) {
-        // If it exists, start inspection for the first matching PPE item
-        const existingPPE = ppeItems[0];
-        navigate(`/inspect/${existingPPE.id}`);
-        return;
-      }
-      
-      // If it doesn't exist, create new PPE with the provided details
-      if (!values.type) {
-        setError("Type is required when creating a new PPE item");
-        setIsLoading(false);
-        return;
-      }
-      
-      const newPPE = await createPPE({
-        serial_number: values.serialNumber,
-        type: values.type as PPEType,
-        brand: values.brand || "",
-        model_number: values.modelNumber || "",
-        manufacturing_date: values.manufacturingDate.toISOString(),
-        expiry_date: values.expiryDate.toISOString(),
+  useEffect(() => {
+    if (!user) {
+      toast({
+        title: 'Not authenticated',
+        description: 'Please login to access this page',
+        variant: 'destructive'
       });
-      
-      if (newPPE) {
-        toast({
-          title: "PPE Created",
-          description: "The new PPE item has been successfully created",
-        });
-        navigate(`/inspect/${newPPE.id}`);
+      navigate('/login');
+      return;
+    }
+
+    fetchPPETypes();
+  }, [user, navigate, toast]);
+
+  const fetchPPETypes = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('ppe_items')
+        .select('type')
+        .order('type');
+
+      if (error) {
+        throw error;
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred while processing");
-      console.error("Error in manual inspection:", err);
+
+      // Extract unique types
+      const uniqueTypes = [...new Set(data.map(item => item.type))];
+      setPpeTypes(uniqueTypes);
+    } catch (error) {
+      console.error('Error fetching PPE types:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load PPE types',
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!serialNumber.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a serial number',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const ppeItems = await getPPEBySerialNumber(serialNumber.trim());
+      
+      if (!ppeItems || ppeItems.length === 0) {
+        toast({
+          title: 'Not Found',
+          description: 'No PPE found with this serial number',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      if (ppeItems.length === 1) {
+        // Navigate to inspection form with the found PPE ID
+        navigate(`/inspect/${ppeItems[0].id}`);
+      } else {
+        // Multiple items found, could show a selection dialog
+        toast({
+          title: 'Multiple Found',
+          description: 'Multiple PPE items found with similar serial numbers. Please be more specific.',
+          variant: 'warning'
+        });
+      }
+    } catch (error) {
+      console.error('Error searching by serial:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to search for PPE',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   return (
-    <div className="container max-w-lg mx-auto py-6">
-      <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-xl border shadow-sm">
-        <div className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-primary font-semibold">Manual Inspection</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              onClick={() => navigate(-1)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Serial Number Field */}
-              <FormField
-                control={form.control}
-                name="serialNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-body-sm">Serial Number</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter serial number" 
-                        {...field} 
-                        className="text-body bg-background"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-caption" />
-                  </FormItem>
-                )}
-              />
-              
-              {/* PPE Type */}
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-body-sm">PPE Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="text-body bg-background">
-                          <SelectValue placeholder="Select PPE type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {standardPPETypes.map((type) => (
-                          <SelectItem key={type} value={type} className="text-body">
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-caption" />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Brand */}
-              <FormField
-                control={form.control}
-                name="brand"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-body-sm">Brand</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter brand name" 
-                        {...field} 
-                        className="text-body bg-background"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-caption" />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Model Number */}
-              <FormField
-                control={form.control}
-                name="modelNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-body-sm">Model Number</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter model number" 
-                        {...field} 
-                        className="text-body bg-background"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-caption" />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Manufacturing Date */}
-              <FormField
-                control={form.control}
-                name="manufacturingDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-body-sm">Manufacturing Date</FormLabel>
-                    <FormControl>
-                      <DatePicker
-                        date={field.value}
-                        setDate={field.onChange}
-                        placeholder="Select manufacturing date"
-                        disableFutureDates
-                        className="text-body"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-caption" />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Expiry Date */}
-              <FormField
-                control={form.control}
-                name="expiryDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-body-sm">Expiry Date</FormLabel>
-                    <FormControl>
-                      <DatePicker
-                        date={field.value}
-                        setDate={field.onChange}
-                        placeholder="Select expiry date"
-                        disablePastDates
-                        className="text-body"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-caption" />
-                  </FormItem>
-                )}
-              />
-
-              {error && (
-                <div className="p-3 bg-destructive/10 text-destructive rounded-md text-caption">
-                  {error}
-                </div>
-              )}
-
-              <Button 
-                type="submit" 
-                className="w-full text-body-sm bg-primary hover:bg-primary/90"
+    <div className="container mx-auto py-8 px-4">
+      <h1 className="text-2xl font-bold mb-6">Manual Inspection</h1>
+      
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Search by Serial Number</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="flex space-x-2">
+                <Input
+                  value={serialNumber}
+                  onChange={(e) => setSerialNumber(e.target.value)}
+                  placeholder="Enter serial number"
+                  className="flex-1"
+                />
+                <Button type="submit" disabled={isSearching}>
+                  {isSearching ? (
+                    <div className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Searching
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <Search className="h-4 w-4 mr-2" />
+                      Search
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Browse by Type</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <Select
+                value={selectedType}
+                onValueChange={setSelectedType}
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                  </span>
-                ) : 'Start Inspection'}
+                <SelectTrigger>
+                  <SelectValue placeholder="Select PPE Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ppeTypes.map(type => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Button 
+                className="w-full"
+                disabled={!selectedType}
+                onClick={() => {
+                  if (selectedType) {
+                    navigate('/equipment', { state: { filterType: selectedType } });
+                  }
+                }}
+              >
+                Browse Equipment
               </Button>
-            </form>
-          </Form>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+      
+      <Button
+        variant="outline"
+        className="mt-6"
+        onClick={() => navigate(-1)}
+      >
+        Go Back
+      </Button>
     </div>
   );
 };

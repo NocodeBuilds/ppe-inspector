@@ -1,186 +1,210 @@
 
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { format } from 'date-fns';
 import { InspectionDetails } from '@/types/ppe';
 
 /**
- * Base class for PDF generation
+ * Generates a PDF for inspection details
+ * @param inspection - The inspection data to generate the PDF from
  */
-export class PDFGenerator {
-  doc: jsPDF;
-  pageWidth: number;
-  pageHeight: number;
-  marginLeft: number = 15;
-  marginRight: number = 15;
-  marginTop: number = 15;
-  marginBottom: number = 15;
-  currentY: number;
-
-  constructor(orientation: 'portrait' | 'landscape' = 'portrait') {
-    this.doc = new jsPDF({
-      orientation,
-      unit: 'mm',
-      format: 'a4',
-    });
-    
-    this.pageWidth = orientation === 'portrait' ? 210 : 297;
-    this.pageHeight = orientation === 'portrait' ? 297 : 210;
-    this.currentY = this.marginTop;
-  }
-
-  /**
-   * Add a header to the PDF document
-   */
-  addHeader(text: string): void {
-    this.doc.setFontSize(18);
-    this.doc.setFont('helvetica', 'bold');
-    this.doc.text(text, this.pageWidth / 2, this.currentY, { align: 'center' });
-    this.currentY += 10;
-  }
-
-  /**
-   * Add a subheader to the PDF document
-   */
-  addSubHeader(text: string): void {
-    this.doc.setFontSize(14);
-    this.doc.setFont('helvetica', 'bold');
-    this.doc.text(text, this.marginLeft, this.currentY);
-    this.currentY += 7;
-  }
-
-  /**
-   * Add normal text to the PDF document
-   */
-  addText(text: string, fontSize: number = 11): void {
-    this.doc.setFontSize(fontSize);
-    this.doc.setFont('helvetica', 'normal');
-    this.doc.text(text, this.marginLeft, this.currentY);
-    this.currentY += 6;
-  }
-
-  /**
-   * Add a table to the PDF document
-   */
-  addTable(head: any[], body: any[][]): void {
-    // Check if we need a new page
-    if (this.currentY > this.pageHeight - 50) {
-      this.doc.addPage();
-      this.currentY = this.marginTop;
-    }
-
-    autoTable(this.doc, {
-      startY: this.currentY,
-      head: [head],
-      body: body,
-      margin: { top: this.currentY, left: this.marginLeft, right: this.marginRight },
-      styles: {
-        fontSize: 9,
-      },
-    });
-
-    // Update currentY to be after the table
-    this.currentY = (this.doc as any).lastAutoTable.finalY + 10;
-  }
-
-  /**
-   * Add a key-value data section to the PDF document
-   */
-  addKeyValueSection(title: string, data: Record<string, string | number>): void {
-    this.addSubHeader(title);
-    
-    Object.entries(data).forEach(([key, value]) => {
-      const text = `${key}: ${value}`;
-      this.addText(text);
-    });
-    
-    this.currentY += 5;
-  }
-
-  /**
-   * Add an image to the PDF document
-   */
-  addImage(imgData: string, x: number, y: number, width: number, height: number): void {
-    try {
-      if (imgData && imgData.startsWith('data:image')) {
-        this.doc.addImage(imgData, 'PNG', x, y, width, height);
-      }
-    } catch (error) {
-      console.error('Error adding image to PDF:', error);
-    }
-  }
-
-  /**
-   * Save the PDF document and trigger download
-   */
-  save(filename: string): void {
-    this.doc.save(filename);
-  }
-}
-
-/**
- * Generate an inspection detail PDF report
- */
-export const generateInspectionDetailPDF = async (inspectionData: InspectionDetails): Promise<void> => {
+export const generateInspectionDetailPDF = async (inspection: InspectionDetails) => {
   try {
-    const pdf = new PDFGenerator();
+    // Using browser's window.print for now as a simple solution
+    // In a production environment, you might want to use a library like jsPDF or pdfmake
     
-    // Add header
-    pdf.addHeader('Inspection Report');
-    
-    // Add inspection details
-    pdf.addKeyValueSection('Inspection Details', {
-      'Inspection ID': inspectionData.id,
-      'Date': new Date(inspectionData.date).toLocaleDateString(),
-      'Type': inspectionData.type,
-      'Result': inspectionData.overall_result.toUpperCase(),
-      'Inspector': inspectionData.inspector_name,
-    });
-    
-    // Add equipment details
-    pdf.addKeyValueSection('Equipment Details', {
-      'Type': inspectionData.ppe_type,
-      'Serial Number': inspectionData.ppe_serial,
-      'Brand': inspectionData.ppe_brand,
-      'Model': inspectionData.ppe_model,
-      'Batch Number': inspectionData.batch_number || 'N/A',
-      'Manufacturing Date': inspectionData.manufacturing_date ? new Date(inspectionData.manufacturing_date).toLocaleDateString() : 'N/A',
-      'Expiry Date': inspectionData.expiry_date ? new Date(inspectionData.expiry_date).toLocaleDateString() : 'N/A',
-    });
-    
-    // Add checkpoints
-    pdf.addSubHeader('Inspection Checkpoints');
-    
-    const tableHead = ['Description', 'Result', 'Notes'];
-    const tableBody = inspectionData.checkpoints.map((checkpoint) => [
-      checkpoint.description,
-      checkpoint.passed === null ? 'N/A' : checkpoint.passed ? 'PASS' : 'FAIL',
-      checkpoint.notes || 'N/A',
-    ]);
-    
-    pdf.addTable(tableHead, tableBody);
-    
-    // Add notes if any
-    if (inspectionData.notes) {
-      pdf.addSubHeader('Additional Notes');
-      pdf.addText(inspectionData.notes);
+    // Create a temporary div to hold the content
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      throw new Error('Could not open print window. Please check if popups are blocked.');
     }
     
-    // Add signature if available
-    if (inspectionData.signature_url) {
-      pdf.addSubHeader('Signature');
-      pdf.addImage(inspectionData.signature_url, pdf.marginLeft, pdf.currentY, 60, 30);
-      pdf.currentY += 35;
-    }
+    const content = `
+      <html>
+        <head>
+          <title>Inspection Report - ${inspection.ppe_serial}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 800px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #333;
+              padding-bottom: 10px;
+            }
+            .section {
+              margin-bottom: 20px;
+              border-bottom: 1px solid #eee;
+              padding-bottom: 15px;
+            }
+            .section-title {
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 10px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 20px;
+            }
+            table, th, td {
+              border: 1px solid #ddd;
+            }
+            th, td {
+              padding: 10px;
+              text-align: left;
+            }
+            th {
+              background-color: #f2f2f2;
+            }
+            .result-pass {
+              color: green;
+              font-weight: bold;
+            }
+            .result-fail {
+              color: red;
+              font-weight: bold;
+            }
+            .checkpoint-pass {
+              background-color: rgba(0, 128, 0, 0.1);
+            }
+            .checkpoint-fail {
+              background-color: rgba(255, 0, 0, 0.1);
+            }
+            .footer {
+              margin-top: 30px;
+              text-align: center;
+              font-size: 12px;
+              color: #666;
+            }
+            .signature-container {
+              margin-top: 20px;
+              border-top: 1px solid #ddd;
+              padding-top: 10px;
+            }
+            img.signature {
+              max-width: 200px;
+              max-height: 80px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>PPE Inspection Report</h1>
+            <p>Generated on ${format(new Date(), 'PPP')}</p>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">Equipment Information</div>
+            <table>
+              <tr>
+                <th>Serial Number</th>
+                <td>${inspection.ppe_serial || 'N/A'}</td>
+                <th>Type</th>
+                <td>${inspection.ppe_type || 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Brand</th>
+                <td>${inspection.ppe_brand || 'N/A'}</td>
+                <th>Model</th>
+                <td>${inspection.ppe_model || 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Manufacturing Date</th>
+                <td>${inspection.manufacturing_date ? format(new Date(inspection.manufacturing_date), 'PPP') : 'N/A'}</td>
+                <th>Expiry Date</th>
+                <td>${inspection.expiry_date ? format(new Date(inspection.expiry_date), 'PPP') : 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Batch Number</th>
+                <td colspan="3">${inspection.batch_number || 'N/A'}</td>
+              </tr>
+            </table>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">Inspection Information</div>
+            <table>
+              <tr>
+                <th>Inspection Date</th>
+                <td>${format(new Date(inspection.date), 'PPP')}</td>
+                <th>Inspector</th>
+                <td>${inspection.inspector_name || 'N/A'}</td>
+              </tr>
+              <tr>
+                <th>Inspection Type</th>
+                <td>${inspection.type || 'N/A'}</td>
+                <th>Result</th>
+                <td class="${inspection.overall_result?.toLowerCase() === 'pass' ? 'result-pass' : 'result-fail'}">
+                  ${(inspection.overall_result || '').toUpperCase()}
+                </td>
+              </tr>
+              <tr>
+                <th>Site</th>
+                <td colspan="3">${inspection.site_name || 'N/A'}</td>
+              </tr>
+            </table>
+          </div>
+          
+          ${inspection.notes ? `
+          <div class="section">
+            <div class="section-title">Notes</div>
+            <p>${inspection.notes}</p>
+          </div>
+          ` : ''}
+          
+          <div class="section">
+            <div class="section-title">Inspection Checkpoints</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Result</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${inspection.checkpoints.map(checkpoint => `
+                <tr class="${checkpoint.passed ? 'checkpoint-pass' : checkpoint.passed === false ? 'checkpoint-fail' : ''}">
+                  <td>${checkpoint.description}</td>
+                  <td>${checkpoint.passed === null ? 'N/A' : checkpoint.passed ? 'PASS' : 'FAIL'}</td>
+                  <td>${checkpoint.notes || '-'}</td>
+                </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          
+          ${inspection.signature_url ? `
+          <div class="signature-container">
+            <div class="section-title">Inspector's Signature</div>
+            <img src="${inspection.signature_url}" alt="Inspector Signature" class="signature" />
+          </div>
+          ` : ''}
+          
+          <div class="footer">
+            <p>This is an official PPE inspection document. Keep for your records.</p>
+          </div>
+        </body>
+      </html>
+    `;
     
-    // Generate filename
-    const filename = `inspection_${inspectionData.id}_${new Date().toISOString().split('T')[0]}.pdf`;
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
     
-    // Save the PDF
-    pdf.save(filename);
+    // Wait for content to load
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
     
-    return;
+    return true;
   } catch (error) {
-    console.error('Error generating PDF report:', error);
+    console.error('Error generating PDF:', error);
     throw error;
   }
 };

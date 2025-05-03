@@ -69,7 +69,10 @@ const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
           photo_url: result.photo_url || null
         }));
 
-        // Create the inspection details object
+        // Create the inspection details object, handling potentially missing data
+        const inspector = data.profiles || {};
+        const ppeItem = data.ppe_items || {};
+
         const inspectionDetails: InspectionDetailsType = {
           id: data.id,
           date: data.date,
@@ -78,17 +81,17 @@ const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
           notes: data.notes || '',
           signature_url: data.signature_url || null,
           inspector_id: data.inspector_id,
-          inspector_name: data.profiles?.full_name || 'Unknown',
-          site_name: data.profiles?.site_name || 'Unknown',
-          ppe_type: data.ppe_items?.type || 'Unknown',
-          ppe_serial: data.ppe_items?.serial_number || 'Unknown',
-          ppe_brand: data.ppe_items?.brand || 'Unknown',
-          ppe_model: data.ppe_items?.model_number || 'Unknown',
-          manufacturing_date: data.ppe_items?.manufacturing_date || null,
-          expiry_date: data.ppe_items?.expiry_date || null,
-          batch_number: data.ppe_items?.batch_number || '',
+          inspector_name: inspector.full_name || 'Unknown',
+          site_name: inspector.site_name || 'Unknown',
+          ppe_type: ppeItem.type || 'Unknown',
+          ppe_serial: ppeItem.serial_number || 'Unknown',
+          ppe_brand: ppeItem.brand || 'Unknown',
+          ppe_model: ppeItem.model_number || 'Unknown',
+          manufacturing_date: ppeItem.manufacturing_date || null,
+          expiry_date: ppeItem.expiry_date || null,
+          batch_number: ppeItem.batch_number || '',
           checkpoints: mappedCheckpoints,
-          photoUrl: ''  // Add this empty property to satisfy the type
+          photoUrl: data.images && data.images.length > 0 ? data.images[0] : null
         };
 
         setInspection(inspectionDetails);
@@ -113,14 +116,7 @@ const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
 
     setIsExporting(true);
     try {
-      // Prepare the data for PDF generation
-      const inspectionData = {
-        ...inspection,
-        photoUrl: inspection.photoUrl || '',
-      };
-
-      // Generate the PDF
-      await generateInspectionDetailPDF(inspectionData);
+      await generateInspectionDetailPDF(inspection);
       toast({
         title: 'PDF Generated',
         description: 'Inspection report has been downloaded as PDF',
@@ -142,14 +138,7 @@ const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
 
     setIsExporting(true);
     try {
-      // Prepare the data for Excel generation
-      const inspectionData = {
-        ...inspection,
-        photoUrl: inspection.photoUrl || '',
-      };
-
-      // Generate the Excel report
-      await generateInspectionExcelReport(inspectionData);
+      await generateInspectionExcelReport(inspection);
       toast({
         title: 'Excel Generated',
         description: 'Inspection report has been downloaded as Excel',
@@ -181,7 +170,7 @@ const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
   if (error || !inspection) {
     return (
       <div className="container mx-auto p-4">
-        <StandardCard title="Error" icon={AlertTriangle}>
+        <StandardCard title="Error">
           <p className="text-red-500">{error || 'Failed to load inspection details'}</p>
           <Button onClick={() => navigate(-1)} className="mt-4">Go Back</Button>
         </StandardCard>

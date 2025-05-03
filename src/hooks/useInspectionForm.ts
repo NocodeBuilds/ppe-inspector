@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,12 +8,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/hooks/useNotifications';
 
 interface UseInspectionFormProps {
-  ppeId: string | undefined;
+  ppeId?: string;
   onSuccess?: () => void;
   onError?: (message: string) => void;
 }
 
-export const useInspectionForm = ({ ppeId, onSuccess, onError }: UseInspectionFormProps = {}) => {
+export const useInspectionForm = ({ ppeId = '', onSuccess, onError }: UseInspectionFormProps = {}) => {
   const [inspectionType, setInspectionType] = useState<string>('pre-use');
   const [overallResult, setOverallResult] = useState<string>('pass');
   const [notes, setNotes] = useState<string>('');
@@ -66,13 +67,15 @@ export const useInspectionForm = ({ ppeId, onSuccess, onError }: UseInspectionFo
   }, [onError, showToastNotification]);
 
   // Fetch PPE item details
-  const fetchPPEItem = useCallback(async (ppeId: string) => {
+  const fetchPPEItem = useCallback(async (itemId: string) => {
+    if (!itemId) return;
+    
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('ppe_items')
         .select('*')
-        .eq('id', ppeId)
+        .eq('id', itemId)
         .single();
 
       if (error) {
@@ -84,7 +87,36 @@ export const useInspectionForm = ({ ppeId, onSuccess, onError }: UseInspectionFo
         return;
       }
 
-      setPpeItem(data);
+      // Convert database format to PPEItem with proper types
+      const ppeData: PPEItem = {
+        id: data.id,
+        serial_number: data.serial_number,
+        type: data.type,
+        brand: data.brand || '',
+        model_number: data.model_number || '',
+        manufacturing_date: data.manufacturing_date || '',
+        expiry_date: data.expiry_date || '',
+        status: data.status,
+        image_url: data.image_url || '',
+        next_inspection: data.next_inspection || '',
+        last_inspection: data.last_inspection || '',
+        inspection_frequency: data.inspection_frequency || '',
+        batch_number: data.batch_number || '',
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        
+        // Additional properties required by PPEItem interface
+        serialNumber: data.serial_number,
+        modelNumber: data.model_number || '',
+        manufacturingDate: data.manufacturing_date || '',
+        expiryDate: data.expiry_date || '',
+        nextInspection: data.next_inspection || '',
+        lastInspection: data.last_inspection || '',
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+
+      setPpeItem(ppeData);
       fetchCheckpoints(data.type);
     } catch (error: any) {
       console.error('Unexpected error fetching PPE item:', error);
@@ -196,6 +228,7 @@ export const useInspectionForm = ({ ppeId, onSuccess, onError }: UseInspectionFo
           date: new Date().toISOString(),
           type: inspectionType,
           overall_result: overallResult,
+          result: overallResult, // Added this field to match the schema requirement
           notes: notes,
           signature_url: signatureUrl,
           images: photoUrl ? [photoUrl] : [],

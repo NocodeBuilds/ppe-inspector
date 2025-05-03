@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { QrCode, ChevronRight, Scan, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { usePPEData } from '@/hooks/usePPEData';
+import { usePPE } from '@/hooks/usePPE';
 import PPESelectionDialog from '@/components/inspection/PPESelectionDialog';
 import { PPEItem } from '@/types/ppe';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,7 +26,7 @@ const StartInspection = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { getPPEBySerialNumber } = usePPEData();
+  const { getPPEBySerialNumber } = usePPE();
 
   // Clear processing state when component mounts or route changes
   useEffect(() => {
@@ -136,7 +136,7 @@ const StartInspection = () => {
       {isLoading && !isSearching ? (
         <>
           <Skeleton className="h-[120px] w-full rounded-lg" />
-          <Skeleton className="h-[120px] w-full rounded-lg" />
+          <Skeleton className="h-[120px] w-full rounded-lg mt-2" />
         </>
       ) : (
         <>

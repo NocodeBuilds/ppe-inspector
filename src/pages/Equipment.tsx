@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ const Equipment = () => {
   const { ppeItems, isLoadingPPE, ppeError, refetchPPE } = usePPE();
 
   if (ppeError) {
-    return <div>Error: {ppeError.message}</div>;
+    return <div>Error: {ppeError.toString()}</div>;
   }
 
   return (
