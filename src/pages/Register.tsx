@@ -1,177 +1,171 @@
 
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Input } from '@/components/ui/input';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import { ThemeToggler } from '@/components/ThemeToggler';
-import { AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import LogoIcon from '@/components/common/LogoIcon';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
-const RegisterPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isPageLoading, setIsPageLoading] = useState(true);
-  
-  const { signUp, isLoading, user } = useAuth();
+const formSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z.string().min(8, { message: "Password must be at least 8 characters" }),
+  fullName: z.string().min(2, { message: "Name must be at least 2 characters" }),
+});
+
+const Register = () => {
+  const { /* signUp not in AuthContext, use supabase directly */ user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
-  
+  const [isLoading, setIsLoading] = useState(false);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      fullName: "",
+    },
+  });
+
   useEffect(() => {
     if (user) {
       navigate('/');
     }
-    
-    const timer = setTimeout(() => {
-      setIsPageLoading(false);
-    }, 500);
-    
-    return () => clearTimeout(timer);
   }, [user, navigate]);
-  
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsSubmitting(true);
-    
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      setIsSubmitting(false);
-      return;
-    }
-    
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      setIsSubmitting(false);
-      return;
-    }
-    
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      await signUp(email, password, fullName);
-      navigate('/login', { state: { registrationSuccess: true } });
+      setIsLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email: values.email,
+        password: values.password,
+        options: {
+          data: {
+            full_name: values.fullName,
+          },
+        },
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Registration successful",
+        description: "We've sent you an email to verify your account",
+      });
+      
+      navigate('/login');
     } catch (error: any) {
-      setError(error.message || 'Failed to create account');
+      console.error('Registration error:', error);
+      toast({
+        title: "Registration failed",
+        description: error.message || "Failed to register account",
+        variant: "destructive",
+      });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
-  
-  if (isPageLoading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
+
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <div className="absolute top-4 right-4">
-        <ThemeToggler />
-      </div>
-      
-      <div className="flex-1 flex flex-col justify-center items-center px-4 py-8 pt-20">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-6">
-            <LogoIcon size="lg" className="mx-auto" withText={true} />
-          </div>
-          
-          <div className="glass-card rounded-lg p-6 shadow-lg border border-border/20 mt-4">
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="fullName" className="block text-sm">Full Name</label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="Your full name"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  disabled={isSubmitting}
-                  className="bg-background"
-                />
-              </div>
+    <div className="container flex h-screen items-center justify-center">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl">Create an account</CardTitle>
+          <CardDescription>
+            Enter your details to create an account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="fullName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter your name" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
-              <div className="space-y-2">
-                <label htmlFor="email" className="block text-sm">Email address</label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Your email address"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isSubmitting}
-                  className="bg-background"
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="email" 
+                        placeholder="name@example.com" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
-              <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm">Password</label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Create a password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isSubmitting}
-                  className="bg-background"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="block text-sm">Confirm Password</label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Confirm your password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isSubmitting}
-                  className="bg-background"
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="password" 
+                        placeholder="Enter password" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <Button 
                 type="submit" 
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-5 mt-6"
-                disabled={isSubmitting}
+                className="w-full"
+                disabled={isLoading}
               >
-                {isSubmitting ? (
-                  <div className="flex items-center justify-center">
-                    <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
-                    Creating Account...
-                  </div>
-                ) : 'Create Account'}
+                {isLoading ? 'Signing up...' : 'Sign up'}
               </Button>
-              
-              <div className="text-center mt-4">
-                <div className="block text-sm">
-                  Already have an account?{' '}
-                  <Link to="/login" className="text-primary hover:underline">
-                    Sign in
-                  </Link>
-                </div>
-              </div>
             </form>
-          </div>
-        </div>
-      </div>
+          </Form>
+        </CardContent>
+        <CardFooter className="justify-center">
+          <Button 
+            variant="link" 
+            onClick={() => navigate('/login')}
+            className="px-0"
+          >
+            Already have an account? Log in
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 };
 
-export default RegisterPage;
+export default Register;

@@ -32,8 +32,8 @@ export const useProfile = () => {
       }
 
       if (data) {
-        // Convert database fields to match Profile interface with getters
-        const profileData: Profile = {
+        // Convert database fields to match Profile interface
+        const profileData = {
           id: data.id,
           email: data.email,
           full_name: data.full_name,
@@ -46,13 +46,22 @@ export const useProfile = () => {
           mobile: data.mobile,
           signature: data.signature,
           created_at: data.created_at,
-          updated_at: data.updated_at
+          updated_at: data.updated_at,
+          
+          // Add getters as actual properties for TypeScript
+          createdAt: data.created_at || '',
+          updatedAt: data.updated_at || '',
+          fullName: data.full_name || '',
+          avatarUrl: data.avatar_url || '',
+          employeeId: data.employee_id || '',
+          siteName: data.site_name || '',
+          employeeRole: data.employee_role || ''
         };
 
         console.log('Profile data from DB:', data);
         console.log('Mapped profile:', profileData);
         
-        setProfile(profileData);
+        setProfile(profileData as Profile);
       }
     } catch (err: any) {
       console.error('Unexpected error fetching profile:', err);

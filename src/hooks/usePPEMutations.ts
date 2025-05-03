@@ -2,13 +2,12 @@
 import { useState, useCallback } from 'react';
 import { useSupabaseMutation } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
-import { PPEItem, PPEStatus } from '@/types/ppe';
+import { PPEItem, PPEStatus, PPECreateInput } from '@/types/ppe';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
 
 /**
  * Hook providing mutation functionality for PPE data
- * Separated from queries for better code organization
  */
 export function usePPEMutations(refetchPPE: () => void) {
   const { user } = useAuth();
@@ -83,7 +82,7 @@ export function usePPEMutations(refetchPPE: () => void) {
   };
 
   // Mutation to create a new PPE item
-  const createPPEMutation = useSupabaseMutation<PPEItem, Partial<PPEItem> & { imageFile?: File }>(
+  const createPPEMutation = useSupabaseMutation<PPEItem, PPECreateInput>(
     async (ppeData) => {
       const { imageFile, ...ppeItem } = ppeData;
       
@@ -118,6 +117,7 @@ export function usePPEMutations(refetchPPE: () => void) {
           model_number: ppeItem.model_number,
           manufacturing_date: ppeItem.manufacturing_date,
           expiry_date: ppeItem.expiry_date,
+          batch_number: ppeItem.batch_number || '',
           created_by: user.id,
           status: status,
           next_inspection: nextInspection.toISOString(),
@@ -142,11 +142,38 @@ export function usePPEMutations(refetchPPE: () => void) {
             .single();
           
           if (updateError) throw updateError;
-          return updatedData;
+          
+          // Convert the database format to PPEItem format
+          const ppeItem: PPEItem = {
+            ...updatedData,
+            serialNumber: updatedData.serial_number,
+            modelNumber: updatedData.model_number || '',
+            manufacturingDate: updatedData.manufacturing_date || '',
+            expiryDate: updatedData.expiry_date || '',
+            nextInspection: updatedData.next_inspection || '',
+            lastInspection: updatedData.last_inspection || '',
+            createdAt: updatedData.created_at,
+            updatedAt: updatedData.updated_at
+          };
+          
+          return ppeItem;
         }
       }
       
-      return data;
+      // Convert the database format to PPEItem format
+      const ppeItem: PPEItem = {
+        ...data,
+        serialNumber: data.serial_number,
+        modelNumber: data.model_number || '',
+        manufacturingDate: data.manufacturing_date || '',
+        expiryDate: data.expiry_date || '',
+        nextInspection: data.next_inspection || '',
+        lastInspection: data.last_inspection || '',
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+      
+      return ppeItem;
     },
     {
       onSuccess: () => {

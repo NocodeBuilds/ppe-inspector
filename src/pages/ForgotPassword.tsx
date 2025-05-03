@@ -1,131 +1,120 @@
-
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Input } from '@/components/ui/input';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import { ThemeToggler } from '@/components/ThemeToggler';
-import { AlertCircle, CheckCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import LogoIcon from '@/components/common/LogoIcon';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
-const ForgotPasswordPage = () => {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isPageLoading, setIsPageLoading] = useState(true);
-  
-  const { resetPassword, isLoading } = useAuth();
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsPageLoading(false);
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, []);
-  
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess(false);
-    setIsSubmitting(true);
-    
+const formSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address" }),
+});
+
+const ForgotPassword = () => {
+  const {  } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      await resetPassword(email);
-      setSuccess(true);
+      setIsLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Password reset email sent",
+        description: "Check your email for a link to reset your password",
+      });
+      
+      navigate('/login');
     } catch (error: any) {
-      setError(error.message || 'Failed to send reset password email');
+      console.error('Password reset error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send password reset email",
+        variant: "destructive",
+      });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
-  
-  if (isPageLoading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
+
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <div className="absolute top-4 right-4">
-        <ThemeToggler />
-      </div>
-      
-      <div className="flex-1 flex flex-col justify-center items-center px-4 py-8">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-6">
-            <LogoIcon size="lg" className="mx-auto" withText={true} />
-          </div>
-          
-          <div className="glass-card rounded-lg p-6 sm:p-8 shadow-lg border border-border/20 mt-4">
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            
-            {success ? (
-              <div className="text-center">
-                <Alert className="mb-4 bg-success/10 text-success border-success/20">
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>Reset password link has been sent to your email.</AlertDescription>
-                </Alert>
-                <p className="text-muted-foreground mb-4">
-                  Please check your email for further instructions.
-                </p>
-                <Link to="/login">
-                  <Button variant="outline" className="w-full">
-                    Back to Login
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <form onSubmit={handleResetPassword} className="space-y-6">
-                <div className="space-y-2">
-                  <label htmlFor="email" className="block text-base sm:text-lg font-medium">Email address</label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Your email address"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={isSubmitting}
-                    className="bg-background p-6"
-                  />
-                </div>
-                
-                <Button 
-                  type="submit" 
-                  className="w-full py-6 text-lg"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center">
-                      <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
-                      Sending...
-                    </div>
-                  ) : 'Send Reset Link'}
-                </Button>
-                
-                <div className="text-center mt-4">
-                  <Link to="/login" className="text-base text-muted-foreground hover:text-foreground">
-                    ← Back to Login
-                  </Link>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      </div>
+    <div className="container flex h-screen items-center justify-center">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl">Reset password</CardTitle>
+          <CardDescription>
+            Enter your email address and we&apos;ll send you a link to reset your password
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email" 
+                        placeholder="name@example.com" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Sending...' : 'Send reset link'}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+        <CardFooter className="justify-center">
+          <Button 
+            variant="link" 
+            onClick={() => navigate('/login')}
+            className="px-0"
+          >
+            Back to login
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 };
 
-export default ForgotPasswordPage;
+export default ForgotPassword;

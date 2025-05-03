@@ -19,15 +19,28 @@ export interface PPEItem {
   created_at: string;
   updated_at: string;
   
-  // Camel case aliases for compatibility with existing code
-  get serialNumber(): string { return this.serial_number; }
-  get modelNumber(): string { return this.model_number || ''; }
-  get manufacturingDate(): string { return this.manufacturing_date || ''; }
-  get expiryDate(): string { return this.expiry_date || ''; }
-  get nextInspection(): string { return this.next_inspection || ''; }
-  get lastInspection(): string { return this.last_inspection || ''; }
-  get createdAt(): string { return this.created_at; }
-  get updatedAt(): string { return this.updated_at; }
+  // Using getter properties for compatibility with existing code
+  serialNumber: string;
+  modelNumber: string;
+  manufacturingDate: string;
+  expiryDate: string;
+  nextInspection: string;
+  lastInspection: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// For new instances where we want to create PPE items
+export interface PPECreateInput {
+  type: string;
+  serial_number: string;
+  brand: string;
+  model_number: string;
+  manufacturing_date: string;
+  expiry_date: string;
+  batch_number?: string;
+  first_use?: string;
+  imageFile?: File;
 }
 
 // Defining PPE status as an enum type for better type safety
@@ -49,14 +62,14 @@ export interface Profile {
   created_at?: string;
   updated_at?: string;
   
-  // Camel case aliases for compatibility with existing code
-  get createdAt(): string { return this.created_at || ''; }
-  get updatedAt(): string { return this.updated_at || ''; }
-  get fullName(): string { return this.full_name || ''; }
-  get avatarUrl(): string { return this.avatar_url || ''; }
-  get employeeId(): string { return this.employee_id || ''; }
-  get siteName(): string { return this.site_name || ''; }
-  get employeeRole(): string { return this.employee_role || ''; }
+  // Properties with different casing
+  createdAt: string;
+  updatedAt: string;
+  fullName: string;
+  avatarUrl: string;
+  employeeId: string;
+  siteName: string;
+  employeeRole: string;
 }
 
 // Notification type
@@ -69,8 +82,8 @@ export interface Notification {
   read: boolean;
   created_at: string;
   
-  // Camel case aliases
-  get createdAt(): string { return this.created_at; }
+  // Camel case alias
+  createdAt: string;
 }
 
 // Defining variant types for notifications and toast
@@ -82,8 +95,8 @@ export interface InspectionCheckpoint {
   description: string;
   passed: boolean | null;
   notes: string | null;
-  photoUrl: string | null;
-  photo_url?: string | null;  // Add both versions for compatibility
+  photoUrl?: string | null;
+  photo_url?: string | null;
 }
 
 // Interface for complete inspection details
@@ -105,4 +118,23 @@ export interface InspectionDetails {
   expiry_date: string | null;
   batch_number: string;
   checkpoints: InspectionCheckpoint[];
+  photoUrl?: string | null;
+}
+
+// Create interfaces for specific component needs to avoid type conflicts
+export interface PPEItemForComponents {
+  id: string;
+  serial_number: string;
+  type: string;
+  brand: string;
+  model_number: string;
+  manufacturing_date: string;
+  expiry_date: string;
+  status: PPEStatus;
+  image_url?: string;
+  batch_number?: string;
+  next_inspection?: string;
+  last_inspection?: string;
+  created_at: string;
+  updated_at: string;
 }

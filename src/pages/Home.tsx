@@ -1,12 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
-import { Plus, Shield, Calendar, AlertTriangle, FileText, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import CardOverlay from '@/components/ui/card-overlay';
-import AddPPEForm from '@/components/forms/AddPPEForm';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth, useRoleAccess } from '@/hooks/useAuth';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/hooks/useAuth';
+import { AddPPEForm } from '@/components/forms/AddPPEForm';
+import { supabase } from '@/integrations/supabase/client';
+import { useRoleAccess } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';

@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { usePPE } from '@/hooks/usePPE';
+import { PPECreateInput } from '@/types/ppe';
 
 // Define schema for form validation
 const formSchema = z.object({
@@ -61,10 +62,16 @@ export function AddPPEForm() {
   const onSubmit = async (values: FormValues) => {
     try {
       // Ensure batch_number is a string
-      const submitData = {
-        ...values,
-        batch_number: values.batch_number || '', // Ensure it's a string
-        imageFile: imageFile,
+      const submitData: PPECreateInput = {
+        serial_number: values.serial_number,
+        type: values.type,
+        brand: values.brand,
+        model_number: values.model_number,
+        manufacturing_date: values.manufacturing_date,
+        expiry_date: values.expiry_date,
+        batch_number: values.batch_number,
+        first_use: values.first_use,
+        imageFile
       };
 
       await createPPE(submitData);
