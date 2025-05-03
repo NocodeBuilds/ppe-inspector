@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Control, useWatch } from 'react-hook-form';
 import { useFormContext } from 'react-hook-form';
@@ -220,7 +221,7 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
             <FormControl>
               <DatePicker 
                 date={field.value} 
-                setDate={field.onChange}
+                onDateChange={field.onChange}
                 disableFutureDates={true}
               />
             </FormControl>
@@ -239,7 +240,7 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
               <FormControl>
                 <DatePicker 
                   date={field.value} 
-                  setDate={field.onChange}
+                  onDateChange={field.onChange}
                   disableFutureDates={true}
                 />
               </FormControl>
@@ -257,7 +258,7 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
               <FormControl>
                 <DatePicker 
                   date={field.value} 
-                  setDate={field.onChange}
+                  onDateChange={field.onChange}
                   disablePastDates={true}
                 />
               </FormControl>

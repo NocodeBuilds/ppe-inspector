@@ -17,6 +17,8 @@ export interface DatePickerProps {
   disabled?: boolean | ((date: Date) => boolean);
   className?: string;
   placeholder?: string;
+  disableFutureDates?: boolean;
+  disablePastDates?: boolean;
 }
 
 export function DatePicker({ 
@@ -24,8 +26,37 @@ export function DatePicker({
   onDateChange, 
   disabled = false, 
   className,
-  placeholder = "Pick a date" 
+  placeholder = "Pick a date",
+  disableFutureDates = false,
+  disablePastDates = false
 }: DatePickerProps) {
+  // Create a dynamic disabled function that combines the original disabled prop
+  // with the disableFutureDates and disablePastDates props
+  const getDisabledState = React.useCallback(
+    (day: Date) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Check if the original disabled prop is a function and apply it
+      if (typeof disabled === 'function') {
+        return disabled(day);
+      }
+
+      // Apply disableFutureDates or disablePastDates logic
+      if (disableFutureDates && day > today) {
+        return true;
+      }
+
+      if (disablePastDates && day < today) {
+        return true;
+      }
+
+      // Return the original disabled value if it's a boolean
+      return disabled === true;
+    },
+    [disabled, disableFutureDates, disablePastDates]
+  );
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -46,8 +77,9 @@ export function DatePicker({
           mode="single"
           selected={date}
           onSelect={onDateChange}
-          disabled={disabled}
+          disabled={getDisabledState}
           initialFocus
+          className="pointer-events-auto"
         />
       </PopoverContent>
     </Popover>

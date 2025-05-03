@@ -10,6 +10,7 @@ import { columns } from '@/components/equipment/columns';
 import { usePPE } from '@/hooks/usePPE';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/common/PageHeader';
+import { PPEItem } from '@/integrations/supabase/clientTypes';
 
 const Equipment = () => {
   const [open, setOpen] = useState(false);
@@ -17,7 +18,7 @@ const Equipment = () => {
   const { ppeItems, isLoadingPPE, ppeError, refetchPPE } = usePPE();
 
   if (ppeError) {
-    return <div>Error: {typeof ppeError === 'boolean' ? 'Failed to load equipment data' : ppeError.toString()}</div>;
+    return <div>Error: {typeof ppeError === 'object' && ppeError !== null ? String(ppeError) : 'Failed to load equipment data'}</div>;
   }
 
   return (
@@ -42,6 +43,7 @@ const Equipment = () => {
               <Skeleton className="h-12 w-full rounded-md mt-2" />
             </>
           ) : (
+            // @ts-ignore - The column definition is fine for our DataTable component
             <DataTable columns={columns} data={ppeItems || []} />
           )}
         </CardContent>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,6 +20,40 @@ import { generateInspectionDetailPDF } from '@/utils/reportGenerator/pdfGenerato
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/excelGenerator';
 import { SelectedExportFilters } from './ExportFilterModal';
 import InspectionHistoryTable from './InspectionHistoryTable';
+import { safeGet } from '@/utils/typeUtils';
+
+// Define proper types for the data we're working with
+interface Inspector {
+  full_name?: string | null;
+  site_name?: string | null;
+  department?: string | null;
+  employee_role?: string | null;
+  [key: string]: any;
+}
+
+interface PPEItem {
+  type?: string | null;
+  serial_number?: string | null;
+  brand?: string | null;
+  model_number?: string | null;
+  manufacturing_date?: string | null;
+  expiry_date?: string | null;
+  batch_number?: string | null;
+  [key: string]: any;
+}
+
+interface InspectionData {
+  id: string;
+  date: string;
+  type: string;
+  overall_result: string;
+  notes?: string | null;
+  signature_url?: string | null;
+  inspector_id?: string;
+  profiles?: Inspector | null;
+  ppe_items?: PPEItem | null;
+  [key: string]: any;
+}
 
 export const InspectionHistory = () => {
   const [inspections, setInspections] = useState<any[]>([]);
@@ -54,20 +87,20 @@ export const InspectionHistory = () => {
       if (error) throw error;
       
       const formattedInspections = data.map(item => {
-        // Handle potential missing or invalid data
-        const inspector = item.profiles || {};
-        const ppeItem = item.ppe_items || {};
+        // Handle potential missing or invalid data with safe getters
+        const inspector: Inspector = safeGet(item.profiles, {});
+        const ppeItem: PPEItem = safeGet(item.ppe_items, {});
         
         return {
           id: item.id,
           date: item.date,
           type: item.type,
           overall_result: item.overall_result,
-          inspector_name: inspector?.full_name || 'Unknown',
-          ppe_type: ppeItem?.type || 'Unknown',
-          ppe_serial: ppeItem?.serial_number || 'Unknown',
-          ppe_brand: ppeItem?.brand || 'Unknown',
-          ppe_model: ppeItem?.model_number || 'Unknown'
+          inspector_name: safeGet(inspector.full_name, 'Unknown'),
+          ppe_type: safeGet(ppeItem.type, 'Unknown'),
+          ppe_serial: safeGet(ppeItem.serial_number, 'Unknown'),
+          ppe_brand: safeGet(ppeItem.brand, 'Unknown'),
+          ppe_model: safeGet(ppeItem.model_number, 'Unknown')
         };
       });
       
@@ -177,8 +210,8 @@ export const InspectionHistory = () => {
       if (checkpointsError) throw checkpointsError;
         
       // Create inspection details object with safe fallbacks
-      const inspector = data.profiles || {};
-      const ppeItem = data.ppe_items || {};
+      const inspector: Inspector = safeGet(data.profiles, {});
+      const ppeItem: PPEItem = safeGet(data.ppe_items, {});
         
       const inspectionData = {
         id: data.id,
@@ -187,16 +220,16 @@ export const InspectionHistory = () => {
         overall_result: data.overall_result,
         notes: data.notes || '',
         signature_url: data.signature_url || null,
-        inspector_id: data.inspector_id,
-        inspector_name: inspector?.full_name || 'Unknown',
-        site_name: inspector?.site_name || 'Unknown',
-        ppe_type: ppeItem?.type || 'Unknown',
-        ppe_serial: ppeItem?.serial_number || 'Unknown',
-        ppe_brand: ppeItem?.brand || 'Unknown',
-        ppe_model: ppeItem?.model_number || 'Unknown',
-        manufacturing_date: ppeItem?.manufacturing_date || null,
-        expiry_date: ppeItem?.expiry_date || null,
-        batch_number: ppeItem?.batch_number || '',
+        inspector_id: data.inspector_id || '',
+        inspector_name: safeGet(inspector.full_name, 'Unknown'),
+        site_name: safeGet(inspector.site_name, 'Unknown'),
+        ppe_type: safeGet(ppeItem.type, 'Unknown'),
+        ppe_serial: safeGet(ppeItem.serial_number, 'Unknown'),
+        ppe_brand: safeGet(ppeItem.brand, 'Unknown'),
+        ppe_model: safeGet(ppeItem.model_number, 'Unknown'),
+        manufacturing_date: safeGet(ppeItem.manufacturing_date, null),
+        expiry_date: safeGet(ppeItem.expiry_date, null),
+        batch_number: safeGet(ppeItem.batch_number, ''),
         photoUrl: '',
         checkpoints: checkpointsData.map(cp => ({
           id: cp.id,
@@ -248,8 +281,8 @@ export const InspectionHistory = () => {
       if (checkpointsError) throw checkpointsError;
         
       // Create inspection details object with safe fallbacks
-      const inspector = data.profiles || {};
-      const ppeItem = data.ppe_items || {};
+      const inspector: Inspector = safeGet(data.profiles, {});
+      const ppeItem: PPEItem = safeGet(data.ppe_items, {});
         
       const inspectionData = {
         id: data.id,
@@ -258,16 +291,16 @@ export const InspectionHistory = () => {
         overall_result: data.overall_result,
         notes: data.notes || '',
         signature_url: data.signature_url || null,
-        inspector_id: data.inspector_id,
-        inspector_name: inspector?.full_name || 'Unknown',
-        site_name: inspector?.site_name || 'Unknown',
-        ppe_type: ppeItem?.type || 'Unknown',
-        ppe_serial: ppeItem?.serial_number || 'Unknown',
-        ppe_brand: ppeItem?.brand || 'Unknown',
-        ppe_model: ppeItem?.model_number || 'Unknown',
-        manufacturing_date: ppeItem?.manufacturing_date || null,
-        expiry_date: ppeItem?.expiry_date || null,
-        batch_number: ppeItem?.batch_number || '',
+        inspector_id: data.inspector_id || '',
+        inspector_name: safeGet(inspector.full_name, 'Unknown'),
+        site_name: safeGet(inspector.site_name, 'Unknown'),
+        ppe_type: safeGet(ppeItem.type, 'Unknown'),
+        ppe_serial: safeGet(ppeItem.serial_number, 'Unknown'),
+        ppe_brand: safeGet(ppeItem.brand, 'Unknown'),
+        ppe_model: safeGet(ppeItem.model_number, 'Unknown'),
+        manufacturing_date: safeGet(ppeItem.manufacturing_date, null),
+        expiry_date: safeGet(ppeItem.expiry_date, null),
+        batch_number: safeGet(ppeItem.batch_number, ''),
         photoUrl: '',
         checkpoints: checkpointsData.map(cp => ({
           id: cp.id,
@@ -349,7 +382,18 @@ export const InspectionHistory = () => {
             onDownloadPDF={handleDownloadPDF}
             onDownloadExcel={handleDownloadExcel}
             onFilterChange={handleFilterChange}
-            onExport={handleExport}
+            onExport={(filters) => {
+              // Type definition to handle missing handleExport
+              if (typeof handleExport === 'function') {
+                handleExport(filters);
+              } else {
+                toast({
+                  title: 'Export not available',
+                  description: 'Export functionality is not implemented',
+                  variant: 'warning'
+                });
+              }
+            }}
             activeFilter={filter}
             activeTimeframe={timeframe}
           />

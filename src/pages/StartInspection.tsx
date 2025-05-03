@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { usePPE } from '@/hooks/usePPE';
 import PPESelectionDialog from '@/components/inspection/PPESelectionDialog';
-import { PPEItem } from '@/types/ppe';
+import { PPEItem } from '@/integrations/supabase/clientTypes';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import PageHeader from '@/components/common/PageHeader';
@@ -65,6 +65,7 @@ const StartInspection = () => {
     try {
       console.log('Searching for serial number:', serial);
       
+      // Use the properly typed getPPEBySerialNumber function
       const ppeItems = await getPPEBySerialNumber(serial);
       console.log('Found PPE items:', ppeItems);
       
