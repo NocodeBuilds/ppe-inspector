@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { FileText, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { InspectionDetails as InspectionDetailsType } from '@/types/ppe';
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/pdfGenerator';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/excelGenerator';
+import { safeGet } from '@/utils/typeUtils';
 
 // Interface for the inspection details page
 interface InspectionDetailPageProps {}
@@ -70,8 +70,8 @@ const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
         }));
 
         // Create the inspection details object, handling potentially missing data
-        const inspector = data.profiles || {};
-        const ppeItem = data.ppe_items || {};
+        const inspector = safeGet(data.profiles, {});
+        const ppeItem = safeGet(data.ppe_items, {});
 
         const inspectionDetails: InspectionDetailsType = {
           id: data.id,
@@ -80,16 +80,16 @@ const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
           overall_result: data.overall_result,
           notes: data.notes || '',
           signature_url: data.signature_url || null,
-          inspector_id: data.inspector_id,
-          inspector_name: inspector.full_name || 'Unknown',
-          site_name: inspector.site_name || 'Unknown',
-          ppe_type: ppeItem.type || 'Unknown',
-          ppe_serial: ppeItem.serial_number || 'Unknown',
-          ppe_brand: ppeItem.brand || 'Unknown',
-          ppe_model: ppeItem.model_number || 'Unknown',
-          manufacturing_date: ppeItem.manufacturing_date || null,
-          expiry_date: ppeItem.expiry_date || null,
-          batch_number: ppeItem.batch_number || '',
+          inspector_id: safeGet(data, {}).inspector_id || '',
+          inspector_name: safeGet(inspector, {}).full_name || 'Unknown',
+          site_name: safeGet(inspector, {}).site_name || 'Unknown',
+          ppe_type: safeGet(ppeItem, {}).type || 'Unknown',
+          ppe_serial: safeGet(ppeItem, {}).serial_number || 'Unknown',
+          ppe_brand: safeGet(ppeItem, {}).brand || 'Unknown',
+          ppe_model: safeGet(ppeItem, {}).model_number || 'Unknown',
+          manufacturing_date: safeGet(ppeItem, {}).manufacturing_date || null,
+          expiry_date: safeGet(ppeItem, {}).expiry_date || null,
+          batch_number: safeGet(ppeItem, {}).batch_number || '',
           checkpoints: mappedCheckpoints,
           photoUrl: data.images && data.images.length > 0 ? data.images[0] : null
         };

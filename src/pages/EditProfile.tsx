@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, ChangeEvent } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,102 +7,27 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { Textarea } from '@/components/ui/textarea';
-import { useProfile } from '@/hooks/useProfile';
-import { supabase } from '@/integrations/supabase/client';
+import { useProfileForm } from '@/hooks/useProfileForm';
 import { useToast } from '@/hooks/use-toast';
 
 const EditProfile = () => {
   const navigate = useNavigate();
-  const { formData, handleInputChange, isLoading, isSaving, error } = useProfile();
+  const {
+    formData,
+    handleInputChange,
+    isLoading,
+    isSaving,
+    profile,
+    avatarPreview,
+    handleAvatarChange,
+    handleSubmit
+  } = useProfileForm();
+  
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      // Assuming updateProfile is provided by the profile hook context
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: formData.full_name,
-          mobile: formData.mobile,
-          site_name: formData.site_name,
-          department: formData.department,
-          employee_id: formData.employee_id,
-          employee_role: formData.employee_role,
-        })
-        .eq('id', formData.id);
-      
-      if (error) {
-        throw error;
-      }
-      
-      toast({
-        title: 'Profile Updated',
-        description: 'Your profile has been successfully updated.',
-      });
-      
-      navigate('/settings');
-    } catch (err: any) {
-      console.error('Error updating profile:', err);
-      toast({
-        title: 'Update Failed',
-        description: err.message || 'Failed to update profile. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleAvatarUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) {
-      return;
-    }
-    
-    try {
-      const file = e.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const filePath = `avatars/${formData.id}-${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('user-avatars')
-        .upload(filePath, file, { upsert: true });
-        
-      if (uploadError) {
-        throw uploadError;
-      }
-      
-      const { data: urlData } = supabase.storage
-        .from('user-avatars')
-        .getPublicUrl(filePath);
-        
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: urlData.publicUrl })
-        .eq('id', formData.id);
-        
-      if (updateError) {
-        throw updateError;
-      }
-      
-      // Update local state
-      handleInputChange({
-        target: { name: 'avatar_url', value: urlData.publicUrl }
-      } as ChangeEvent<HTMLInputElement>);
-      
-      toast({
-        title: 'Avatar Updated',
-        description: 'Your profile picture has been updated.',
-      });
-    } catch (err: any) {
-      console.error('Error uploading avatar:', err);
-      toast({
-        title: 'Upload Failed',
-        description: err.message || 'Failed to upload avatar. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
+  if (isLoading) {
+    return <div className="container max-w-2xl mx-auto py-8 px-4">Loading...</div>;
+  }
 
   return (
     <div className="container max-w-2xl mx-auto py-8 px-4">
@@ -115,14 +40,18 @@ const EditProfile = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 items-center">
               <Avatar className="w-20 h-20">
-                <AvatarImage src={formData.avatar_url || ''} alt="Profile" />
+                {avatarPreview ? (
+                  <AvatarImage src={avatarPreview} alt="Profile" />
+                ) : (
+                  <AvatarImage src={profile?.avatar_url || ''} alt="Profile" />
+                )}
                 <AvatarFallback>{formData.full_name?.charAt(0) || 'U'}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <Label htmlFor="avatar" className="block text-sm font-medium">
                   Profile Photo
                 </Label>
-                <Input id="avatar" type="file" accept="image/*" onChange={handleAvatarUpload} />
+                <Input id="avatar" type="file" accept="image/*" onChange={handleAvatarChange} />
               </div>
             </div>
             

@@ -32,3 +32,19 @@ export function hasProperty<T extends object, K extends PropertyKey>(
 ): obj is T & Record<K, unknown> {
   return obj !== null && obj !== undefined && key in obj;
 }
+
+/**
+ * Safely extract a property from an object with proper type checking
+ * @param obj The object to extract a property from
+ * @param key The property key to extract
+ * @param defaultValue Default value if property doesn't exist
+ * @returns The property value or default
+ */
+export function safeExtract<T extends object, K extends keyof any, D>(
+  obj: T | null | undefined,
+  key: K,
+  defaultValue: D
+): D {
+  if (obj === null || obj === undefined) return defaultValue;
+  return (key in obj) ? (obj as any)[key] : defaultValue;
+}
