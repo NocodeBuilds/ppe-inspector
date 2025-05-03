@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,6 +11,7 @@ type ProfileFormData = {
   site_name: string;
   department: string;
   employee_role: string;
+  mobile: string; // Added mobile field to the ProfileFormData interface
 };
 
 export const useProfileForm = () => {
@@ -25,6 +27,7 @@ export const useProfileForm = () => {
     site_name: '',
     department: '',
     employee_role: '',
+    mobile: '', // Initialize mobile field
   });
   
   const [avatar, setAvatar] = useState<File | null>(null);
@@ -66,6 +69,7 @@ export const useProfileForm = () => {
         site_name: profileData.site_name || '',
         department: profileData.department || '',
         employee_role: profileData.employee_role || '',
+        mobile: profileData.mobile || '',  // Include the mobile field
       });
     }
 
@@ -127,6 +131,7 @@ export const useProfileForm = () => {
             site_name: formData.site_name,
             department: formData.department,
             employee_role: formData.employee_role,
+            mobile: formData.mobile, // Update mobile field
           })
           .eq('id', profile.id);
 

@@ -16,12 +16,12 @@ import {
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { exportFilteredInspectionsToExcel } from '@/utils/exportUtils';
-import { generateInspectionsDateReport } from '@/utils/reportGeneratorService';
 import { Badge } from '@/components/ui/badge';
-import { fetchCompleteInspectionData } from '@/utils/reportGenerator/reportDataFormatter';
+import { fetchCompleteInspectionData } from '@/utils/reportGeneratorService';
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
 import { SelectedExportFilters } from '../components/reports/ExportFilterModal';
+import { safeGet } from '@/utils/typeUtils';
 
 const InspectionHistory = () => {
   const [inspections, setInspections] = useState<any[]>([]);
@@ -54,17 +54,23 @@ const InspectionHistory = () => {
       
       if (error) throw error;
       
-      const formattedInspections = data.map(item => ({
-        id: item.id,
-        date: item.date,
-        type: item.type,
-        overall_result: item.overall_result,
-        inspector_name: item.profiles?.full_name || 'Unknown',
-        ppe_type: item.ppe_items?.type || 'Unknown',
-        ppe_serial: item.ppe_items?.serial_number || 'Unknown',
-        ppe_brand: item.ppe_items?.brand || 'Unknown',
-        ppe_model: item.ppe_items?.model_number || 'Unknown'
-      }));
+      const formattedInspections = data.map(item => {
+        // Handle potential missing or invalid data with safe getters
+        const profiles = safeGet(item.profiles, {});
+        const ppeItems = safeGet(item.ppe_items, {});
+        
+        return {
+          id: item.id,
+          date: item.date,
+          type: item.type,
+          overall_result: item.overall_result,
+          inspector_name: safeGet(profiles, {}).full_name || 'Unknown',
+          ppe_type: safeGet(ppeItems, {}).type || 'Unknown',
+          ppe_serial: safeGet(ppeItems, {}).serial_number || 'Unknown',
+          ppe_brand: safeGet(ppeItems, {}).brand || 'Unknown',
+          ppe_model: safeGet(ppeItems, {}).model_number || 'Unknown'
+        };
+      });
       
       setInspections(formattedInspections);
     } catch (error: any) {
@@ -148,7 +154,7 @@ const InspectionHistory = () => {
   
   const handleDownloadPDF = async (id: string) => {
     try {
-      const inspectionData = await fetchCompleteInspectionData(supabase, id);
+      const inspectionData = await fetchCompleteInspectionData(id);
       if (!inspectionData) throw new Error('Inspection data not found.');
       
       await generateInspectionDetailPDF(inspectionData);
@@ -168,7 +174,7 @@ const InspectionHistory = () => {
   
   const handleDownloadExcel = async (id: string) => {
     try {
-      const inspectionData = await fetchCompleteInspectionData(supabase, id);
+      const inspectionData = await fetchCompleteInspectionData(id);
       if (!inspectionData) throw new Error('Inspection data not found.');
 
       await generateInspectionExcelReport(inspectionData);

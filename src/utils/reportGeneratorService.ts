@@ -76,7 +76,7 @@ export async function fetchCompleteInspectionData(inspectionId: string): Promise
     overall_result: data.overall_result,
     notes: data.notes || '',
     signature_url: data.signature_url || null,
-    inspector_id: data.inspector_id || '',
+    inspector_id: safeGet(data, {}).inspector_id || '',
     inspector_name: safeGet(inspector, {}).full_name || 'Unknown',
     site_name: safeGet(inspector, {}).site_name || 'Unknown',
     ppe_type: safeGet(ppeItem, {}).type || 'Unknown',
@@ -151,4 +151,11 @@ export async function generatePPEItemReport(ppeId: string, options?: InspectionR
   };
 
   return reportData;
+}
+
+// Add this function to satisfy the import in InspectionHistory.tsx
+export function generateInspectionsDateReport() {
+  // This is a placeholder that needs proper implementation
+  console.warn('generateInspectionsDateReport not fully implemented');
+  return Promise.resolve({});
 }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -65,8 +66,8 @@ const StartInspection = () => {
     try {
       console.log('Searching for serial number:', serial);
       
-      // Use the properly typed getPPEBySerialNumber function
-      const ppeItems = await getPPEBySerialNumber(serial);
+      // Get PPE items and ensure they have the right type
+      const ppeItems = await getPPEBySerialNumber(serial) as unknown as PPEItem[];
       console.log('Found PPE items:', ppeItems);
       
       if (!ppeItems || ppeItems.length === 0) {

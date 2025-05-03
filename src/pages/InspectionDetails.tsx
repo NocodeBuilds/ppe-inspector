@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -80,7 +81,7 @@ const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
           overall_result: data.overall_result,
           notes: data.notes || '',
           signature_url: data.signature_url || null,
-          inspector_id: safeGet(data, {}).inspector_id || '',
+          inspector_id: data.inspector_id || '',
           inspector_name: safeGet(inspector, {}).full_name || 'Unknown',
           site_name: safeGet(inspector, {}).site_name || 'Unknown',
           ppe_type: safeGet(ppeItem, {}).type || 'Unknown',
