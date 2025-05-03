@@ -1,12 +1,18 @@
 
 import React, { useContext } from 'react';
-import { AuthContext, useAuth as useAuthContext } from '@/contexts/AuthContext';
+import { AuthContext } from '@/contexts/AuthContext';
 
 /**
  * Hook to access auth context
  * Provides a consistent way to use auth throughout the app
  */
-export const useAuth = useAuthContext;
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 /**
  * Utility function to check if the current user has a specific role
