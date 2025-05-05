@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,7 +18,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { exportFilteredInspectionsToExcel } from '@/utils/exportUtils';
 import { Badge } from '@/components/ui/badge';
-import { fetchCompleteInspectionData } from '@/utils/reportGeneratorService';
+import { fetchCompleteInspectionData, formatInspectionForReport } from '@/utils/reportGeneratorService';
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
 import { SelectedExportFilters } from '../components/reports/ExportFilterModal';
@@ -193,34 +194,7 @@ const InspectionHistory = () => {
   };
 
   const handleViewDetails = async (id: string) => {
-    try {
-      const inspectionData = await fetchCompleteInspectionData(supabase, id);
-      
-      if (inspectionData) {
-        const confirmDownload = window.confirm('Do you want to download this inspection report?');
-        if (confirmDownload) {
-          const format = window.confirm('Click OK for PDF or Cancel for Excel');
-          if (format) {
-            await generateInspectionDetailPDF(inspectionData);
-            toast({
-              title: 'PDF Generated',
-              description: 'Inspection report has been downloaded as PDF',
-            });
-          } else {
-            await generateInspectionExcelReport(inspectionData);
-            toast({
-              title: 'Excel Generated',
-              description: 'Inspection report has been downloaded as Excel',
-            });
-          }
-        }
-      } else {
-        navigate(`/inspection/${id}`);
-      }
-    } catch (error) {
-      console.error('Error generating report from history:', error);
-      navigate(`/inspection/${id}`);
-    }
+    navigate(`/inspection/${id}`);
   };
   
   const handleFilterChange = (newFilter: string) => {

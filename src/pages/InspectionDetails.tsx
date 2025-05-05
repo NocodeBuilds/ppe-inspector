@@ -62,13 +62,16 @@ const InspectionDetails: React.FC<InspectionDetailPageProps> = () => {
         if (checkpointsError) throw checkpointsError;
 
         // Map the checkpoints to the format expected by the InspectionDetails type
-        const mappedCheckpoints = checkpointsData.map(result => ({
-          id: result.id,
-          description: safeGet(result.inspection_checkpoints, {}).description || '',
-          passed: result.passed || false,
-          notes: result.notes || '',
-          photo_url: result.photo_url || null
-        }));
+        const mappedCheckpoints = checkpointsData.map(result => {
+          const checkpoint = safeGet(result.inspection_checkpoints, {});
+          return {
+            id: result.id,
+            description: safeGet(checkpoint, {}).description || '',
+            passed: result.passed || false,
+            notes: result.notes || '',
+            photo_url: result.photo_url || null
+          };
+        });
 
         // Create the inspection details object, handling potentially missing data
         const inspector = safeGet(data.profiles, {});

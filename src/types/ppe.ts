@@ -6,8 +6,8 @@ export interface PPEItem {
   id: string;
   serial_number: string;
   type: string;
-  brand?: string;
-  model_number?: string;
+  brand: string; // Changed from optional to required to match clientTypes
+  model_number: string; // Changed from optional to required to match clientTypes
   manufacturing_date?: string;
   expiry_date?: string;
   status: PPEStatus;
@@ -95,7 +95,7 @@ export interface InspectionCheckpoint {
   description: string;
   passed: boolean | null;
   notes: string | null;
-  photo_url?: string | null;
+  photo_url?: string | null; // Made optional to match the StandardInspectionData type
   required?: boolean;
   order_num?: number;
   category?: string;

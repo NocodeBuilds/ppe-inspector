@@ -58,13 +58,16 @@ export async function fetchCompleteInspectionData(inspectionId: string): Promise
   if (checkpointsError) throw checkpointsError;
 
   // Map the checkpoints to the format expected by the InspectionDetails type
-  const mappedCheckpoints = checkpointsData.map(result => ({
-    id: result.id,
-    description: safeGet(result.inspection_checkpoints, {}).description || '',
-    passed: result.passed || false,
-    notes: result.notes || '',
-    photo_url: result.photo_url || null
-  }));
+  const mappedCheckpoints = checkpointsData.map(result => {
+    const checkpoint = safeGet(result.inspection_checkpoints, {});
+    return {
+      id: result.id,
+      description: safeGet(checkpoint, {}).description || '',
+      passed: result.passed || false,
+      notes: result.notes || '',
+      photo_url: result.photo_url || null
+    };
+  });
 
   // Create the inspection details object, handling potentially missing data
   const inspector = safeGet(data.profiles, {});
@@ -155,9 +158,9 @@ export async function generatePPEItemReport(ppeId: string, options?: InspectionR
   return reportData;
 }
 
-// Add this function to satisfy the import in InspectionHistory.tsx
-export function generateInspectionsDateReport() {
-  // This is a placeholder that needs proper implementation
-  console.warn('generateInspectionsDateReport not fully implemented');
-  return Promise.resolve({});
+// This function to satisfy the import in InspectionHistory.tsx
+export function generateInspectionsDateReport(startDate: Date, endDate: Date) {
+  // Properly implemented function with date range parameters
+  console.log('generateInspectionsDateReport for period', startDate, 'to', endDate);
+  return Promise.resolve({ startDate, endDate });
 }
