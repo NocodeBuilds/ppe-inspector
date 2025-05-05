@@ -1,145 +1,110 @@
-import { format } from 'date-fns';
 
-// Standardized interface for inspection data across all report generators
-export interface StandardInspectionData {
-  id: string;
-  date: string;
-  type: string;
-  overall_result: string;
-  notes: string | null;
-  signature_url: string | null;
-  inspector_name: string;
-  inspector_id: string;
-  inspector_employee_id?: string;
-  inspector_role?: string;
-  inspector_department?: string;
-  ppe_type: string;
-  ppe_serial: string;
-  ppe_brand: string;
-  ppe_model: string;
-  site_name: string;
-  manufacturing_date: string;
-  expiry_date: string;
-  batch_number?: string;
-  checkpoints: {
-    id: string;
-    description: string;
-    passed: boolean | null;
-    notes: string | null;
-    photo_url: string | null;
-  }[];
-}
+import { SupabaseClient } from '@supabase/supabase-js';
+import { StandardInspectionData } from '@/utils/reportGeneratorService';
+import { safeGet } from '@/utils/safeGet';
 
-// Convert form submission data to standard format
-export const formatFromFormSubmission = (formData: any, userProfile: any): StandardInspectionData => {
-  return {
-    id: formData.id || '',
-    date: formData.date || new Date().toISOString(),
-    type: formData.type || '',
-    overall_result: formData.overall_result || '',
-    notes: formData.notes || null,
-    signature_url: formData.signature_url || null,
-    inspector_name: userProfile?.full_name || 'Unknown Inspector',
-    inspector_id: userProfile?.id || '',
-    inspector_employee_id: userProfile?.employee_id || '',
-    inspector_role: userProfile?.Employee_Role || userProfile?.role || '',
-    inspector_department: userProfile?.department || '',
-    ppe_type: formData.ppe_type || '',
-    ppe_serial: formData.ppe_serial || '',
-    ppe_brand: formData.ppe_brand || '',
-    ppe_model: formData.ppe_model || '',
-    site_name: userProfile?.site_name || 'Unknown Site',
-    manufacturing_date: formData.manufacturing_date || 'N/A',
-    expiry_date: formData.expiry_date || 'N/A',
-    batch_number: formData.batch_number || '',
-    checkpoints: Array.isArray(formData.checkpoints) ? formData.checkpoints : [],
-  };
-};
-
-// Convert database fetched data to standard format
-export const formatFromDatabaseFetch = (dbData: any): StandardInspectionData => {
-  // Handle potential missing relationships
-  const profiles = dbData.profiles || {};
-  const ppeItems = dbData.ppe_items || {};
-
-  return {
-    id: dbData.id || '',
-    date: dbData.date || new Date().toISOString(),
-    type: dbData.type || '',
-    overall_result: dbData.overall_result || '',
-    notes: dbData.notes || null,
-    signature_url: dbData.signature_url || null,
-    inspector_name: profiles.full_name || 'Unknown Inspector',
-    inspector_id: dbData.inspector_id || '',
-    inspector_employee_id: profiles.employee_id || '',
-    inspector_role: profiles.Employee_Role || profiles.role || '',
-    inspector_department: profiles.department || '',
-    ppe_type: ppeItems.type || '',
-    ppe_serial: ppeItems.serial_number || '',
-    ppe_brand: ppeItems.brand || '',
-    ppe_model: ppeItems.model_number || '',
-    site_name: profiles.site_name || 'Unknown Site',
-    manufacturing_date: ppeItems.manufacturing_date || 'N/A',
-    expiry_date: ppeItems.expiry_date || 'N/A',
-    batch_number: ppeItems.batch_number || '',
-    checkpoints: Array.isArray(dbData.checkpoints) ? dbData.checkpoints : [],
-  };
-};
-
-// Fetch complete inspection data with relationships
-export const fetchCompleteInspectionData = async (supabase: any, inspectionId: string): Promise<StandardInspectionData | null> => {
+/**
+ * Fetches and formats complete inspection data from Supabase
+ */
+export async function fetchCompleteInspectionData(supabase: SupabaseClient, inspectionId: string): Promise<StandardInspectionData | null> {
   try {
-    // First get the inspection with basic joins
-    const { data: inspection, error } = await supabase
+    // Fetch inspection with related data
+    const { data: inspectionData, error: inspectionError } = await supabase
       .from('inspections')
       .select(`
         id, date, type, overall_result, notes, signature_url, inspector_id,
-        profiles:inspector_id(*),
-        ppe_items:ppe_id(*)
+        profiles:inspector_id(full_name, site_name),
+        ppe_items:ppe_id(type, serial_number, brand, model_number, manufacturing_date, expiry_date, batch_number)
       `)
       .eq('id', inspectionId)
       .single();
     
-    if (error) throw error;
-    if (!inspection) return null;
+    if (inspectionError || !inspectionData) {
+      console.error('Error fetching inspection:', inspectionError);
+      return null;
+    }
     
-    // Then get the checkpoint results
+    // Fetch checkpoint results
     const { data: checkpointResults, error: resultsError } = await supabase
       .from('inspection_results')
       .select(`
         id, passed, notes, photo_url,
-        checkpoints:checkpoint_id(id, description)
+        inspection_checkpoints:checkpoint_id(id, description)
       `)
       .eq('inspection_id', inspectionId);
     
-    if (resultsError) throw resultsError;
+    if (resultsError) {
+      console.error('Error fetching checkpoint results:', resultsError);
+      return null;
+    }
     
-    // Format the checkpoints
-    const formattedCheckpoints = checkpointResults.map((result: any) => ({
-      id: result.checkpoints?.id || result.id,
-      description: result.checkpoints?.description || 'Unknown checkpoint',
+    // Format checkpoint data
+    const checkpoints = checkpointResults.map(result => ({
+      id: result.id,
+      description: safeGet(result.inspection_checkpoints, 'description', 'Unknown checkpoint'),
       passed: result.passed,
-      notes: result.notes || null,
-      photo_url: result.photo_url || null,
+      notes: result.notes,
+      photo_url: result.photo_url
     }));
     
-    // Add checkpoints to the inspection data
-    inspection.checkpoints = formattedCheckpoints;
+    // Create standardized inspection data
+    const standardData: StandardInspectionData = {
+      id: inspectionData.id,
+      date: inspectionData.date,
+      type: inspectionData.type,
+      overall_result: inspectionData.overall_result,
+      inspector_id: inspectionData.inspector_id || '',
+      inspector_name: safeGet(inspectionData.profiles, 'full_name', 'Unknown'),
+      site_name: safeGet(inspectionData.profiles, 'site_name', 'Unknown'),
+      ppe_type: safeGet(inspectionData.ppe_items, 'type', 'Unknown'),
+      ppe_serial: safeGet(inspectionData.ppe_items, 'serial_number', 'Unknown'),
+      ppe_brand: safeGet(inspectionData.ppe_items, 'brand', 'Unknown'),
+      ppe_model: safeGet(inspectionData.ppe_items, 'model_number', 'Unknown'),
+      manufacturing_date: safeGet(inspectionData.ppe_items, 'manufacturing_date', 'Unknown'),
+      expiry_date: safeGet(inspectionData.ppe_items, 'expiry_date', 'Unknown'),
+      batch_number: safeGet(inspectionData.ppe_items, 'batch_number', 'Unknown'),
+      notes: inspectionData.notes,
+      signature_url: inspectionData.signature_url,
+      checkpoints
+    };
     
-    // Return standardized data
-    return formatFromDatabaseFetch(inspection);
+    return standardData;
   } catch (error) {
-    console.error('Error fetching complete inspection data:', error);
+    console.error('Error in fetchCompleteInspectionData:', error);
     return null;
   }
-};
+}
 
-// Helper to ensure dates are properly formatted
-export const formatDate = (dateValue: string | Date | null | undefined): string => {
-  if (!dateValue) return 'N/A';
-  try {
-    return format(new Date(dateValue), 'dd.MM.yyyy');
-  } catch (e) {
-    return 'Invalid date';
-  }
-};
+/**
+ * Adapts inspection data with any structure to the standard format
+ */
+export function adaptToStandardFormat(inspectionData: any): StandardInspectionData {
+  // Create checkpoints array with consistent format
+  const checkpoints = (inspectionData.checkpoints || []).map((cp: any) => ({
+    id: cp.id || '',
+    description: cp.description || '',
+    passed: cp.passed !== undefined ? cp.passed : null,
+    notes: cp.notes || null,
+    photo_url: cp.photo_url || null
+  }));
+  
+  return {
+    id: inspectionData.id || '',
+    date: inspectionData.date || new Date().toISOString(),
+    type: inspectionData.type || '',
+    overall_result: inspectionData.overall_result || '',
+    inspector_id: inspectionData.inspector_id || '',
+    inspector_name: inspectionData.inspector_name || 'Unknown',
+    site_name: inspectionData.site_name || 'Unknown',
+    ppe_type: inspectionData.ppe_type || 'Unknown',
+    ppe_serial: inspectionData.ppe_serial || 'Unknown',
+    ppe_brand: inspectionData.ppe_brand || 'Unknown',
+    ppe_model: inspectionData.ppe_model || 'Unknown',
+    manufacturing_date: inspectionData.manufacturing_date || 'Unknown',
+    expiry_date: inspectionData.expiry_date || 'Unknown',
+    batch_number: inspectionData.batch_number || 'Unknown',
+    notes: inspectionData.notes || null,
+    signature_url: inspectionData.signature_url || null,
+    checkpoints: checkpoints
+  };
+}

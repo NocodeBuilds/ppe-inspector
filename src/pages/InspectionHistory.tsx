@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,10 +19,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { exportFilteredInspectionsToExcel } from '@/utils/exportUtils';
 import { generateInspectionsDateReport } from '@/utils/reportGeneratorService';
 import { Badge } from '@/components/ui/badge';
-import { fetchCompleteInspectionData } from '@/utils/reportGenerator/reportDataFormatter';
+import { fetchCompleteInspectionData, adaptToStandardFormat } from '@/utils/reportGenerator/reportDataFormatter';
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
 import { SelectedExportFilters } from '../components/reports/ExportFilterModal';
+import { safeGet } from '@/utils/safeGet';
 
 const InspectionHistory = () => {
   const [inspections, setInspections] = useState<any[]>([]);
@@ -59,11 +61,11 @@ const InspectionHistory = () => {
         date: item.date,
         type: item.type,
         overall_result: item.overall_result,
-        inspector_name: item.profiles?.full_name || 'Unknown',
-        ppe_type: item.ppe_items?.type || 'Unknown',
-        ppe_serial: item.ppe_items?.serial_number || 'Unknown',
-        ppe_brand: item.ppe_items?.brand || 'Unknown',
-        ppe_model: item.ppe_items?.model_number || 'Unknown'
+        inspector_name: safeGet(item.profiles, 'full_name', 'Unknown'),
+        ppe_type: safeGet(item.ppe_items, 'type', 'Unknown'),
+        ppe_serial: safeGet(item.ppe_items, 'serial_number', 'Unknown'),
+        ppe_brand: safeGet(item.ppe_items, 'brand', 'Unknown'),
+        ppe_model: safeGet(item.ppe_items, 'model_number', 'Unknown')
       }));
       
       setInspections(formattedInspections);
@@ -195,13 +197,17 @@ const InspectionHistory = () => {
         if (confirmDownload) {
           const format = window.confirm('Click OK for PDF or Cancel for Excel');
           if (format) {
-            await generateInspectionDetailPDF(inspectionData);
+            // Converting to standard format first
+            const standardData = adaptToStandardFormat(inspectionData);
+            await generateInspectionDetailPDF(standardData);
             toast({
               title: 'PDF Generated',
               description: 'Inspection report has been downloaded as PDF',
             });
           } else {
-            await generateInspectionExcelReport(inspectionData);
+            // Converting to standard format first
+            const standardData = adaptToStandardFormat(inspectionData);
+            await generateInspectionExcelReport(standardData);
             toast({
               title: 'Excel Generated',
               description: 'Inspection report has been downloaded as Excel',

@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { usePPEData } from '@/hooks/usePPEData';
 import PPESelectionDialog from '@/components/inspection/PPESelectionDialog';
-import { PPEItem } from '@/integrations/supabase/client';
+import { PPEItem, PPEStatus } from '@/types/ppe';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import PageHeader from '@/components/common/PageHeader';
@@ -72,10 +72,17 @@ const StartInspection = () => {
         throw new Error(`No PPE found with serial number: ${serial}`);
       }
       
-      if (ppeItems.length === 1) {
-        handlePPESelected(ppeItems[0]);
+      // Here we format the items to match our PPEItem type
+      const formattedItems = ppeItems.map(item => ({
+        ...item,
+        // Convert string status to PPEStatus enum if needed
+        status: item.status as PPEStatus 
+      }));
+      
+      if (formattedItems.length === 1) {
+        handlePPESelected(formattedItems[0] as PPEItem);
       } else {
-        setMultiplePPE(ppeItems);
+        setMultiplePPE(formattedItems as PPEItem[]);
         setProcessingQRCode(false);
       }
     } catch (error) {

@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import ExportFilterModal, { ExportFilterOptions, SelectedExportFilters } from './ExportFilterModal';
+import { safeGet } from '@/utils/safeGet';
 
 interface InspectionHistoryTableProps {
   inspections: any[];
