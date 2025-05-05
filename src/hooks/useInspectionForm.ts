@@ -127,14 +127,16 @@ export const useInspectionForm = () => {
       const finalResult = data.overallResult || calculatedResult;
       console.log('Final overall result:', finalResult);
 
+      // Ensure we have a value for result to match the required field in the database schema
       const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
         .insert({
           ppe_id: ppeId,
           inspector_id: user.id,
-          type: data.type as InspectionType,
+          type: data.type,
           date: new Date().toISOString(),
           overall_result: finalResult,
+          result: finalResult, // Added result field to match schema requirement
           signature_url: data.signatureUrl,
           notes: data.notes
         })

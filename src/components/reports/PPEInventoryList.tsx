@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Eye, ArrowUpDown, Search, ChevronDown, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { PPEItem } from '@/types/ppe';
+import { PPEItem, formatPPEItem, PPEItemFormatted } from '@/types/ppe';
 import { format } from 'date-fns';
 import {
   Dialog,
@@ -15,7 +15,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { exportFilteredPPEToExcel } from '@/utils/exportUtils';
 import ExportFilterModal, { ExportFilterOptions, SelectedExportFilters } from './ExportFilterModal';
@@ -30,11 +29,12 @@ const ppeExportFilters: ExportFilterOptions = {
 
 const PPEInventoryList = () => {
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
+  const [formattedItems, setFormattedItems] = useState<PPEItemFormatted[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<keyof PPEItem | string>('createdAt');
+  const [sortField, setSortField] = useState<keyof PPEItemFormatted | string>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [selectedItem, setSelectedItem] = useState<PPEItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<PPEItemFormatted | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const navigate = useNavigate();
@@ -43,6 +43,12 @@ const PPEInventoryList = () => {
   useEffect(() => {
     fetchPPEItems();
   }, []);
+  
+  useEffect(() => {
+    // Convert snake_case from database to camelCase for frontend
+    const formatted = ppeItems.map(formatPPEItem);
+    setFormattedItems(formatted);
+  }, [ppeItems]);
 
   const fetchPPEItems = async () => {
     setIsLoading(true);
@@ -69,7 +75,7 @@ const PPEInventoryList = () => {
     }
   };
 
-  const handleSort = (field: keyof PPEItem | string) => {
+  const handleSort = (field: keyof PPEItemFormatted | string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -78,11 +84,11 @@ const PPEInventoryList = () => {
     }
   };
 
-  const processedItems = ppeItems
+  const processedItems = formattedItems
     .filter(item => {
       const statusMatch = statusFilter === 'all' || item.status?.toLowerCase() === statusFilter;
 
-      if (!searchTerm) return true;
+      if (!searchTerm) return statusMatch;
       const searchLower = searchTerm.toLowerCase();
       const searchMatch = (
         item.serialNumber?.toLowerCase().includes(searchLower) ||
@@ -95,8 +101,8 @@ const PPEInventoryList = () => {
       return statusMatch && searchMatch; 
     })
     .sort((a, b) => {
-      const fieldA = a[sortField as keyof PPEItem];
-      const fieldB = b[sortField as keyof PPEItem];
+      const fieldA = a[sortField as keyof PPEItemFormatted];
+      const fieldB = b[sortField as keyof PPEItemFormatted];
 
       if (sortField === 'nextInspection' || sortField === 'createdAt' || sortField === 'updatedAt' || sortField === 'manufacturingDate' || sortField === 'expiryDate') {
         const dateA = fieldA ? new Date(fieldA as string).getTime() : 0;
@@ -114,7 +120,7 @@ const PPEInventoryList = () => {
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
-  const handleShowDetails = (item: PPEItem) => {
+  const handleShowDetails = (item: PPEItemFormatted) => {
     setSelectedItem(item);
   };
 
@@ -123,7 +129,8 @@ const PPEInventoryList = () => {
     toast({ title: "Exporting PPE Inventory...", description: "Generating Excel file." });
 
     try {
-      let dataToExport = ppeItems.filter(item => {
+      // Convert back to database format for export
+      const dataToExport = ppeItems.filter(item => {
         if (filters.status && item.status?.toLowerCase() !== filters.status.toLowerCase()) {
           return false;
         }
@@ -319,13 +326,10 @@ const PPEInventoryList = () => {
                    {selectedItem.createdAt ? format(new Date(selectedItem.createdAt), 'MMM d, yyyy') : 'N/A'}
                  </span>
               </div>
-              {/* Add more details as needed */}
             </div>
           )}
-          {/* Optional: Add DialogFooter with actions like Close */}
         </DialogContent>
       </Dialog>
-
     </div>
   );
 };

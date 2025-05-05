@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,7 +22,7 @@ import { fetchCompleteInspectionData } from '@/utils/reportGenerator/reportDataF
 import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
 import { SelectedExportFilters } from './ExportFilterModal';
-import { safeGet, isNotEmpty } from '@/utils/safeGet';
+import { safeGet } from '@/utils/safeGet';
 
 const InspectionHistory = () => {
   const [inspections, setInspections] = useState<any[]>([]);
@@ -56,17 +55,27 @@ const InspectionHistory = () => {
       
       if (error) throw error;
       
-      const formattedInspections = data.map(item => ({
-        id: item.id,
-        date: item.date,
-        type: item.type,
-        overall_result: item.overall_result,
-        inspector_name: safeGet(item.profiles, 'full_name', 'Unknown'),
-        ppe_type: safeGet(item.ppe_items, 'type', 'Unknown'),
-        ppe_serial: safeGet(item.ppe_items, 'serial_number', 'Unknown'),
-        ppe_brand: safeGet(item.ppe_items, 'brand', 'Unknown'),
-        ppe_model: safeGet(item.ppe_items, 'model_number', 'Unknown')
-      }));
+      const formattedInspections = data.map(item => {
+        const profiles = item.profiles as { full_name?: string } | null;
+        const ppeItems = item.ppe_items as { 
+          type?: string; 
+          serial_number?: string; 
+          brand?: string; 
+          model_number?: string; 
+        } | null;
+        
+        return {
+          id: item.id,
+          date: item.date,
+          type: item.type,
+          overall_result: item.overall_result,
+          inspector_name: profiles?.full_name || 'Unknown',
+          ppe_type: ppeItems?.type || 'Unknown',
+          ppe_serial: ppeItems?.serial_number || 'Unknown',
+          ppe_brand: ppeItems?.brand || 'Unknown',
+          ppe_model: ppeItems?.model_number || 'Unknown'
+        };
+      });
       
       setInspections(formattedInspections);
     } catch (error: any) {

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PPEItem, PPEStatus } from '@/integrations/supabase/client';
@@ -25,7 +24,7 @@ export function usePPEData() {
     model_number: string;
     manufacturing_date: string;
     expiry_date: string;
-    batch_number?: number;
+    batch_number?: string | number;
     first_use?: string;
     imageFile?: File;
   }) => {
@@ -54,6 +53,9 @@ export function usePPEData() {
         imageUrl = publicUrlData.publicUrl;
       }
 
+      // Convert batch_number to string if it's a number
+      const batchNumberStr = batch_number !== undefined ? String(batch_number) : undefined;
+
       const { data, error } = await supabase
         .from('ppe_items')
         .insert([
@@ -65,7 +67,7 @@ export function usePPEData() {
             manufacturing_date,
             expiry_date,
             image_url: imageUrl,
-            batch_number,
+            batch_number: batchNumberStr,
             first_use,
           },
         ])

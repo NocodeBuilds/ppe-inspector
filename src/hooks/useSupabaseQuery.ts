@@ -1,107 +1,100 @@
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { PostgrestFilterBuilder, PostgrestError } from '@supabase/postgrest-js';
 
-interface QueryOptions {
-  enabled?: boolean;
-  staleTime?: number;
+type UseSupabaseQueryOptions<T> = {
   cacheTime?: number;
-  refetchOnWindowFocus?: boolean;
+  enabled?: boolean;
+  onError?: (error: PostgrestError) => void;
+  onSuccess?: (data: T[]) => void;
+};
+
+type QueryKey = [string, Record<string, any>?];
+
+/**
+ * A hook to fetch data from Supabase
+ */
+export function useSupabaseQuery<T = any>(
+  queryKey: QueryKey,
+  queryFn: () => PostgrestFilterBuilder<T>,
+  options: UseSupabaseQueryOptions<T> = {}
+) {
+  const [data, setData] = useState<T[] | null>(null);
+  const [error, setError] = useState<PostgrestError | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefetching, setIsRefetching] = useState(false);
+
+  const { cacheTime = 5 * 60 * 1000, enabled = true, onError, onSuccess } = options;
+
+  const fetchData = async (isRefetch = false) => {
+    if (!enabled) return;
+
+    if (isRefetch) {
+      setIsRefetching(true);
+    } else {
+      setIsLoading(true);
+    }
+
+    try {
+      const query = queryFn();
+      const { data: result, error: queryError } = await query;
+
+      if (queryError) {
+        setError(queryError);
+        if (onError) onError(queryError);
+      } else {
+        setData(result as T[]);
+        if (onSuccess) onSuccess(result as T[]);
+      }
+    } catch (err: any) {
+      const postgrestError = {
+        message: err.message || 'An unknown error occurred',
+        details: '',
+        hint: '',
+        code: '',
+      } as PostgrestError;
+      
+      setError(postgrestError);
+      if (onError) onError(postgrestError);
+    } finally {
+      setIsLoading(false);
+      setIsRefetching(false);
+    }
+  };
+
+  useEffect(() => {
+    if (enabled) {
+      fetchData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey[0], JSON.stringify(queryKey[1]), enabled]);
+
+  const refetch = () => fetchData(true);
+
+  return {
+    data,
+    error,
+    isLoading: isLoading && !isRefetching,
+    isRefetching,
+    refetch,
+  };
 }
 
-/**
- * Custom hook for querying Supabase data with React Query
- */
-export const useSupabaseQuery = <T>(
-  queryKey: string[], 
-  queryFn: () => Promise<T>,
-  options: QueryOptions = {}
-) => {
-  const { toast } = useToast();
-  
-  return useQuery({
-    queryKey,
-    queryFn,
-    staleTime: options.staleTime || 5 * 60 * 1000, // 5 minutes
-    gcTime: options.cacheTime || 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: options.refetchOnWindowFocus ?? false,
-    enabled: options.enabled,
-    meta: {
-      errorHandler: (error: any) => {
-        console.error(`Query error (${queryKey.join('/')}):`, error);
-        toast({
-          title: 'Error fetching data',
-          description: error.message || 'An error occurred while fetching data',
-          variant: 'destructive',
-        });
-      }
-    }
-  });
-};
+// Example of a custom profile query that will be adapted to work with our schema
+export function useProfileQuery(userId: string | null | undefined, options = {}) {
+  return useSupabaseQuery(
+    ['profile', { userId }],
+    () => supabase.from('profiles').select('*').eq('id', userId || '').single(),
+    options
+  );
+}
 
-/**
- * Custom hook for mutating Supabase data with React Query
- */
-export const useSupabaseMutation = <T, U>(
-  mutationFn: (data: U) => Promise<T>,
-  options: {
-    onSuccess?: (data: T) => void;
-    onError?: (error: any) => void;
-    invalidateQueries?: string[][];
-  } = {}
-) => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  
-  return useMutation({
-    mutationFn,
-    onSuccess: (data) => {
-      // Invalidate queries if specified
-      if (options.invalidateQueries) {
-        options.invalidateQueries.forEach(queryKey => {
-          queryClient.invalidateQueries({ queryKey });
-        });
-      }
-      
-      // Call custom onSuccess if provided
-      if (options.onSuccess) {
-        options.onSuccess(data);
-      }
-    },
-    onError: (error: any) => {
-      console.error('Mutation error:', error);
-      
-      // Show toast notification
-      toast({
-        title: 'Error',
-        description: error.message || 'An error occurred',
-        variant: 'destructive',
-      });
-      
-      // Call custom onError if provided
-      if (options.onError) {
-        options.onError(error);
-      }
-    }
-  });
-};
-
-// Utility functions for common Supabase operations
-export const fetchProfileData = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-    
-  if (error) throw error;
-  return data;
-};
-
-export const fetchExtendedProfileData = async () => {
-  const { data, error } = await supabase.rpc('get_extended_profile');
-  
-  if (error && error.code !== 'PGRST116') throw error;
-  return data;
-};
+// Adapt the function to handle null values and simplify implementation
+export function useExtendedProfileQuery(userId: string | null | undefined, options = {}) {
+  return useSupabaseQuery(
+    ['extended_profile', { userId }],
+    () => supabase.from('profiles').select('*').eq('id', userId || '').single(),
+    options
+  );
+}

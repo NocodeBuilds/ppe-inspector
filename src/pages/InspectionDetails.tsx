@@ -97,8 +97,7 @@ const InspectionDetails = () => {
           notes,
           signature_url,
           inspector_id,
-          profiles(full_name, site_name),
-          ppe_items(type, serial_number, brand, model_number, manufacturing_date, expiry_date, batch_number)
+          ppe_id
         `)
         .eq('id', inspectionId)
         .single();
@@ -109,6 +108,30 @@ const InspectionDetails = () => {
         throw new Error('Inspection not found');
       }
       
+      // Fetch profile data separately
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, site_name')
+        .eq('id', inspectionData.inspector_id)
+        .single();
+        
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        // Continue even if profile fetch fails
+      }
+      
+      // Fetch PPE data separately
+      const { data: ppeData, error: ppeError } = await supabase
+        .from('ppe_items')
+        .select('type, serial_number, brand, model_number, manufacturing_date, expiry_date, batch_number')
+        .eq('id', inspectionData.ppe_id)
+        .single();
+        
+      if (ppeError) {
+        console.error('Error fetching PPE item:', ppeError);
+        // Continue even if PPE fetch fails
+      }
+      
       const { data: checkpointsData, error: checkpointsError } = await supabase
         .from('inspection_results')
         .select(`
@@ -116,7 +139,7 @@ const InspectionDetails = () => {
           passed,
           notes,
           photo_url,
-          inspection_checkpoints(id, description)
+          inspection_checkpoints:checkpoint_id(id, description)
         `)
         .eq('inspection_id', inspectionId);
       
@@ -127,39 +150,34 @@ const InspectionDetails = () => {
         description: result.inspection_checkpoints?.description || 'Unknown checkpoint',
         passed: result.passed,
         notes: result.notes,
-        photo_url: result.photo_url,
+        photo_url: result.photo_url
       })) || [];
       
-      const detailedInspection: InspectionDetails = {
+      // Construct the inspection details from separate queries
+      setInspection({
         id: inspectionData.id,
         date: inspectionData.date,
         type: inspectionData.type,
         overall_result: inspectionData.overall_result,
         notes: inspectionData.notes,
         signature_url: inspectionData.signature_url,
-        inspector_id: inspectionData.inspector_id || '',
-        inspector_name: inspectionData.profiles?.full_name || 'Unknown',
-        ppe_type: inspectionData.ppe_items?.type || 'Unknown',
-        ppe_serial: inspectionData.ppe_items?.serial_number || 'Unknown',
-        ppe_brand: inspectionData.ppe_items?.brand || 'Unknown',
-        ppe_model: inspectionData.ppe_items?.model_number || 'Unknown',
-        site_name: inspectionData.profiles?.site_name || 'Unknown Site',
-        manufacturing_date: inspectionData.ppe_items?.manufacturing_date || 'N/A',
-        expiry_date: inspectionData.ppe_items?.expiry_date || 'N/A',
-        batch_number: inspectionData.ppe_items?.batch_number ? String(inspectionData.ppe_items.batch_number) : 'N/A',
-        checkpoints: formattedCheckpoints,
-      };
+        inspector_name: profileData?.full_name || 'Unknown Inspector',
+        inspector_id: inspectionData.inspector_id,
+        ppe_type: ppeData?.type || 'Unknown',
+        ppe_serial: ppeData?.serial_number || 'Unknown',
+        ppe_brand: ppeData?.brand || 'Unknown',
+        ppe_model: ppeData?.model_number || 'Unknown',
+        site_name: profileData?.site_name || 'Unknown',
+        manufacturing_date: ppeData?.manufacturing_date || 'Unknown',
+        expiry_date: ppeData?.expiry_date || 'Unknown',
+        batch_number: ppeData?.batch_number || 'Unknown',
+        checkpoints: formattedCheckpoints
+      });
       
-      setInspection(detailedInspection);
+      setIsLoading(false);
     } catch (error: any) {
       console.error('Error fetching inspection details:', error);
       setError(error.message || 'Failed to load inspection details');
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to load inspection details',
-        variant: 'destructive',
-      });
-    } finally {
       setIsLoading(false);
     }
   };

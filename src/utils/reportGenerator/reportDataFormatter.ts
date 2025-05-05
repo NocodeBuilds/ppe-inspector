@@ -3,6 +3,9 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { StandardInspectionData } from '@/utils/reportGeneratorService';
 import { safeGet } from '@/utils/safeGet';
 
+// Export the StandardInspectionData interface for use in other files
+export type { StandardInspectionData };
+
 /**
  * Fetches and formats complete inspection data from Supabase
  */

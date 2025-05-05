@@ -103,6 +103,27 @@ export const generateInspectionsDateReport = async (
   }
 };
 
+/**
+ * Generate a report for a specific PPE item
+ */
+export const generatePPEItemReport = async (ppeId: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`/api/reports/ppe/${ppeId}`);
+    if (!response.ok) {
+      throw new Error('Failed to generate PPE report');
+    }
+    
+    const blob = await response.blob();
+    const filename = `PPE_Report_${ppeId.substring(0, 8)}_${formatDateForFilename(new Date())}.xlsx`;
+    saveAs(blob, filename);
+    
+    return true;
+  } catch (error) {
+    console.error('Error generating PPE item report:', error);
+    return false;
+  }
+};
+
 // Helper function to format dates
 function formatDate(dateStr: string | Date): string {
   const date = dateStr instanceof Date ? dateStr : new Date(dateStr);

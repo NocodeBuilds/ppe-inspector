@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Delete, Info, Loader2, X, AlertTriangle } from 'lucide-react';
@@ -17,7 +17,7 @@ import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionD
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
 import { cn } from '@/lib/utils';
 import { getStandardCheckpoints } from '@/services/checkpointService';
-import { StandardInspectionData } from '@/utils/reportGenerator/reportDataFormatter';
+import { StandardInspectionData } from '@/utils/reportGeneratorService';
 
 const toPPEType = (typeString: string) => {
   const validTypes = [
@@ -442,6 +442,7 @@ const InspectionForm = () => {
           type: inspectionTypeEnum,
           date: new Date().toISOString(),
           overall_result: overallResult || 'pass',
+          result: overallResult || 'pass', // Added result field to match schema requirement
           notes: notes,
           signature_url: signature,
           inspector_id: user.id,
