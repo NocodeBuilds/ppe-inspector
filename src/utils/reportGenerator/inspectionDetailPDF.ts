@@ -1,4 +1,4 @@
-import { ExtendedJsPDF, createPDFDocument, addPDFHeader, addPDFFooter, addSectionTitle, addDataTable, formatDateOrNA, addSignatureToPDF } from '../pdfUtils';
+import { ExtendedJsPDF, createPDFDocument, addPDFHeader, addPDFFooter, addSectionTitle, addDataTable, addSignatureToPDF } from '../pdfUtils';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable, { FontStyle, HAlignType, CellInput, RowInput, Color } from 'jspdf-autotable';
@@ -132,12 +132,12 @@ export const generateInspectionDetailPDF = async (inspection: StandardInspection
     ],
     [
       { content: "ROLE:", styles: { fontStyle: 'bold' } },
-      { content: inspection.inspector_role || "Inspector" },
+      { content: inspection.inspector_role || "N/A" },
       { content: "DEPARTMENT:", styles: { fontStyle: 'bold' } },
-      { content: "Safety" }
+      { content: inspection.inspector_department || "N/A" }
     ]
   ];
-
+  
   autoTable(doc as any, {
     startY: finalY,
     body: inspectorData,
@@ -344,6 +344,6 @@ export const generateInspectionDetailPDF = async (inspection: StandardInspection
   }
   
   // Save the PDF
-  const filename = `inspection_${inspection.ppe_serial}_${format(new Date(inspection.date), 'yyyyMMdd')}.pdf`;
+  const filename = `inspection_${inspection.id}.pdf`;
   doc.save(filename);
 };

@@ -1,3 +1,4 @@
+
 export type PPEType =
   | 'Full Body Harness'
   | 'Fall Arrester'
@@ -12,30 +13,9 @@ export type PPEType =
   | 'Face Shield'
   | string;
 
-export type PPEStatus =
-  | 'active'
-  | 'expired'
-  | 'flagged'
-  | 'due'
-  | 'inspected'
-  | 'out-of-service'
-  | 'maintenance';
-
-export interface PPEItem {
-  id: string;
-  serialNumber: string;
-  type: PPEType;
-  brand: string;
-  modelNumber: string;
-  manufacturingDate: string;
-  expiryDate: string;
-  status: PPEStatus;
-  imageUrl?: string | null;
-  nextInspection?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  latestInspection?: any;
-}
+// Re-export types from ppe.ts
+export type { PPEItem, PPEItemFormatted, PPEStatus } from './ppe';
+export { formatPPEItem } from './ppe';
 
 export interface InspectionCheckpoint {
   id: string;
@@ -49,7 +29,7 @@ export interface InspectionResult {
   inspectionId?: string;
   checkpointId: string;
   checkpointDescription: string;
-  passed: boolean;
+  passed: boolean | null;
   notes?: string;
   photoUrl?: string;
 }
@@ -77,7 +57,7 @@ export interface ExtendedProfile {
   id: string;
   userId: string;
   employeeId?: string | null;
-  siteName?: string | null;  // Updated from location to siteName
+  siteName?: string | null;
   department?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -98,11 +78,11 @@ export type UserProfile = {
   email?: string | null;
   full_name?: string | null;
   avatar_url?: string | null;
-  role?: string | null;
+  role?: 'admin' | 'inspector' | 'user' | null;
   employee_id?: string | null;
   site_name?: string | null;
   department?: string | null;
-  Employee_Role?: string | null;
+  employee_role?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };

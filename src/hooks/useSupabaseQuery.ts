@@ -17,13 +17,14 @@ type QueryKey = [string, Record<string, any>?];
  */
 export function useSupabaseQuery<T = any>(
   queryKey: QueryKey,
-  queryFn: () => PostgrestFilterBuilder<T>,
+  queryFn: () => PostgrestFilterBuilder<any, T, any>,
   options: UseSupabaseQueryOptions<T> = {}
 ) {
   const [data, setData] = useState<T[] | null>(null);
   const [error, setError] = useState<PostgrestError | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefetching, setIsRefetching] = useState(false);
+  const [isError, setIsError] = useState(false);
 
   const { cacheTime = 5 * 60 * 1000, enabled = true, onError, onSuccess } = options;
 
@@ -42,9 +43,11 @@ export function useSupabaseQuery<T = any>(
 
       if (queryError) {
         setError(queryError);
+        setIsError(true);
         if (onError) onError(queryError);
       } else {
         setData(result as T[]);
+        setIsError(false);
         if (onSuccess) onSuccess(result as T[]);
       }
     } catch (err: any) {
@@ -56,6 +59,7 @@ export function useSupabaseQuery<T = any>(
       } as PostgrestError;
       
       setError(postgrestError);
+      setIsError(true);
       if (onError) onError(postgrestError);
     } finally {
       setIsLoading(false);
@@ -77,7 +81,58 @@ export function useSupabaseQuery<T = any>(
     error,
     isLoading: isLoading && !isRefetching,
     isRefetching,
+    isError,
     refetch,
+  };
+}
+
+/**
+ * Options for useSupabaseMutation hook
+ */
+type UseSupabaseMutationOptions<T> = {
+  onSuccess?: (data: T) => void;
+  onError?: (error: any) => void;
+  invalidateQueries?: QueryKey[];
+};
+
+/**
+ * A hook to perform mutations (create, update, delete) with Supabase
+ */
+export function useSupabaseMutation<TResult = any, TVariables = any>(
+  mutationFn: (variables: TVariables) => Promise<TResult>,
+  options: UseSupabaseMutationOptions<TResult> = {}
+) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
+  const [data, setData] = useState<TResult | null>(null);
+
+  const mutate = async (variables: TVariables) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await mutationFn(variables);
+      setData(result);
+      if (options.onSuccess) {
+        options.onSuccess(result);
+      }
+      return result;
+    } catch (err) {
+      setError(err);
+      if (options.onError) {
+        options.onError(err);
+      }
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    mutate,
+    isLoading,
+    error,
+    data,
   };
 }
 

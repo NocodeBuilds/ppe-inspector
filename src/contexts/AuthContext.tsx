@@ -1,86 +1,135 @@
 
-import React, { createContext, useEffect, ReactNode, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
-import { Profile } from '@/integrations/supabase/client';
-import { useAuthSession } from '@/hooks/useAuthSession';
 import { useProfile } from '@/hooks/useProfile';
-import { useAuthActions } from '@/hooks/useAuthActions';
-import { toast } from '@/hooks/use-toast';
-type AuthContextType = {
-  session: Session | null;
+import { UserProfile } from '@/types';
+
+interface AuthContextType {
   user: User | null;
-  profile: Profile | null;
-  isLoading: boolean;
+  session: Session | null;
+  loading: boolean;
+  error: string | null;
+  profile: UserProfile | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signUp: (email: string, password: string, metadata?: object) => Promise<void>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  refreshProfile: () => Promise<void>;
-  updatePassword: (newPassword: string) => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<any>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  // Use React.useState to ensure React is available
-  const [initialized, setInitialized] = React.useState(false);
-  
-  // Use our custom hooks to separate concerns
-  const { session, user, isLoading: sessionLoading } = useAuthSession();
-  const { profile, refreshProfile, isLoading: profileLoading } = useProfile(user?.id);
+  // Use the profile hook to manage profile data
   const { 
-    isLoading: authActionsLoading, 
-    signIn, 
-    signUp, 
-    signOut, 
-    resetPassword, 
-    updatePassword 
-  } = useAuthActions();
+    profile, 
+    loading: profileLoading, 
+    error: profileError,
+    updateProfile,
+    fetchProfile 
+  } = useProfile();
 
-  // Combined loading state
-  const isLoading = sessionLoading || profileLoading || authActionsLoading;
-  
-  // Set initialized after first render
   useEffect(() => {
-    setInitialized(true);
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
-  
-  // Log role for debugging
-  useEffect(() => {
-    if (profile && profile.role) {
-      console.log(`User role loaded from profile: ${profile.role}`);
-    }
-  }, [profile]);
-  
-  // Check if profile is missing when user is authenticated
-  useEffect(() => {
-    // Wait for loading to complete
-    if (isLoading) return;
-    
-    // If user is logged in but no profile found
-    if (user && !profile && !sessionLoading && !profileLoading) {
-      console.error("User authenticated but profile not found. This may indicate a database issue.");
-      toast({
-        title: "Profile Error",
-        description: "Your user profile could not be loaded. Please contact support.",
-        variant: "destructive",
-      });
-    }
-  }, [user, profile, isLoading, sessionLoading, profileLoading]);
 
-  // Create the combined auth context value
-  const value: AuthContextType = {
-    session,
-    user,
-    profile,
-    isLoading,
-    signIn,
-    signUp,
-    signOut,
-    resetPassword,
-    refreshProfile,
-    updatePassword,
+  const signIn = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Error signing in:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  const signUp = async (email: string, password: string, metadata = {}) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: metadata,
+        },
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Error signing up:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Error signing out:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Combine loading states
+  const isLoading = loading || profileLoading;
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading: isLoading,
+        error: error || profileError,
+        profile,
+        signIn,
+        signUp,
+        signOut,
+        updateProfile,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};

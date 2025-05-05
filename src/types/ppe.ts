@@ -1,5 +1,10 @@
 
-import { PPEStatus } from '@/integrations/supabase/client';
+import { PPEStatus as SupabasePPEStatus } from '@/integrations/supabase/client';
+
+/**
+ * Type for PPE status
+ */
+export type PPEStatus = SupabasePPEStatus;
 
 /**
  * Type for PPE Item data structure - aligned with database schema

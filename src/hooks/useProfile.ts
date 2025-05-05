@@ -51,7 +51,7 @@ export const useProfile = () => {
           employee_id: data.employee_id,
           site_name: data.site_name,
           department: data.department,
-          employee_role: data.employee_role, // Using employee_role instead of Employee_Role
+          employee_role: data.employee_role,
           createdAt: data.created_at,
           updatedAt: data.updated_at
         });
@@ -70,9 +70,19 @@ export const useProfile = () => {
       setLoading(true);
       setError(null);
 
+      // Map camelCase profile properties to snake_case if needed
+      const dbUpdates: any = {};
+      if (updates.full_name !== undefined) dbUpdates.full_name = updates.full_name;
+      if (updates.avatar_url !== undefined) dbUpdates.avatar_url = updates.avatar_url;
+      if (updates.role !== undefined) dbUpdates.role = updates.role;
+      if (updates.employee_id !== undefined) dbUpdates.employee_id = updates.employee_id;
+      if (updates.site_name !== undefined) dbUpdates.site_name = updates.site_name;
+      if (updates.department !== undefined) dbUpdates.department = updates.department;
+      if (updates.employee_role !== undefined) dbUpdates.employee_role = updates.employee_role;
+
       const { data, error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update(dbUpdates)
         .eq('id', user.id)
         .select()
         .single();

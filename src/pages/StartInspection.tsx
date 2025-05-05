@@ -1,3 +1,5 @@
+
+// Import PPEStatus directly from types to fix the issue
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { usePPEData } from '@/hooks/usePPEData';
 import PPESelectionDialog from '@/components/inspection/PPESelectionDialog';
-import { PPEItem, PPEStatus } from '@/types/ppe';
+import { PPEItem, PPEStatus } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import PageHeader from '@/components/common/PageHeader';

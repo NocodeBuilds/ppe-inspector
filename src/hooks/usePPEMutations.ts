@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useSupabaseMutation } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
-import { PPEItem, PPEStatus } from '@/integrations/supabase/client';
+import { PPEItem, PPEStatus } from '@/types';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
 

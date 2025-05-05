@@ -1,32 +1,45 @@
 
 /**
- * Safely access nested properties from objects that might be null, undefined,
- * or have a different shape than expected.
+ * Safely get a property from an object that might be null/undefined
  * 
- * @param obj The object to access properties from
- * @param defaultValue The default value to return if the property doesn't exist
+ * @param obj The object to get a property from
+ * @param path The property path to get
+ * @param defaultValue A default value if the property doesn't exist
  * @returns The property value or the default value
  */
-export function safeGet<T, K extends keyof T>(obj: T | null | undefined, key: K, defaultValue: T[K]): T[K] {
-  if (!obj || obj[key] === undefined || obj[key] === null) {
-    return defaultValue;
-  }
-  return obj[key];
+export function safeGet<T, K extends keyof T>(
+  obj: T | null | undefined,
+  path: K,
+  defaultValue: any = undefined
+): any {
+  if (obj == null) return defaultValue;
+  const value = obj[path];
+  return value === undefined ? defaultValue : value;
 }
 
 /**
- * Type guard to check if an object is not empty
+ * Safely get a nested property from an object that might be null/undefined
+ * 
+ * @param obj The object to get a property from 
+ * @param path The property path (e.g. 'user.profile.name')
+ * @param defaultValue A default value if the property doesn't exist
+ * @returns The property value or the default value
  */
-export function isNotEmpty<T extends object>(obj: T | {} | null | undefined): obj is T {
-  return obj !== null && obj !== undefined && Object.keys(obj).length > 0;
-}
-
-/**
- * Safely access possibly non-existent nested objects
- */
-export function safeObject<T extends object>(obj: T | {} | null | undefined, defaultValue: T): T {
-  if (isNotEmpty(obj)) {
-    return obj;
+export function safeGetNested(
+  obj: any,
+  path: string,
+  defaultValue: any = undefined
+): any {
+  if (obj == null) return defaultValue;
+  
+  const keys = path.split('.');
+  let result = obj;
+  
+  for (const key of keys) {
+    if (result == null) return defaultValue;
+    result = result[key];
+    if (result === undefined) return defaultValue;
   }
-  return defaultValue;
+  
+  return result;
 }
