@@ -62,7 +62,7 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
       // Convert firstUseDate to ISO string if it exists
       const firstUseDate = data.firstUseDate ? data.firstUseDate.toISOString() : undefined;
       
-      // Fixed: Ensure batch_number is passed as string
+      // Ensure batch_number is passed as string
       await createPPE({
         brand: data.brand,
         type: data.type,
@@ -70,7 +70,7 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
         model_number: data.modelNumber,
         manufacturing_date: data.manufacturingDate.toISOString(),
         expiry_date: data.expiryDate.toISOString(),
-        batch_number: data.batchNumber ? String(data.batchNumber) : undefined, // Ensure it's a string
+        batch_number: data.batchNumber ? String(data.batchNumber) : undefined, // Convert to string
         first_use: firstUseDate,
         imageFile: imageFile || undefined
       });

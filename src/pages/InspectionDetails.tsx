@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,7 +53,7 @@ interface InspectionDetails {
   type: string;
   overall_result: string;
   notes: string | null;
-  signature_data?: string | null; // Changed from signature_url to signature_data
+  signature_data?: string | null;
   inspector_id: string;
   inspector_name: string;
   ppe_type: string;
@@ -66,14 +67,15 @@ interface InspectionDetails {
   checkpoints: InspectionCheckpoint[];
 }
 
-// Define the StandardInspectionData type to match the expected type in generateInspectionDetailPDF and generateInspectionExcelReport
+// Define the StandardInspectionData type to match the expected type in report generator
 interface StandardInspectionData {
   id: string;
   date: string;
   type: string;
   overall_result: string;
   notes: string | null;
-  signature_data: string | null; // Changed to match our actual data
+  signature_data: string | null;
+  signature_url?: string | null; // Added for compatibility with the report generator
   inspector_id: string;
   inspector_name: string;
   ppe_type: string;
@@ -108,7 +110,7 @@ const InspectionDetails = () => {
       setIsLoading(true);
       setError(null);
       
-      // Modify the select statement to check if signature_data exists (NOT signature_url)
+      // Modify the select statement to use signature_data instead of signature_url
       const { data: inspectionData, error: inspectionError } = await supabase
         .from('inspections')
         .select(`
@@ -170,7 +172,7 @@ const InspectionDetails = () => {
         type: inspectionData.type,
         overall_result: inspectionData.overall_result || 'Unknown',
         notes: inspectionData.notes,
-        signature_data: inspectionData.signature_data, // Using signature_data instead of signature_url
+        signature_data: inspectionData.signature_data,
         inspector_id: inspectionData.inspector_id || '',
         inspector_name: inspectionData.profiles?.full_name || 'Unknown',
         ppe_type: inspectionData.ppe_items?.type || 'Unknown',
@@ -206,7 +208,8 @@ const InspectionDetails = () => {
       // Convert InspectionDetails to StandardInspectionData
       const standardData: StandardInspectionData = {
         ...inspection,
-        signature_data: inspection.signature_data || null // Ensure it's not undefined
+        signature_data: inspection.signature_data || null,
+        signature_url: inspection.signature_data || null // Map signature_data to signature_url for compatibility
       };
       await generateInspectionDetailPDF(standardData);
       toast({
@@ -233,7 +236,8 @@ const InspectionDetails = () => {
       // Convert InspectionDetails to StandardInspectionData
       const standardData: StandardInspectionData = {
         ...inspection,
-        signature_data: inspection.signature_data || null // Ensure it's not undefined
+        signature_data: inspection.signature_data || null,
+        signature_url: inspection.signature_data || null // Map signature_data to signature_url for compatibility
       };
       await generateInspectionExcelReport(standardData);
       toast({
@@ -546,13 +550,13 @@ const InspectionDetails = () => {
         </Card>
       </div>
       
-      {inspection.signature_url && (
+      {inspection.signature_data && (
         <Card>
           <CardContent className="p-4">
             <h3 className="text-sm font-semibold mb-2">Inspector Signature</h3>
             <div className="border rounded-md p-4 bg-muted/30">
               <img 
-                src={inspection.signature_url} 
+                src={inspection.signature_data} 
                 alt="Inspector signature" 
                 className="max-h-20 mx-auto"
               />

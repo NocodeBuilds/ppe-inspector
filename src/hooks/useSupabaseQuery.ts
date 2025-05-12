@@ -19,20 +19,22 @@ export function useSupabaseQuery<TData = unknown, TError = unknown>(
     queryKey,
     queryFn,
     ...restOptions,
-    onError: (error: any) => {
-      console.error('Query Error:', error);
-      
-      if (showErrorToast) {
-        toast({
-          title: errorToastTitle,
-          description: errorToastDescription || error?.message || 'An error occurred',
-          variant: 'destructive',
-        });
+    onSettled: (data, error) => {
+      if (error) {
+        console.error('Query Error:', error);
+        
+        if (showErrorToast) {
+          toast({
+            title: errorToastTitle,
+            description: errorToastDescription || (error as Error)?.message || 'An error occurred',
+            variant: 'destructive',
+          });
+        }
       }
       
-      // Call the original onError if provided
-      if (restOptions.onError) {
-        (restOptions.onError as Function)(error);
+      // Call the original onSettled if provided
+      if (restOptions.onSettled) {
+        restOptions.onSettled(data, error);
       }
     }
   });

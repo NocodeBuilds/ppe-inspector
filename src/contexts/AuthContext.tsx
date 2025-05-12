@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshProfile = async (): Promise<void> => {
     if (user?.id) {
       await fetchProfile();
+      return;
     }
   };
 

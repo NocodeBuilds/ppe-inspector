@@ -30,7 +30,7 @@ export const exportPPEItemsToExcel = async () => {
         'Manufacturing Date': formatDateOrNA(item.manufacturing_date),
         'Expiry Date': formatDateOrNA(item.expiry_date),
         'Status': item.status,
-        'Last Inspection': formatDateOrNA(item.last_inspection),
+        'Last Inspection': formatDateOrNA(item.next_inspection),
         'Next Inspection': formatDateOrNA(item.next_inspection)
       }));
       
@@ -62,7 +62,7 @@ export const exportInspectionsToExcel = async () => {
     if (error) throw error;
     
     if (data && data.length > 0) {
-      // Format data for Excel
+      // Format data for Excel with safe property access
       const formattedData = data.map(item => ({
         'Date': formatDateOrNA(item.date),
         'Type': item.type,
@@ -367,7 +367,7 @@ export const formatPPEDataForExport = (item: any) => {
     'Status': item.status || '',
     'Batch Number': item.batch_number || '',
     'First Use Date': formatDate(item.first_use_date),
-    'Next Inspection': formatDate(item.next_inspection || ''), // Changed from last_inspection to next_inspection
+    'Next Inspection': formatDate(item.next_inspection || ''), // Using next_inspection consistently
   };
 };
 
@@ -381,7 +381,7 @@ export const formatInspectionDataForExport = (inspection: any) => {
     'Type': inspection.type || '',
     'Result': inspection.overall_result || '',
     'Inspector': inspector.full_name || 'Unknown',
-    'Role': inspector.employee_role || 'Unknown', // Changed from Employee_Role to employee_role
+    'Role': inspector.employee_role || 'Unknown', // Using employee_role instead of Employee_Role
     'Department': inspector.department || 'Unknown',
     'PPE Type': ppe.type || 'Unknown',
     'PPE Serial': ppe.serial_number || 'Unknown',
