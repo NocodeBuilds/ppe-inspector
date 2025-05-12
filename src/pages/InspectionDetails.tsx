@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -75,7 +74,7 @@ interface StandardInspectionData {
   overall_result: string;
   notes: string | null;
   signature_data: string | null;
-  signature_url?: string | null; // Added for compatibility with the report generator
+  signature_url: string | null; // Added for compatibility with the report generator
   inspector_id: string;
   inspector_name: string;
   ppe_type: string;

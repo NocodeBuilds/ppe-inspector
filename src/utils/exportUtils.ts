@@ -30,8 +30,8 @@ export const exportPPEItemsToExcel = async () => {
         'Manufacturing Date': formatDateOrNA(item.manufacturing_date),
         'Expiry Date': formatDateOrNA(item.expiry_date),
         'Status': item.status,
-        'Last Inspection': formatDateOrNA(item.next_inspection),
-        'Next Inspection': formatDateOrNA(item.next_inspection)
+        'Last Inspection': formatDateOrNA(item.last_inspection_date), // If this field exists
+        'Next Inspection': formatDateOrNA(item.next_inspection) // Using next_inspection consistently
       }));
       
       exportToExcel(formattedData, 'ppe_inventory');
@@ -377,11 +377,11 @@ export const formatInspectionDataForExport = (inspection: any) => {
   const ppe = inspection.ppe_items || {};
   
   return {
-    'Date': formatDate(inspection.date),
+    'Date': formatDateOrNA(inspection.date),
     'Type': inspection.type || '',
     'Result': inspection.overall_result || '',
     'Inspector': inspector.full_name || 'Unknown',
-    'Role': inspector.employee_role || 'Unknown', // Using employee_role instead of Employee_Role
+    'Role': inspector.employee_role || 'Unknown', // Using employee_role consistently
     'Department': inspector.department || 'Unknown',
     'PPE Type': ppe.type || 'Unknown',
     'PPE Serial': ppe.serial_number || 'Unknown',

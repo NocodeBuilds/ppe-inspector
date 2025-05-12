@@ -1,3 +1,4 @@
+
 import { format } from 'date-fns';
 
 // Standardized interface for inspection data across all report generators
@@ -7,6 +8,7 @@ export interface StandardInspectionData {
   type: string;
   overall_result: string;
   notes: string | null;
+  signature_data?: string | null;
   signature_url: string | null;
   inspector_name: string;
   inspector_id: string;
@@ -38,11 +40,12 @@ export const formatFromFormSubmission = (formData: any, userProfile: any): Stand
     type: formData.type || '',
     overall_result: formData.overall_result || '',
     notes: formData.notes || null,
-    signature_url: formData.signature_url || null,
+    signature_data: formData.signature_data || null,
+    signature_url: formData.signature_url || formData.signature_data || null,
     inspector_name: userProfile?.full_name || 'Unknown Inspector',
     inspector_id: userProfile?.id || '',
     inspector_employee_id: userProfile?.employee_id || '',
-    inspector_role: userProfile?.Employee_Role || userProfile?.role || '',
+    inspector_role: userProfile?.employee_role || userProfile?.role || '',
     inspector_department: userProfile?.department || '',
     ppe_type: formData.ppe_type || '',
     ppe_serial: formData.ppe_serial || '',
@@ -68,11 +71,12 @@ export const formatFromDatabaseFetch = (dbData: any): StandardInspectionData => 
     type: dbData.type || '',
     overall_result: dbData.overall_result || '',
     notes: dbData.notes || null,
-    signature_url: dbData.signature_url || null,
+    signature_data: dbData.signature_data || null,
+    signature_url: dbData.signature_url || dbData.signature_data || null,
     inspector_name: profiles.full_name || 'Unknown Inspector',
     inspector_id: dbData.inspector_id || '',
     inspector_employee_id: profiles.employee_id || '',
-    inspector_role: profiles.Employee_Role || profiles.role || '',
+    inspector_role: profiles.employee_role || profiles.role || '',
     inspector_department: profiles.department || '',
     ppe_type: ppeItems.type || '',
     ppe_serial: ppeItems.serial_number || '',
