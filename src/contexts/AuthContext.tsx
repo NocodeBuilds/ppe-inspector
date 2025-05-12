@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // Use our custom hooks to separate concerns
   const { session, user, isLoading: sessionLoading } = useAuthSession();
-  const { profile, refreshProfile, isLoading: profileLoading } = useProfile(user?.id);
+  const { profile, refreshProfile: fetchProfile, isLoading: profileLoading } = useProfile(user?.id);
   const { 
     isLoading: authActionsLoading, 
     signIn, 
@@ -39,6 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword, 
     updatePassword 
   } = useAuthActions();
+
+  // Fixed: Update the refreshProfile function to ensure it returns Promise<void>
+  const refreshProfile = async (): Promise<void> => {
+    if (user?.id) {
+      await fetchProfile(user.id);
+    }
+  };
 
   // Combined loading state
   const isLoading = sessionLoading || profileLoading || authActionsLoading;

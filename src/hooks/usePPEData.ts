@@ -24,7 +24,7 @@ export function usePPEData() {
     model_number: string;
     manufacturing_date: string;
     expiry_date: string;
-    batch_number?: string; // Changed from number to string to match DB
+    batch_number?: string;
     first_use?: string;
     imageFile?: File;
   }) => {
@@ -53,7 +53,7 @@ export function usePPEData() {
         imageUrl = publicUrlData.publicUrl;
       }
 
-      // Fixed insert statement to use a single object instead of array
+      // Fixed: Use a single object for insert (not an array) and convert batch_number to string if needed
       const { data, error } = await supabase
         .from('ppe_items')
         .insert({
@@ -65,7 +65,7 @@ export function usePPEData() {
           expiry_date,
           image_url: imageUrl,
           batch_number,
-          first_use_date: first_use, // Changed field name to match DB column
+          first_use_date: first_use, 
         })
         .select();
 

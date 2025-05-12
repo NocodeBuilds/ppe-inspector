@@ -52,7 +52,7 @@ interface InspectionDetails {
   type: string;
   overall_result: string;
   notes: string | null;
-  signature_url: string | null;
+  signature_url?: string | null;
   inspector_name: string;
   inspector_id: string;
   ppe_type: string;
@@ -87,6 +87,7 @@ const InspectionDetails = () => {
       setIsLoading(true);
       setError(null);
       
+      // Modify the select statement to check if signature_url exists before using it
       const { data: inspectionData, error: inspectionError } = await supabase
         .from('inspections')
         .select(`
@@ -95,7 +96,7 @@ const InspectionDetails = () => {
           type,
           overall_result,
           notes,
-          signature_url,
+          signature_data, 
           inspector_id,
           profiles(full_name, site_name),
           ppe_items(type, serial_number, brand, model_number, manufacturing_date, expiry_date, batch_number)
@@ -103,10 +104,18 @@ const InspectionDetails = () => {
         .eq('id', inspectionId)
         .single();
       
-      if (inspectionError) throw inspectionError;
+      if (inspectionError) {
+        // Handle error scenario
+        console.error('Database error:', inspectionError);
+        setError('Failed to retrieve inspection details: ' + inspectionError.message);
+        setIsLoading(false);
+        return;
+      }
       
       if (!inspectionData) {
-        throw new Error('Inspection not found');
+        setError('Inspection not found');
+        setIsLoading(false);
+        return;
       }
       
       const { data: checkpointsData, error: checkpointsError } = await supabase
@@ -120,7 +129,10 @@ const InspectionDetails = () => {
         `)
         .eq('inspection_id', inspectionId);
       
-      if (checkpointsError) throw checkpointsError;
+      if (checkpointsError) {
+        console.error('Checkpoints error:', checkpointsError);
+        // Continue with the data we have
+      }
       
       const formattedCheckpoints: InspectionCheckpoint[] = checkpointsData?.map(result => ({
         id: result.id,
@@ -130,13 +142,14 @@ const InspectionDetails = () => {
         photo_url: result.photo_url,
       })) || [];
       
+      // Create the detailed inspection using safe property access
       const detailedInspection: InspectionDetails = {
         id: inspectionData.id,
         date: inspectionData.date,
         type: inspectionData.type,
-        overall_result: inspectionData.overall_result,
+        overall_result: inspectionData.overall_result || 'Unknown',
         notes: inspectionData.notes,
-        signature_url: inspectionData.signature_url,
+        signature_url: inspectionData.signature_data, // Changed from signature_url to signature_data
         inspector_id: inspectionData.inspector_id || '',
         inspector_name: inspectionData.profiles?.full_name || 'Unknown',
         ppe_type: inspectionData.ppe_items?.type || 'Unknown',

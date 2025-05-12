@@ -13,13 +13,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import PageHeader from '@/components/common/PageHeader';
 import QRCodeScanner from '@/components/inspection/QRCodeScanner';
+import { ClientPPEItem } from '@/types/PPETypes';
+import { mapDbPPEToClientPPE } from '@/integrations/supabase/client';
 
 const StartInspection = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [serialNumber, setSerialNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [multiplePPE, setMultiplePPE] = useState<PPEItem[]>([]);
+  const [multiplePPE, setMultiplePPE] = useState<ClientPPEItem[]>([]);
   const [processingQRCode, setProcessingQRCode] = useState(false);
   const navigateRef = useRef<boolean>(false);
   
@@ -72,10 +74,13 @@ const StartInspection = () => {
         throw new Error(`No PPE found with serial number: ${serial}`);
       }
       
-      if (ppeItems.length === 1) {
-        handlePPESelected(ppeItems[0]);
+      // Map database PPE items to client format
+      const clientPpeItems = ppeItems.map(item => mapDbPPEToClientPPE(item));
+      
+      if (clientPpeItems.length === 1) {
+        handlePPESelected(clientPpeItems[0]);
       } else {
-        setMultiplePPE(ppeItems);
+        setMultiplePPE(clientPpeItems);
         setProcessingQRCode(false);
       }
     } catch (error) {
@@ -93,7 +98,7 @@ const StartInspection = () => {
     }
   };
 
-  const handlePPESelected = (ppe: PPEItem) => {
+  const handlePPESelected = (ppe: ClientPPEItem) => {
     // Prevent multiple navigations
     if (navigateRef.current) return;
     
