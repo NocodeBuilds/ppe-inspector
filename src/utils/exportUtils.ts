@@ -53,7 +53,7 @@ export const exportInspectionsToExcel = async () => {
         id, date, type, overall_result, notes,
         profiles:inspector_id (
           full_name,
-          Employee_Role,
+          employee_role,
           department
         ),
         ppe_items:ppe_id (type, serial_number)
@@ -68,7 +68,7 @@ export const exportInspectionsToExcel = async () => {
         'Type': item.type,
         'Result': item.overall_result,
         'Inspector': item.profiles?.full_name || 'Unknown',
-        'Role': item.profiles?.Employee_Role || 'Unknown',
+        'Role': item.profiles?.employee_role || 'Unknown',
         'Department': item.profiles?.department || 'Unknown',
         'PPE Type': item.ppe_items?.type || 'Unknown',
         'Serial Number': item.ppe_items?.serial_number || 'Unknown',
@@ -344,4 +344,48 @@ export const exportFilteredPPEToExcel = async (
     console.error("Error generating PPE Excel export:", error);
     return false;
   }
+};
+
+// Helper function to safely format dates
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleDateString();
+  } catch (e) {
+    return '';
+  }
+}
+
+export const formatPPEDataForExport = (item: any) => {
+  return {
+    'Serial Number': item.serial_number || '',
+    'Type': item.type || '',
+    'Brand': item.brand || '',
+    'Model': item.model_number || '',
+    'Manufacturing Date': formatDate(item.manufacturing_date),
+    'Expiry Date': formatDate(item.expiry_date),
+    'Status': item.status || '',
+    'Batch Number': item.batch_number || '',
+    'First Use Date': formatDate(item.first_use_date),
+    'Next Inspection': formatDate(item.next_inspection || ''), // Changed from last_inspection to next_inspection
+  };
+};
+
+export const formatInspectionDataForExport = (inspection: any) => {
+  // Add fallbacks for all possible undefined properties
+  const inspector = inspection.profiles || {};
+  const ppe = inspection.ppe_items || {};
+  
+  return {
+    'Date': formatDate(inspection.date),
+    'Type': inspection.type || '',
+    'Result': inspection.overall_result || '',
+    'Inspector': inspector.full_name || 'Unknown',
+    'Role': inspector.employee_role || 'Unknown', // Changed from Employee_Role to employee_role
+    'Department': inspector.department || 'Unknown',
+    'PPE Type': ppe.type || 'Unknown',
+    'PPE Serial': ppe.serial_number || 'Unknown',
+    'Notes': inspection.notes || '',
+    // ... keep existing code (other properties)
+  };
 };

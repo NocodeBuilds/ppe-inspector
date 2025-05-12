@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { 
@@ -14,7 +15,7 @@ interface ProfileFormProps {
   employeeId: string;
   siteName: string;
   department: string;
-  Employee_Role: string;
+  employee_role: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSelectChange: (field: string, value: string) => void;
 }
@@ -62,7 +63,7 @@ const ProfileForm = ({
   employeeId, 
   siteName,
   department,
-  Employee_Role,
+  employee_role,
   onChange,
   onSelectChange 
 }: ProfileFormProps) => {
@@ -91,12 +92,12 @@ const ProfileForm = ({
       </div>
       
       <div>
-        <label htmlFor="Employee_Role" className="text-body-sm block mb-1">Role (Optional)</label>
+        <label htmlFor="employee_role" className="text-body-sm block mb-1">Role (Optional)</label>
         <Select
-          value={Employee_Role}
-          onValueChange={(value) => onSelectChange('Employee_Role', value)}
+          value={employee_role}
+          onValueChange={(value) => onSelectChange('employee_role', value)}
         >
-          <SelectTrigger id="Employee_Role" className="w-full text-body">
+          <SelectTrigger id="employee_role" className="w-full text-body">
             <SelectValue placeholder="Select your role" />
           </SelectTrigger>
           <SelectContent>

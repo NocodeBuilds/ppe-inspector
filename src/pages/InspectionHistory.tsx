@@ -23,6 +23,41 @@ import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionD
 import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
 import { SelectedExportFilters } from '../components/reports/ExportFilterModal';
 
+export const fetchInspectionHistory = async (filters = {}) => {
+  try {
+    const { data, error } = await supabase
+      .from('inspections')
+      .select(`
+        id,
+        date,
+        type,
+        overall_result,
+        profiles(full_name),
+        ppe_items(type, serial_number, brand, model_number)
+      `)
+      .order('date', { ascending: false });
+      
+    if (error) throw error;
+    
+    // Add fallbacks for the properties that might be undefined
+    return data?.map(item => ({
+      id: item.id,
+      date: item.date,
+      type: item.type,
+      overall_result: item.overall_result || 'Unknown',
+      inspector_name: item.profiles?.full_name || 'Unknown',
+      ppe_type: item.ppe_items?.type || 'Unknown',
+      ppe_serial: item.ppe_items?.serial_number || 'Unknown',
+      ppe_brand: item.ppe_items?.brand || 'Unknown',
+      ppe_model: item.ppe_items?.model_number || 'Unknown',
+    })) || [];
+    
+  } catch (error) {
+    console.error('Error fetching inspection history:', error);
+    throw error;
+  }
+};
+
 const InspectionHistory = () => {
   const [inspections, setInspections] = useState<any[]>([]);
   const [filteredInspections, setFilteredInspections] = useState<any[]>([]);

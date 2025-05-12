@@ -52,9 +52,30 @@ interface InspectionDetails {
   type: string;
   overall_result: string;
   notes: string | null;
-  signature_url?: string | null;
-  inspector_name: string;
+  signature_data?: string | null; // Changed from signature_url to signature_data
   inspector_id: string;
+  inspector_name: string;
+  ppe_type: string;
+  ppe_serial: string;
+  ppe_brand: string;
+  ppe_model: string;
+  site_name: string;
+  manufacturing_date: string;
+  expiry_date: string;
+  batch_number: string;
+  checkpoints: InspectionCheckpoint[];
+}
+
+// Define the StandardInspectionData type to match the expected type in generateInspectionDetailPDF and generateInspectionExcelReport
+interface StandardInspectionData {
+  id: string;
+  date: string;
+  type: string;
+  overall_result: string;
+  notes: string | null;
+  signature_data: string | null; // Changed to match our actual data
+  inspector_id: string;
+  inspector_name: string;
   ppe_type: string;
   ppe_serial: string;
   ppe_brand: string;
@@ -87,7 +108,7 @@ const InspectionDetails = () => {
       setIsLoading(true);
       setError(null);
       
-      // Modify the select statement to check if signature_url exists before using it
+      // Modify the select statement to check if signature_data exists (NOT signature_url)
       const { data: inspectionData, error: inspectionError } = await supabase
         .from('inspections')
         .select(`
@@ -149,7 +170,7 @@ const InspectionDetails = () => {
         type: inspectionData.type,
         overall_result: inspectionData.overall_result || 'Unknown',
         notes: inspectionData.notes,
-        signature_url: inspectionData.signature_data, // Changed from signature_url to signature_data
+        signature_data: inspectionData.signature_data, // Using signature_data instead of signature_url
         inspector_id: inspectionData.inspector_id || '',
         inspector_name: inspectionData.profiles?.full_name || 'Unknown',
         ppe_type: inspectionData.ppe_items?.type || 'Unknown',
@@ -182,7 +203,12 @@ const InspectionDetails = () => {
     
     try {
       setIsExporting(true);
-      await generateInspectionDetailPDF(inspection);
+      // Convert InspectionDetails to StandardInspectionData
+      const standardData: StandardInspectionData = {
+        ...inspection,
+        signature_data: inspection.signature_data || null // Ensure it's not undefined
+      };
+      await generateInspectionDetailPDF(standardData);
       toast({
         title: 'PDF Generated',
         description: 'Inspection report has been downloaded as PDF',
@@ -204,7 +230,12 @@ const InspectionDetails = () => {
     
     try {
       setIsExporting(true);
-      await generateInspectionExcelReport(inspection);
+      // Convert InspectionDetails to StandardInspectionData
+      const standardData: StandardInspectionData = {
+        ...inspection,
+        signature_data: inspection.signature_data || null // Ensure it's not undefined
+      };
+      await generateInspectionExcelReport(standardData);
       toast({
         title: 'Excel Generated',
         description: 'Inspection report has been downloaded as Excel',

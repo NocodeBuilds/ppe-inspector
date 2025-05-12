@@ -30,6 +30,13 @@ const EditProfile = () => {
     );
   }
   
+  // Handle file input change by creating a wrapper function that conforms to the expected type
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleAvatarChange(e.target.files[0]);
+    }
+  };
+  
   return (
     <div className="fade-in pb-20">
       <div className="flex items-center mb-6">
@@ -49,7 +56,7 @@ const EditProfile = () => {
           <AvatarUpload 
             avatarUrl={profile?.avatar_url || null}
             avatarPreview={avatarPreview}
-            onChange={handleAvatarChange}
+            onChange={handleFileChange}
           />
           
           <ProfileForm
@@ -57,7 +64,7 @@ const EditProfile = () => {
             employeeId={formData.employee_id}
             siteName={formData.site_name}
             department={formData.department}
-            Employee_Role={formData.Employee_Role}
+            employee_role={formData.employee_role}
             onChange={handleInputChange}
             onSelectChange={handleSelectChange}
           />

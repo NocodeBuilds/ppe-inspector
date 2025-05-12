@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Fixed: Update the refreshProfile function to ensure it returns Promise<void>
   const refreshProfile = async (): Promise<void> => {
     if (user?.id) {
-      await fetchProfile(user.id);
+      await fetchProfile();
     }
   };
 
