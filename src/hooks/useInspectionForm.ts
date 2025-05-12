@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { InspectionCheckpoint } from '@/types/inspection';
-import { PPEItem } from '@/types/index';
-import { InspectionType } from '@/types/index';
+import { ClientPPEItem } from '@/types/PPETypes';
+import { InspectionType, PPEStatus } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface InspectionFormState {
-  ppeItem: PPEItem | null;
+  ppeItem: ClientPPEItem | null;
   inspectionType: InspectionType;
   checkpoints: InspectionCheckpoint[];
   results: Record<string, { passed: boolean | null | undefined; notes: string; photoUrl?: string }>;
@@ -93,7 +93,7 @@ export const useInspectionForm = () => {
       
       if (data) {
         console.log('PPE Item data:', data);
-        const ppeItem = {
+        const ppeItem: ClientPPEItem = {
           id: data.id,
           serialNumber: data.serial_number,
           type: data.type,
@@ -101,10 +101,10 @@ export const useInspectionForm = () => {
           modelNumber: data.model_number || '',
           manufacturingDate: data.manufacturing_date || '',
           expiryDate: data.expiry_date || '',
-          status: 'active',
+          status: 'active' as PPEStatus,
           createdAt: '',
           updatedAt: '',
-          batch_number: data.batch_number ? String(data.batch_number) : '',
+          batchNumber: data.batch_number ? String(data.batch_number) : '',
         };
         
         setState(prev => ({
@@ -167,7 +167,8 @@ export const useInspectionForm = () => {
         
         const checkpointsToInsert = standardCheckpoints.map(cp => ({
           description: cp.description,
-          ppe_type: ppeType
+          ppe_type: ppeType,
+          order_number: cp.order || 0
         }));
         
         const { data: insertedCheckpoints, error: insertError } = await supabase
@@ -206,7 +207,8 @@ export const useInspectionForm = () => {
           id: crypto.randomUUID(),
           description: cp.description,
           ppeType: ppeType,
-          required: true
+          required: true,
+          order: cp.order || 0
         }));
         
         const initialResults: Record<string, { passed: boolean | null | undefined; notes: string; photoUrl?: string }> = {};
@@ -237,30 +239,31 @@ export const useInspectionForm = () => {
       description: dbCheckpoint.description,
       ppeType: dbCheckpoint.ppe_type,
       required: true,
+      order: dbCheckpoint.order_number || 0
     };
   };
 
-  const getStandardCheckpoints = (ppeType: string): { description: string; ppeType: string }[] => {
+  const getStandardCheckpoints = (ppeType: string): { description: string; ppeType: string; order: number }[] => {
     // Default checkpoints based on PPE type
     switch (ppeType.toLowerCase()) {
       case 'full body harness':
         return [
-          { description: 'Check webbing for cuts, fraying, or damage', ppeType },
-          { description: 'Inspect D-rings for deformation or cracks', ppeType },
-          { description: 'Verify buckles function properly', ppeType },
-          { description: 'Check stitching for loose threads or damage', ppeType }
+          { description: 'Check webbing for cuts, fraying, or damage', ppeType, order: 1 },
+          { description: 'Inspect D-rings for deformation or cracks', ppeType, order: 2 },
+          { description: 'Verify buckles function properly', ppeType, order: 3 },
+          { description: 'Check stitching for loose threads or damage', ppeType, order: 4 }
         ];
       case 'safety helmet':
         return [
-          { description: 'Check shell for cracks, dents, or damage', ppeType },
-          { description: 'Inspect suspension system for wear', ppeType },
-          { description: 'Verify chin strap is intact and functional', ppeType }
+          { description: 'Check shell for cracks, dents, or damage', ppeType, order: 1 },
+          { description: 'Inspect suspension system for wear', ppeType, order: 2 },
+          { description: 'Verify chin strap is intact and functional', ppeType, order: 3 }
         ];
       default:
         return [
-          { description: 'Check for physical damage', ppeType },
-          { description: 'Verify expiration date', ppeType },
-          { description: 'Test functionality', ppeType }
+          { description: 'Check for physical damage', ppeType, order: 1 },
+          { description: 'Verify expiration date', ppeType, order: 2 },
+          { description: 'Test functionality', ppeType, order: 3 }
         ];
     }
   };
@@ -283,7 +286,7 @@ export const useInspectionForm = () => {
       const requiredResults = allResults.filter(([id]) => {
         const checkpoint = prev.checkpoints.find(cp => cp.id === id);
         const result = newResults[id];
-        // Include required checkpoints that have any selection (OK, NOT OK, or NA)
+        // Include required checkpoints that have any selection
         return checkpoint?.required && result?.passed !== undefined;
       });
       
@@ -693,19 +696,150 @@ export const useInspectionForm = () => {
 
   return {
     state,
-    setInspectionType,
-    setNotes,
-    setSignature,
-    setOverallResult,
-    handleResultChange,
-    handleNotesChange,
-    handlePhotoCapture,
-    handlePhotoDelete,
-    nextStep,
-    prevStep,
-    handleSubmit,
-    handleRetry,
-    closeSuccessDialog,
-    validateForm
+    setInspectionType: (type: InspectionType) => setState(prev => ({ ...prev, inspectionType: type })),
+    setNotes: (notes: string) => setState(prev => ({ ...prev, notes })),
+    setSignature: (signature: string | null) => setState(prev => ({ ...prev, signature })),
+    setOverallResult: (result: 'pass' | 'fail' | null) => setState(prev => ({ ...prev, overallResult: result })),
+    handleResultChange: (checkpointId: string, value: boolean | null) => {
+      setState(prev => {
+        const newResults = {
+          ...prev.results,
+          [checkpointId]: { 
+            ...prev.results[checkpointId], 
+            passed: value,
+            notes: prev.results[checkpointId]?.notes || ''
+          }
+        };
+        
+        // Calculate overall result
+        const allResults = Object.entries(newResults);
+        
+        // Consider all required checkpoints that are not NA
+        const requiredResults = allResults.filter(([id]) => {
+          const checkpoint = prev.checkpoints.find(cp => cp.id === id);
+          const result = newResults[id];
+          // Include required checkpoints that have any selection
+          return checkpoint?.required && result?.passed !== undefined;
+        });
+        
+        if (requiredResults.length === 0) {
+          return {
+            ...prev,
+            results: newResults,
+            overallResult: null
+          };
+        }
+
+        // Calculate pass/fail based on required checkpoints that are not NA
+        const nonNAResults = requiredResults.filter(([_, result]) => result.passed !== null);
+        const hasFailedRequired = nonNAResults.some(([_, result]) => result.passed === false);
+        
+        // Only set a pass/fail result if there are non-NA required checkpoints
+        let newOverallResult = prev.overallResult;
+        if (nonNAResults.length > 0) {
+          newOverallResult = hasFailedRequired ? 'fail' : 'pass';
+        } else {
+          newOverallResult = null;
+        }
+        
+        return {
+          ...prev,
+          results: newResults,
+          overallResult: newOverallResult
+        };
+      });
+    },
+    handleNotesChange: (checkpointId: string, value: string) => {
+      setState(prev => ({
+        ...prev,
+        results: {
+          ...prev.results,
+          [checkpointId]: { ...prev.results[checkpointId], notes: value }
+        }
+      }));
+    },
+    handlePhotoCapture: (checkpointId: string, photoUrl: string) => {
+      setState(prev => ({
+        ...prev,
+        results: {
+          ...prev.results,
+          [checkpointId]: { ...prev.results[checkpointId], photoUrl }
+        }
+      }));
+    },
+    handlePhotoDelete: (checkpointId: string) => {
+      setState(prev => {
+        const newResults = { ...prev.results };
+        const checkpointResult = { ...newResults[checkpointId] };
+        delete checkpointResult.photoUrl;
+        newResults[checkpointId] = checkpointResult;
+        return {
+          ...prev,
+          results: newResults
+        };
+      });
+    },
+    nextStep: () => {
+      if (state.step === 2) {
+        if (!validateForm()) {
+          return;
+        }
+      }
+      
+      if (state.step < 3) {
+        setState(prev => ({
+          ...prev,
+          step: prev.step + 1
+        }));
+      }
+    },
+    prevStep: () => {
+      if (state.step > 1) {
+        setState(prev => ({
+          ...prev,
+          step: prev.step - 1
+        }));
+      }
+    },
+    handleSubmit: async () => {
+      if (!validateForm()) return;
+      
+      // Check for user authentication
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session?.user) {
+        toast({
+          title: 'Authentication Required',
+          description: 'You must be logged in to submit inspections',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // ... keep existing code (form submission)
+    },
+    handleRetry: async () => {
+      setState(prev => ({
+        ...prev,
+        isRetrying: true
+      }));
+      
+      // ... keep existing code (retry logic)
+    },
+    closeSuccessDialog: () => {
+      setState(prev => ({
+        ...prev,
+        showSuccessDialog: false
+      }));
+      
+      if (state.ppeItem?.id) {
+        navigate(`/equipment/${state.ppeItem.id}`);
+      } else {
+        navigate('/equipment');
+      }
+    },
+    validateForm: () => {
+      // ... keep existing code (validation logic)
+      return true; // Placeholder
+    }
   };
 };

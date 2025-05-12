@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, mapDbPPEToClientPPE } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Eye, ArrowUpDown, Search, ChevronDown, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { PPEItem } from '@/types/ppe';
+import { ClientPPEItem } from '@/types/PPETypes';
 import { format } from 'date-fns';
 import {
   Dialog,
@@ -29,12 +29,12 @@ const ppeExportFilters: ExportFilterOptions = {
 };
 
 const PPEInventoryList = () => {
-  const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
+  const [ppeItems, setPpeItems] = useState<ClientPPEItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<keyof PPEItem | string>('createdAt');
+  const [sortField, setSortField] = useState<keyof ClientPPEItem | string>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [selectedItem, setSelectedItem] = useState<PPEItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<ClientPPEItem | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const navigate = useNavigate();
@@ -48,7 +48,7 @@ const PPEInventoryList = () => {
     setIsLoading(true);
     try {
       // Temporary approach until we have proper types
-      let items: PPEItem[] = [];
+      let items: ClientPPEItem[] = [];
       
       try {
         const { data, error } = await supabase
@@ -56,21 +56,8 @@ const PPEInventoryList = () => {
           .select('*');
 
         if (!error && data) {
-          // Map the database fields to our PPEItem interface
-          items = data.map(item => ({
-            id: item.id || '',
-            serialNumber: item.serial_number || '',
-            type: item.type || '',
-            brand: item.brand || '',
-            modelNumber: item.model_number || '',
-            manufacturingDate: item.manufacturing_date || '',
-            expiryDate: item.expiry_date || '',
-            status: item.status || 'active',
-            imageUrl: item.image_url,
-            nextInspection: item.next_inspection,
-            createdAt: item.created_at || '',
-            updatedAt: item.updated_at || '',
-          }));
+          // Map the database fields to our ClientPPEItem interface
+          items = data.map(item => mapDbPPEToClientPPE(item)) as ClientPPEItem[];
         }
       } catch (e) {
         console.error("Error fetching PPE items:", e);
@@ -89,7 +76,7 @@ const PPEInventoryList = () => {
     }
   };
 
-  const handleSort = (field: keyof PPEItem | string) => {
+  const handleSort = (field: keyof ClientPPEItem | string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -115,8 +102,8 @@ const PPEInventoryList = () => {
       return statusMatch && searchMatch; 
     })
     .sort((a, b) => {
-      const fieldA = a[sortField as keyof PPEItem];
-      const fieldB = b[sortField as keyof PPEItem];
+      const fieldA = a[sortField as keyof ClientPPEItem];
+      const fieldB = b[sortField as keyof ClientPPEItem];
 
       if (sortField === 'nextInspection' || sortField === 'createdAt' || sortField === 'updatedAt' || sortField === 'manufacturingDate' || sortField === 'expiryDate') {
         const dateA = fieldA ? new Date(fieldA as string).getTime() : 0;
@@ -134,7 +121,7 @@ const PPEInventoryList = () => {
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
-  const handleShowDetails = (item: PPEItem) => {
+  const handleShowDetails = (item: ClientPPEItem) => {
     setSelectedItem(item);
   };
 

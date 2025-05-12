@@ -1,6 +1,6 @@
 
 import { z } from 'zod';
-import { PPEType } from '@/types/index';
+import { PPEType } from '@/integrations/supabase/client';
 
 export const addPPEFormSchema = z.object({
   serialNumber: z.string()

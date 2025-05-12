@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PPEItem, PPEStatus } from '@/integrations/supabase/client';
@@ -25,7 +24,7 @@ export function usePPEData() {
     model_number: string;
     manufacturing_date: string;
     expiry_date: string;
-    batch_number?: number;
+    batch_number?: string; // Changed from number to string to match DB
     first_use?: string;
     imageFile?: File;
   }) => {
@@ -54,21 +53,20 @@ export function usePPEData() {
         imageUrl = publicUrlData.publicUrl;
       }
 
+      // Fixed insert statement to use a single object instead of array
       const { data, error } = await supabase
         .from('ppe_items')
-        .insert([
-          {
-            brand,
-            type,
-            serial_number,
-            model_number,
-            manufacturing_date,
-            expiry_date,
-            image_url: imageUrl,
-            batch_number,
-            first_use,
-          },
-        ])
+        .insert({
+          brand,
+          type,
+          serial_number,
+          model_number,
+          manufacturing_date,
+          expiry_date,
+          image_url: imageUrl,
+          batch_number,
+          first_use_date: first_use, // Changed field name to match DB column
+        })
         .select();
 
       if (error) {

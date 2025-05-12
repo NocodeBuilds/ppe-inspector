@@ -1,89 +1,111 @@
 
-import { useState } from 'react';
-import { supabase, Profile } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { Profile } from '@/integrations/supabase/client';
 
-type ProfileHook = {
-  profile: Profile | null;
-  isLoading: boolean;
-  refreshProfile: () => Promise<void>;
-};
+export function useProfile(userId: string | undefined) {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-/**
- * Hook to manage user profile data
- * Handles fetching and refreshing profile information with efficient caching
- */
-export const useProfile = (userId: string | undefined): ProfileHook => {
-  const { toast } = useToast();
-  
-  // Use React Query for profile data
-  const {
-    data: profile,
-    isLoading,
-    refetch
-  } = useSupabaseQuery<Profile | null>(
-    ['profile', userId || ''],
-    async () => {
-      if (!userId) return null;
-      
-      try {
-        console.log("Fetching profile for:", userId);
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-
-        if (error) throw error;
-
-        if (data) {
-          console.log("Profile data:", data);
-          
-          // Cast data to Profile type with proper type safety
-          // Make sure all properties from the Profile type are included here
-          const profileData: Profile = {
-            id: data.id,
-            full_name: data.full_name || null,
-            avatar_url: data.avatar_url || null,
-            role: data.role || 'user',
-            created_at: data.created_at || '',
-            updated_at: data.updated_at || '',
-            employee_id: data.employee_id || null,
-            site_name: data.site_name || null,
-            department: data.department || null,
-            Employee_Role: data.Employee_Role || null,
-            email: null
-          };
-          
-          return profileData;
-        }
-        return null;
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-        throw error;
-      }
-    },
-    { enabled: !!userId }
-  );
-  
-  // Create a function to refresh the profile data
-  const refreshProfile = async () => {
+  const fetchProfile = useCallback(async (uid: string) => {
     try {
-      await refetch();
-    } catch (error) {
-      console.error('Error refreshing profile:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to refresh profile data',
-        variant: 'destructive',
-      });
-    }
-  };
+      setIsLoading(true);
+      setError(null);
 
-  return {
-    profile,
-    isLoading,
-    refreshProfile
-  };
+      if (!uid) {
+        setProfile(null);
+        setIsLoading(false);
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', uid)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        setError(error.message);
+        setProfile(null);
+      } else {
+        setProfile(data as Profile);
+      }
+
+      return data as Profile | null;
+    } catch (err: any) {
+      console.error('Unexpected error in fetchProfile:', err);
+      setError(err.message);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!userId) return null;
+    return await fetchProfile(userId);
+  }, [userId, fetchProfile]);
+
+  const updateProfile = useCallback(async (updates: Partial<Profile>) => {
+    if (!userId) {
+      toast({
+        title: "Error",
+        description: "No user ID available for profile update",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        toast({
+          title: "Error",
+          description: `Failed to update profile: ${error.message}`,
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+
+      setProfile(data as Profile);
+      return data as Profile;
+    } catch (err: any) {
+      console.error('Unexpected error in updateProfile:', err);
+      toast({
+        title: "Error",
+        description: `An unexpected error occurred: ${err.message}`,
+        variant: "destructive",
+      });
+      return null;
+    }
+  }, [userId, toast]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchProfile(userId);
+    } else {
+      setProfile(null);
+      setIsLoading(false);
+    }
+  }, [userId, fetchProfile]);
+
+  return { profile, isLoading, error, refreshProfile, updateProfile };
 }

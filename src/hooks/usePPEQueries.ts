@@ -1,8 +1,8 @@
 
 import { useCallback } from 'react';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
-import { PPEItem } from '@/types/index';
+import { supabase, mapDbPPEToClientPPE, PPEItem } from '@/integrations/supabase/client';
+import { ClientPPEItem } from '@/types/PPETypes';
 import { useNotifications } from '@/hooks/useNotifications';
 
 /**
@@ -18,7 +18,7 @@ export function usePPEQueries() {
     isLoading: isLoadingPPE,
     refetch: refetchPPE,
     isError: ppeError
-  } = useSupabaseQuery<PPEItem[]>(
+  } = useSupabaseQuery<ClientPPEItem[]>(
     ['ppe-items'],
     async () => {
       const { data, error } = await supabase
@@ -27,7 +27,8 @@ export function usePPEQueries() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as PPEItem[];
+      // Map database records to client-friendly format
+      return data.map(item => mapDbPPEToClientPPE(item as PPEItem)) as ClientPPEItem[];
     }
   );
 
@@ -50,7 +51,7 @@ export function usePPEQueries() {
         console.error('Database error when searching by exact serial number:', exactError);
       } else if (exactMatch) {
         console.log('Found exact match for serial number:', exactMatch);
-        return [exactMatch] as PPEItem[];
+        return [mapDbPPEToClientPPE(exactMatch as PPEItem)] as ClientPPEItem[];
       }
       
       // If exact match didn't yield results, try pattern matching
@@ -66,7 +67,7 @@ export function usePPEQueries() {
       }
       
       console.log(`Found ${data?.length || 0} PPE items matching serial number pattern`);
-      return data as PPEItem[];
+      return data ? data.map(item => mapDbPPEToClientPPE(item as PPEItem)) as ClientPPEItem[] : [];
     } catch (error: any) {
       console.error('Error fetching PPE by serial number:', error);
       showNotification('Error', 'error', {
@@ -95,7 +96,7 @@ export function usePPEQueries() {
       } else if (serialData) {
         result = serialData;
         console.log('Found by exact serial match:', result);
-        return result as PPEItem;
+        return mapDbPPEToClientPPE(result as PPEItem) as ClientPPEItem;
       }
       
       // If that didn't work, try UUID match if it looks like a UUID
@@ -113,7 +114,7 @@ export function usePPEQueries() {
           } else if (uuidData) {
             result = uuidData;
             console.log('Found by UUID match:', result);
-            return result as PPEItem;
+            return mapDbPPEToClientPPE(result as PPEItem) as ClientPPEItem;
           }
         } catch (e) {
           console.log('UUID lookup failed, continuing with pattern search');
@@ -135,7 +136,7 @@ export function usePPEQueries() {
         } else if (patternData) {
           result = patternData;
           console.log('Found by pattern match:', result);
-          return result as PPEItem;
+          return mapDbPPEToClientPPE(result as PPEItem) as ClientPPEItem;
         }
       }
       
@@ -144,7 +145,7 @@ export function usePPEQueries() {
         throw new Error(`No PPE found with identifier: ${id}`);
       }
       
-      return result as PPEItem;
+      return mapDbPPEToClientPPE(result as PPEItem) as ClientPPEItem;
     } catch (error: any) {
       console.error('Error getting PPE by ID:', error);
       showNotification('Error', 'error', {
