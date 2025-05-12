@@ -1,11 +1,13 @@
-
-import React, { createContext, useEffect, ReactNode, useState } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+import { UserProfile } from '@/types/index';
 import { Profile } from '@/integrations/supabase/client';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthActions } from '@/hooks/useAuthActions';
 import { toast } from '@/hooks/use-toast';
+
 type AuthContextType = {
   session: Session | null;
   user: User | null;

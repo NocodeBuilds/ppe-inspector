@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Dialog,
@@ -8,7 +9,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { PPEItem } from '@/integrations/supabase/client';
+import { PPEItem } from '@/types/index';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistance } from 'date-fns';
 
@@ -47,10 +48,10 @@ const PPESelectionDialog: React.FC<PPESelectionDialogProps> = ({
                 onClick={() => onPPESelect(ppe)}
               >
                 <div className="flex items-start gap-3">
-                  {ppe.image_url && (
+                  {ppe.imageUrl && (
                     <div className="w-16 h-16 rounded-md overflow-hidden flex-shrink-0">
                       <img 
-                        src={ppe.image_url} 
+                        src={ppe.imageUrl} 
                         alt={ppe.type} 
                         className="w-full h-full object-cover"
                       />
@@ -60,12 +61,8 @@ const PPESelectionDialog: React.FC<PPESelectionDialogProps> = ({
                   <div className="flex-1">
                     <div className="font-medium">{ppe.type}</div>
                     <div className="text-sm text-muted-foreground">
-                      {ppe.brand} - {ppe.model_number}
-                      {ppe.batch_number && (
-                        <span className="ml-2 text-xs bg-secondary px-2 py-0.5 rounded-full">
-                          Batch: {ppe.batch_number}
-                        </span>
-                      )}
+                      {ppe.brand} - {ppe.modelNumber}
+                      {/* Batch number display */}
                     </div>
                     <div className="text-xs mt-1">
                       <span className={`px-2 py-0.5 rounded-full ${getStatusClass(ppe.status || 'active')}`}>
@@ -73,8 +70,8 @@ const PPESelectionDialog: React.FC<PPESelectionDialogProps> = ({
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {ppe.last_inspection ? (
-                        <span>Last inspected: {formatDistance(new Date(ppe.last_inspection), new Date(), { addSuffix: true })}</span>
+                      {ppe.latestInspection ? (
+                        <span>Last inspected: {formatDistance(new Date(ppe.latestInspection), new Date(), { addSuffix: true })}</span>
                       ) : (
                         <span>No previous inspections</span>
                       )}

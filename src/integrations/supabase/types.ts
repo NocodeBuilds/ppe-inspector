@@ -11,22 +11,40 @@ export type Database = {
     Tables: {
       inspection_checkpoints: {
         Row: {
+          category: string | null
           created_at: string | null
           description: string
+          guidance_notes: string | null
           id: string
+          order_number: number | null
           ppe_type: string
+          reference_photo_url: string | null
+          required: boolean | null
+          updated_at: string | null
         }
         Insert: {
+          category?: string | null
           created_at?: string | null
           description: string
+          guidance_notes?: string | null
           id?: string
+          order_number?: number | null
           ppe_type: string
+          reference_photo_url?: string | null
+          required?: boolean | null
+          updated_at?: string | null
         }
         Update: {
+          category?: string | null
           created_at?: string | null
           description?: string
+          guidance_notes?: string | null
           id?: string
+          order_number?: number | null
           ppe_type?: string
+          reference_photo_url?: string | null
+          required?: boolean | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -38,7 +56,10 @@ export type Database = {
           inspection_id: string | null
           notes: string | null
           passed: boolean | null
+          photo_reference_url: string | null
           photo_url: string | null
+          updated_at: string | null
+          voice_note_url: string | null
         }
         Insert: {
           checkpoint_id?: string | null
@@ -47,7 +68,10 @@ export type Database = {
           inspection_id?: string | null
           notes?: string | null
           passed?: boolean | null
+          photo_reference_url?: string | null
           photo_url?: string | null
+          updated_at?: string | null
+          voice_note_url?: string | null
         }
         Update: {
           checkpoint_id?: string | null
@@ -56,7 +80,10 @@ export type Database = {
           inspection_id?: string | null
           notes?: string | null
           passed?: boolean | null
+          photo_reference_url?: string | null
           photo_url?: string | null
+          updated_at?: string | null
+          voice_note_url?: string | null
         }
         Relationships: [
           {
@@ -77,46 +104,48 @@ export type Database = {
       }
       inspections: {
         Row: {
+          audio_notes: string | null
           created_at: string | null
           date: string | null
           id: string
           inspector_id: string | null
+          next_inspection: string | null
           notes: string | null
           overall_result: string | null
           ppe_id: string | null
-          signature_url: string | null
-          type: Database["public"]["Enums"]["inspection_type"]
+          signature_data: string | null
+          type: Database["public"]["Enums"]["inspection_type"] | null
+          updated_at: string | null
         }
         Insert: {
+          audio_notes?: string | null
           created_at?: string | null
           date?: string | null
           id?: string
           inspector_id?: string | null
+          next_inspection?: string | null
           notes?: string | null
           overall_result?: string | null
           ppe_id?: string | null
-          signature_url?: string | null
-          type: Database["public"]["Enums"]["inspection_type"]
+          signature_data?: string | null
+          type?: Database["public"]["Enums"]["inspection_type"] | null
+          updated_at?: string | null
         }
         Update: {
+          audio_notes?: string | null
           created_at?: string | null
           date?: string | null
           id?: string
           inspector_id?: string | null
+          next_inspection?: string | null
           notes?: string | null
           overall_result?: string | null
           ppe_id?: string | null
-          signature_url?: string | null
-          type?: Database["public"]["Enums"]["inspection_type"]
+          signature_data?: string | null
+          type?: Database["public"]["Enums"]["inspection_type"] | null
+          updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "inspections_inspector_id_fkey"
-            columns: ["inspector_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "inspections_ppe_id_fkey"
             columns: ["ppe_id"]
@@ -128,53 +157,49 @@ export type Database = {
       }
       notifications: {
         Row: {
-          category: string | null
           created_at: string | null
           id: string
-          importance: string | null
-          message: string | null
+          link: string | null
+          message: string
           read: boolean | null
           title: string
           type: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
-          category?: string | null
           created_at?: string | null
           id?: string
-          importance?: string | null
-          message?: string | null
+          link?: string | null
+          message: string
           read?: boolean | null
           title: string
           type?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
-          category?: string | null
           created_at?: string | null
           id?: string
-          importance?: string | null
-          message?: string | null
+          link?: string | null
+          message?: string
           read?: boolean | null
           title?: string
           type?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
       ppe_items: {
         Row: {
-          batch_number: number | null
-          brand: string
+          assigned_to: string | null
+          batch_number: string | null
+          brand: string | null
           created_at: string | null
-          created_by: string | null
-          expiry_date: string
-          first_use: string | null
+          expiry_date: string | null
+          first_use_date: string | null
           id: string
           image_url: string | null
-          last_inspection: string | null
-          manufacturing_date: string
-          model_number: string
+          manufacturing_date: string | null
+          model_number: string | null
           next_inspection: string | null
           serial_number: string
           status: Database["public"]["Enums"]["ppe_status"] | null
@@ -182,17 +207,16 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          batch_number?: number | null
-          brand: string
+          assigned_to?: string | null
+          batch_number?: string | null
+          brand?: string | null
           created_at?: string | null
-          created_by?: string | null
-          expiry_date: string
-          first_use?: string | null
+          expiry_date?: string | null
+          first_use_date?: string | null
           id?: string
           image_url?: string | null
-          last_inspection?: string | null
-          manufacturing_date: string
-          model_number: string
+          manufacturing_date?: string | null
+          model_number?: string | null
           next_inspection?: string | null
           serial_number: string
           status?: Database["public"]["Enums"]["ppe_status"] | null
@@ -200,40 +224,32 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          batch_number?: number | null
-          brand?: string
+          assigned_to?: string | null
+          batch_number?: string | null
+          brand?: string | null
           created_at?: string | null
-          created_by?: string | null
-          expiry_date?: string
-          first_use?: string | null
+          expiry_date?: string | null
+          first_use_date?: string | null
           id?: string
           image_url?: string | null
-          last_inspection?: string | null
-          manufacturing_date?: string
-          model_number?: string
+          manufacturing_date?: string | null
+          model_number?: string | null
           next_inspection?: string | null
           serial_number?: string
           status?: Database["public"]["Enums"]["ppe_status"] | null
           type?: string
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "ppe_items_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string | null
           department: string | null
+          email: string | null
           employee_id: string | null
-          Employee_Role: string | null
+          employee_role: string | null
           full_name: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"] | null
@@ -244,8 +260,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           department?: string | null
+          email?: string | null
           employee_id?: string | null
-          Employee_Role?: string | null
+          employee_role?: string | null
           full_name?: string | null
           id: string
           role?: Database["public"]["Enums"]["app_role"] | null
@@ -256,8 +273,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           department?: string | null
+          email?: string | null
           employee_id?: string | null
-          Employee_Role?: string | null
+          employee_role?: string | null
           full_name?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"] | null
@@ -271,32 +289,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_extended_profile: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      get_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      upsert_extended_profile: {
-        Args: {
-          p_employee_id: string
-          p_location: string
-          p_department: string
-          p_bio: string
-        }
-        Returns: Json
-      }
+      [_ in never]: never
     }
     Enums: {
-      app_role: "admin" | "user"
-      inspection_type: "pre-use" | "monthly" | "quarterly"
-      ppe_status: "active" | "expired" | "maintenance" | "flagged"
+      app_role: "admin" | "inspector" | "user"
+      inspection_type: "pre-use" | "monthly" | "quarterly" | "annual"
+      ppe_status:
+        | "active"
+        | "expired"
+        | "flagged"
+        | "due"
+        | "inspected"
+        | "out-of-service"
+        | "maintenance"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -412,9 +417,17 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
-      inspection_type: ["pre-use", "monthly", "quarterly"],
-      ppe_status: ["active", "expired", "maintenance", "flagged"],
+      app_role: ["admin", "inspector", "user"],
+      inspection_type: ["pre-use", "monthly", "quarterly", "annual"],
+      ppe_status: [
+        "active",
+        "expired",
+        "flagged",
+        "due",
+        "inspected",
+        "out-of-service",
+        "maintenance",
+      ],
     },
   },
 } as const

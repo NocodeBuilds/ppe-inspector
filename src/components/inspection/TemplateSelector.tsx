@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Check, Plus, Search, Filter, Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { InspectionTemplate } from '@/types/inspection';
-import { PPEType } from '@/integrations/supabase/client';
+import { PPEType } from '@/types/index';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface TemplateSelectorProps {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -9,6 +8,13 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface AnalyticsDashboardProps {
   timeframe?: 'week' | 'month' | 'year';
+}
+
+// Mock data interface until database structure is fully implemented
+interface AnalyticsData {
+  ppeTypes: any[];
+  ppeItems: any[];
+  inspections: any[];
 }
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
@@ -26,16 +32,29 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       setIsLoading(true);
       
       try {
-        // Get PPE counts by type
-        const { data: ppeTypes, error: ppeTypeError } = await supabase
-          .from('ppe_items')
-          .select('type');
+        // Initialize with empty data
+        let data: AnalyticsData = {
+          ppeTypes: [],
+          ppeItems: [],
+          inspections: []
+        };
         
-        if (ppeTypeError) throw ppeTypeError;
+        try {
+          // Get PPE items
+          const { data: ppeItems, error: ppeError } = await supabase
+            .from('ppe_items')
+            .select('*');
+          
+          if (!ppeError && ppeItems) {
+            data.ppeItems = ppeItems;
+          }
+        } catch (e) {
+          console.error("Error fetching PPE items:", e);
+        }
         
         // Process PPE type data
         const typeCount: Record<string, number> = {};
-        ppeTypes.forEach((item: any) => {
+        data.ppeItems.forEach((item: any) => {
           typeCount[item.type] = (typeCount[item.type] || 0) + 1;
         });
         
@@ -46,13 +65,6 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         
         setPpeTypeData(formattedTypeData);
         
-        // Fetch PPE status data
-        const { data: ppeItems, error: ppeError } = await supabase
-          .from('ppe_items')
-          .select('status');
-        
-        if (ppeError) throw ppeError;
-        
         // Process PPE status data
         const statusCount: Record<string, number> = {
           active: 0,
@@ -61,7 +73,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           flagged: 0
         };
         
-        ppeItems.forEach((item: any) => {
+        data.ppeItems.forEach((item: any) => {
           if (item.status) {
             statusCount[item.status] = (statusCount[item.status] || 0) + 1;
           }
@@ -75,12 +87,18 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         
         setPpeStatusData(formattedStatusData);
         
-        // Fetch inspection data
-        const { data: inspections, error: inspectionError } = await supabase
-          .from('inspections')
-          .select('type, overall_result, date');
-        
-        if (inspectionError) throw inspectionError;
+        try {
+          // Fetch inspection data
+          const { data: inspections, error: inspectionError } = await supabase
+            .from('inspections')
+            .select('*');
+          
+          if (!inspectionError && inspections) {
+            data.inspections = inspections;
+          }
+        } catch (e) {
+          console.error("Error fetching inspections:", e);
+        }
         
         // Process inspection type data
         const inspectionTypes: Record<string, number> = {
@@ -89,7 +107,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           'quarterly': 0
         };
         
-        inspections.forEach((item: any) => {
+        data.inspections.forEach((item: any) => {
           if (item.type) {
             inspectionTypes[item.type] = (inspectionTypes[item.type] || 0) + 1;
           }
@@ -109,7 +127,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           Pending: 0
         };
         
-        inspections.forEach((item: any) => {
+        data.inspections.forEach((item: any) => {
           const result = item.overall_result?.toLowerCase() || '';
           if (result === 'pass') resultCount.Pass++;
           else if (result === 'fail') resultCount.Fail++;

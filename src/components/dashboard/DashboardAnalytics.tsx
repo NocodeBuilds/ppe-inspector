@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +14,12 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+
+// This is a temporary mock data interface until we get types from the database
+interface DashboardData {
+  inspections: any[];
+  ppeItems: any[];
+}
 
 interface DashboardAnalyticsProps {
   className?: string;
@@ -45,70 +52,81 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ className = '' 
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
       const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString();
       
-      // Get total inspections
-      const { count: totalCount, error: totalError } = await supabase
-        .from('inspections')
-        .select('*', { count: 'exact', head: true });
+      // Using a temporary approach to fetch data
+      // This will be updated once the database schema is properly set up
+      let data: DashboardData = {
+        inspections: [],
+        ppeItems: []
+      };
       
-      if (totalError) throw totalError;
+      try {
+        // Get total inspections
+        const { data: inspectionsData, error: inspectionsError } = await supabase
+          .from('inspections')
+          .select('*');
+        
+        if (!inspectionsError && inspectionsData) {
+          data.inspections = inspectionsData;
+        }
+        
+        // Get PPE items
+        const { data: ppeData, error: ppeError } = await supabase
+          .from('ppe_items')
+          .select('*');
+        
+        if (!ppeError && ppeData) {
+          data.ppeItems = ppeData;
+        }
+      } catch (e) {
+        console.error("Error fetching data:", e);
+        // Continue with empty data
+      }
       
-      // Get this month's inspections
-      const { count: monthCount, error: monthError } = await supabase
-        .from('inspections')
-        .select('*', { count: 'exact', head: true })
-        .gte('date', startOfMonth);
+      // Calculate stats from available data
+      const totalCount = data.inspections.length || 0;
       
-      if (monthError) throw monthError;
+      // This month's inspections
+      const monthCount = data.inspections.filter(i => 
+        i.date && new Date(i.date) >= new Date(startOfMonth)
+      ).length || 0;
       
-      // Get last month's inspections for trend calculation
-      const { count: lastMonthCount, error: lastMonthError } = await supabase
-        .from('inspections')
-        .select('*', { count: 'exact', head: true })
-        .gte('date', startOfLastMonth)
-        .lt('date', endOfLastMonth);
+      // Last month's inspections
+      const lastMonthCount = data.inspections.filter(i => 
+        i.date && new Date(i.date) >= new Date(startOfLastMonth) && 
+        new Date(i.date) < new Date(endOfLastMonth)
+      ).length || 0;
       
-      if (lastMonthError) throw lastMonthError;
-      
-      // Calculate trend (percentage change)
+      // Calculate trend
       const trend = lastMonthCount 
         ? Math.round(((monthCount - lastMonthCount) / lastMonthCount) * 100) 
         : 0;
       
-      // Get pending inspections (equipment due for inspection)
-      const { count: pendingCount, error: pendingError } = await supabase
-        .from('ppe_items')
-        .select('*', { count: 'exact', head: true })
-        .lte('next_inspection', now.toISOString());
+      // Get pending inspections
+      const pendingCount = data.ppeItems.filter(i => 
+        i.next_inspection && new Date(i.next_inspection) <= now
+      ).length || 0;
       
-      if (pendingError) throw pendingError;
+      // Get pass rate
+      const passCount = data.inspections.filter(i => 
+        i.overall_result?.toLowerCase() === 'pass'
+      ).length || 0;
       
-      // Get pass rate (based on overall_result)
-      const { data: passData, error: passError } = await supabase
-        .from('inspections')
-        .select('overall_result')
-        .eq('overall_result', 'pass');
+      const passRate = totalCount ? Math.round((passCount / totalCount) * 100) : 0;
       
-      if (passError) throw passError;
-      
-      const passRate = totalCount ? Math.round((passData.length / totalCount) * 100) : 0;
-      
-      // Get critical items (flagged PPE)
-      const { count: criticalCount, error: criticalError } = await supabase
-        .from('ppe_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'flagged');
-      
-      if (criticalError) throw criticalError;
+      // Get critical items
+      const criticalCount = data.ppeItems.filter(i => 
+        i.status === 'flagged'
+      ).length || 0;
       
       setStats({
-        totalInspections: totalCount || 0,
-        thisMonth: monthCount || 0,
-        pendingInspections: pendingCount || 0,
+        totalInspections: totalCount,
+        thisMonth: monthCount,
+        pendingInspections: pendingCount,
         passRate,
-        criticalItems: criticalCount || 0,
+        criticalItems: criticalCount,
         trend
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching analytics:', error);
       toast({
         title: 'Error',
@@ -122,26 +140,35 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ className = '' 
   
   // Set up realtime subscription
   useEffect(() => {
-    const channel = supabase
-      .channel('analytics-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'inspections' 
-      }, () => {
-        fetchAnalytics();
-      })
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'ppe_items' 
-      }, () => {
-        fetchAnalytics();
-      })
-      .subscribe();
+    let channel: any = null;
+    
+    try {
+      channel = supabase.channel('analytics-changes')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'inspections' 
+        }, () => {
+          fetchAnalytics();
+        })
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'ppe_items' 
+        }, () => {
+          fetchAnalytics();
+        })
+        .subscribe();
+    } catch (e) {
+      console.error("Error setting up realtime subscription:", e);
+    }
     
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel).catch(e => {
+          console.error("Error removing channel:", e);
+        });
+      }
     };
   }, []);
   

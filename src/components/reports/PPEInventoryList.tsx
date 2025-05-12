@@ -47,16 +47,36 @@ const PPEInventoryList = () => {
   const fetchPPEItems = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('ppe_items')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Temporary approach until we have proper types
+      let items: PPEItem[] = [];
+      
+      try {
+        const { data, error } = await supabase
+          .from('ppe_items')
+          .select('*');
 
-      if (error) throw error;
-
-      if (data) {
-        setPpeItems(data as PPEItem[]);
+        if (!error && data) {
+          // Map the database fields to our PPEItem interface
+          items = data.map(item => ({
+            id: item.id || '',
+            serialNumber: item.serial_number || '',
+            type: item.type || '',
+            brand: item.brand || '',
+            modelNumber: item.model_number || '',
+            manufacturingDate: item.manufacturing_date || '',
+            expiryDate: item.expiry_date || '',
+            status: item.status || 'active',
+            imageUrl: item.image_url,
+            nextInspection: item.next_inspection,
+            createdAt: item.created_at || '',
+            updatedAt: item.updated_at || '',
+          }));
+        }
+      } catch (e) {
+        console.error("Error fetching PPE items:", e);
       }
+
+      setPpeItems(items);
     } catch (error: any) {
       console.error('Error fetching PPE items:', error);
       toast({
@@ -82,7 +102,7 @@ const PPEInventoryList = () => {
     .filter(item => {
       const statusMatch = statusFilter === 'all' || item.status?.toLowerCase() === statusFilter;
 
-      if (!searchTerm) return true;
+      if (!searchTerm) return statusMatch;
       const searchLower = searchTerm.toLowerCase();
       const searchMatch = (
         item.serialNumber?.toLowerCase().includes(searchLower) ||

@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
-import { PPEItem } from '@/integrations/supabase/client';
+import { PPEItem } from '@/types/index';
 import { useNotifications } from '@/hooks/useNotifications';
 
 /**
