@@ -9,7 +9,7 @@ export interface StandardInspectionData {
   overall_result: string;
   notes: string | null;
   signature_data?: string | null;
-  signature_url: string | null;
+  signature_url: string | null; // Required field
   inspector_name: string;
   inspector_id: string;
   inspector_employee_id?: string;
@@ -34,6 +34,9 @@ export interface StandardInspectionData {
 
 // Convert form submission data to standard format
 export const formatFromFormSubmission = (formData: any, userProfile: any): StandardInspectionData => {
+  // Generate signature_url from data if not provided
+  const signature_url = formData.signature_url || formData.signature_data || null;
+  
   return {
     id: formData.id || '',
     date: formData.date || new Date().toISOString(),
@@ -41,7 +44,7 @@ export const formatFromFormSubmission = (formData: any, userProfile: any): Stand
     overall_result: formData.overall_result || '',
     notes: formData.notes || null,
     signature_data: formData.signature_data || null,
-    signature_url: formData.signature_url || formData.signature_data || null,
+    signature_url: signature_url,
     inspector_name: userProfile?.full_name || 'Unknown Inspector',
     inspector_id: userProfile?.id || '',
     inspector_employee_id: userProfile?.employee_id || '',
@@ -59,12 +62,15 @@ export const formatFromFormSubmission = (formData: any, userProfile: any): Stand
   };
 };
 
-// Convert database fetched data to standard format
+// Convert database fetched data to standard format with error handling
 export const formatFromDatabaseFetch = (dbData: any): StandardInspectionData => {
   // Handle potential missing relationships
   const profiles = dbData.profiles || {};
   const ppeItems = dbData.ppe_items || {};
-
+  
+  // Generate signature_url from data if not provided
+  const signature_url = dbData.signature_url || dbData.signature_data || null;
+  
   return {
     id: dbData.id || '',
     date: dbData.date || new Date().toISOString(),
@@ -72,7 +78,7 @@ export const formatFromDatabaseFetch = (dbData: any): StandardInspectionData => 
     overall_result: dbData.overall_result || '',
     notes: dbData.notes || null,
     signature_data: dbData.signature_data || null,
-    signature_url: dbData.signature_url || dbData.signature_data || null,
+    signature_url: signature_url,
     inspector_name: profiles.full_name || 'Unknown Inspector',
     inspector_id: dbData.inspector_id || '',
     inspector_employee_id: profiles.employee_id || '',
@@ -90,22 +96,38 @@ export const formatFromDatabaseFetch = (dbData: any): StandardInspectionData => 
   };
 };
 
-// Fetch complete inspection data with relationships
+// Fetch complete inspection data with relationships and handling for missing relations
 export const fetchCompleteInspectionData = async (supabase: any, inspectionId: string): Promise<StandardInspectionData | null> => {
   try {
     // First get the inspection with basic joins
-    const { data: inspection, error } = await supabase
+    let { data: inspection, error } = await supabase
       .from('inspections')
       .select(`
-        id, date, type, overall_result, notes, signature_url, inspector_id,
-        profiles:inspector_id(*),
-        ppe_items:ppe_id(*)
+        id, date, type, overall_result, notes, signature_data, signature_url, inspector_id
       `)
       .eq('id', inspectionId)
       .single();
     
     if (error) throw error;
     if (!inspection) return null;
+    
+    // Separately get the inspector profile to handle potential missing relation
+    const { data: inspectorProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', inspection.inspector_id)
+      .maybeSingle();
+    
+    // Separately get the PPE item to handle potential missing relation
+    const { data: ppeItem } = await supabase
+      .from('ppe_items')
+      .select('*')
+      .eq('id', inspection.ppe_id)
+      .maybeSingle();
+    
+    // Add these to inspection object
+    inspection.profiles = inspectorProfile || {};
+    inspection.ppe_items = ppeItem || {};
     
     // Then get the checkpoint results
     const { data: checkpointResults, error: resultsError } = await supabase
@@ -119,8 +141,8 @@ export const fetchCompleteInspectionData = async (supabase: any, inspectionId: s
     if (resultsError) throw resultsError;
     
     // Format the checkpoints
-    const formattedCheckpoints = checkpointResults.map((result: any) => ({
-      id: result.checkpoints?.id || result.id,
+    const formattedCheckpoints = (checkpointResults || []).map((result: any) => ({
+      id: result.checkpoints?.id || result.id || '',
       description: result.checkpoints?.description || 'Unknown checkpoint',
       passed: result.passed,
       notes: result.notes || null,

@@ -30,7 +30,7 @@ export const exportPPEItemsToExcel = async () => {
         'Manufacturing Date': formatDateOrNA(item.manufacturing_date),
         'Expiry Date': formatDateOrNA(item.expiry_date),
         'Status': item.status,
-        'Last Inspection': formatDateOrNA(item.last_inspection_date), // If this field exists
+        'Last Inspection': formatDateOrNA(item.last_inspection_date || item.next_inspection), // Use next_inspection if last_inspection_date doesn't exist
         'Next Inspection': formatDateOrNA(item.next_inspection) // Using next_inspection consistently
       }));
       
@@ -372,19 +372,29 @@ export const formatPPEDataForExport = (item: any) => {
 };
 
 export const formatInspectionDataForExport = (inspection: any) => {
-  // Add fallbacks for all possible undefined properties
-  const inspector = inspection.profiles || {};
-  const ppe = inspection.ppe_items || {};
+  // Add proper fallbacks and error handling for all possible undefined properties
+  let inspector = {};
+  let ppe = {};
+  
+  // Check if profiles exists and is not an error object
+  if (inspection.profiles && typeof inspection.profiles === 'object' && !('code' in inspection.profiles)) {
+    inspector = inspection.profiles;
+  }
+  
+  // Check if ppe_items exists and is not an error object
+  if (inspection.ppe_items && typeof inspection.ppe_items === 'object' && !('code' in inspection.ppe_items)) {
+    ppe = inspection.ppe_items;
+  }
   
   return {
     'Date': formatDateOrNA(inspection.date),
     'Type': inspection.type || '',
     'Result': inspection.overall_result || '',
-    'Inspector': inspector.full_name || 'Unknown',
-    'Role': inspector.employee_role || 'Unknown', // Using employee_role consistently
-    'Department': inspector.department || 'Unknown',
-    'PPE Type': ppe.type || 'Unknown',
-    'PPE Serial': ppe.serial_number || 'Unknown',
+    'Inspector': inspector?.full_name || 'Unknown',
+    'Role': inspector?.employee_role || 'Unknown', // Using employee_role consistently
+    'Department': inspector?.department || 'Unknown',
+    'PPE Type': ppe?.type || 'Unknown',
+    'PPE Serial': ppe?.serial_number || 'Unknown',
     'Notes': inspection.notes || '',
     // ... keep existing code (other properties)
   };

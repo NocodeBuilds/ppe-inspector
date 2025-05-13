@@ -2,7 +2,8 @@
 import { useQuery, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 
-interface UseSupabaseQueryOptions<TData, TError> extends Omit<UseQueryOptions<TData, TError, TData>, 'queryFn'> {
+interface UseSupabaseQueryOptions<TData, TError> 
+  extends Omit<UseQueryOptions<TData, TError, TData>, 'queryFn' | 'queryKey'> {
   showErrorToast?: boolean;
   errorToastTitle?: string;
   errorToastDescription?: string;
@@ -13,30 +14,42 @@ export function useSupabaseQuery<TData = unknown, TError = unknown>(
   queryFn: () => Promise<TData>,
   options?: UseSupabaseQueryOptions<TData, TError>
 ): UseQueryResult<TData, TError> {
-  const { showErrorToast = true, errorToastTitle = 'Error', errorToastDescription, ...restOptions } = options || {};
+  const { 
+    showErrorToast = true, 
+    errorToastTitle = 'Error', 
+    errorToastDescription,
+    ...restOptions 
+  } = options || {};
 
-  // Create a custom onError handler
-  const handleError = (error: TError) => {
-    console.error('Query Error:', error);
-    
-    if (showErrorToast) {
-      toast({
-        title: errorToastTitle,
-        description: errorToastDescription || (error as Error)?.message || 'An error occurred',
-        variant: 'destructive',
-      });
-    }
-    
-    // Call the original onError if provided
-    if (restOptions.onError) {
-      restOptions.onError(error);
-    }
-  };
-
-  return useQuery<TData, TError, TData>({
+  // Create the query config with proper types
+  const queryConfig: UseQueryOptions<TData, TError, TData> = {
+    ...restOptions,
     queryKey,
     queryFn,
-    ...restOptions,
-    onError: handleError
-  });
+  };
+  
+  // Add error handling through the built-in mechanism
+  if (showErrorToast) {
+    const originalOnError = restOptions?.onError;
+    
+    queryConfig.meta = {
+      ...queryConfig.meta,
+      onError: (error: TError) => {
+        console.error('Query Error:', error);
+        
+        toast({
+          title: errorToastTitle,
+          description: errorToastDescription || (error as Error)?.message || 'An error occurred',
+          variant: 'destructive',
+        });
+        
+        // Call the original onError if provided
+        if (originalOnError) {
+          originalOnError(error as any);
+        }
+      }
+    };
+  }
+
+  return useQuery(queryConfig);
 }

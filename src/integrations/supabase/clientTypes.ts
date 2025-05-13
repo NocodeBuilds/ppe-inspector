@@ -14,7 +14,7 @@ export type Profile = {
   employee_id: string | null;
   site_name: string | null;
   department: string | null;
-  Employee_Role: string | null;
+  employee_role: string | null; // Changed from Employee_Role to employee_role for consistency
   email: string | null;
 };
 
