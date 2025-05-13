@@ -41,11 +41,11 @@ export const fetchInspectionHistory = async (filters = {}) => {
     
     // Process data safely to handle potential SelectQueryError results
     return data?.map(item => {
-      const profiles = typeof item.profiles === 'object' && item.profiles !== null && !('code' in item.profiles)
+      const profiles = typeof item.profiles === 'object' && item.profiles !== null && !('code' in (item.profiles ?? {}))
         ? item.profiles
         : { full_name: 'Unknown' };
         
-      const ppeItems = typeof item.ppe_items === 'object' && item.ppe_items !== null && !('code' in item.ppe_items)
+      const ppeItems = typeof item.ppe_items === 'object' && item.ppe_items !== null && !('code' in (item.ppe_items ?? {}))
         ? item.ppe_items
         : { type: 'Unknown', serial_number: 'Unknown', brand: 'Unknown', model_number: 'Unknown' };
         
@@ -101,11 +101,11 @@ const InspectionHistory = () => {
       
       const formattedInspections = data.map(item => {
         // Safely handle potential relationship errors
-        const profiles = typeof item.profiles === 'object' && item.profiles !== null && !('code' in item.profiles)
+        const profiles = typeof item.profiles === 'object' && item.profiles !== null && !('code' in (item.profiles ?? {}))
           ? item.profiles
           : { full_name: 'Unknown' };
           
-        const ppeItems = typeof item.ppe_items === 'object' && item.ppe_items !== null && !('code' in item.ppe_items)
+        const ppeItems = typeof item.ppe_items === 'object' && item.ppe_items !== null && !('code' in (item.ppe_items ?? {}))
           ? item.ppe_items
           : { type: 'Unknown', serial_number: 'Unknown', brand: 'Unknown', model_number: 'Unknown' };
           

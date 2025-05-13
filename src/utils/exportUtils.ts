@@ -3,6 +3,7 @@ import { jsPDF } from 'jspdf';
 import { formatDateOrNA } from './pdfUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { PPEItem } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 export const exportToExcel = (data: any[], filename: string) => {
   const worksheet = XLSX.utils.json_to_sheet(data);
@@ -65,11 +66,11 @@ export const exportInspectionsToExcel = async () => {
       // Format data for Excel with safe property access
       const formattedData = data.map(item => {
         // Safely handle potential relationship errors
-        const profiles = typeof item.profiles === 'object' && item.profiles !== null && !('code' in item.profiles)
+        const profiles = typeof item.profiles === 'object' && item.profiles !== null && !('code' in (item.profiles ?? {}))
           ? item.profiles
           : { full_name: 'Unknown', employee_role: 'Unknown', department: 'Unknown' };
           
-        const ppeItems = typeof item.ppe_items === 'object' && item.ppe_items !== null && !('code' in item.ppe_items)
+        const ppeItems = typeof item.ppe_items === 'object' && item.ppe_items !== null && !('code' in (item.ppe_items ?? {}))
           ? item.ppe_items
           : { type: 'Unknown', serial_number: 'Unknown' };
           
@@ -220,8 +221,6 @@ export const exportAnalyticsToExcel = async () => {
   }
 };
 
-import { format } from 'date-fns';
-
 interface InspectionExportData {
   id: string;
   ppe_id: string;
@@ -357,9 +356,6 @@ export const exportFilteredPPEToExcel = async (
   }
 };
 
-// Updated helper functions with safer type checking
-import { format } from 'date-fns';
-
 interface InspectionExportData {
   id: string;
   ppe_id: string;
@@ -401,12 +397,12 @@ export const formatInspectionDataForExport = (inspection: any) => {
   let ppe = {};
   
   // Check if profiles exists and is not an error object
-  if (inspection.profiles && typeof inspection.profiles === 'object' && !('code' in inspection.profiles)) {
+  if (inspection.profiles && typeof inspection.profiles === 'object' && !('code' in (inspection.profiles ?? {}))) {
     inspector = inspection.profiles;
   }
   
   // Check if ppe_items exists and is not an error object
-  if (inspection.ppe_items && typeof inspection.ppe_items === 'object' && !('code' in inspection.ppe_items)) {
+  if (inspection.ppe_items && typeof inspection.ppe_items === 'object' && !('code' in (inspection.ppe_items ?? {}))) {
     ppe = inspection.ppe_items;
   }
   

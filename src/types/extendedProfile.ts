@@ -9,4 +9,5 @@ export interface ExtendedProfile {
   employee_role?: string | null; // Changed from Employee_Role to employee_role for consistency
   created_at?: string;
   updated_at?: string;
+  full_name?: string | null; // Added to ensure consistency with profile queries
 }

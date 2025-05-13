@@ -165,11 +165,11 @@ const InspectionDetails = () => {
       })) || [];
       
       // Handle potential errors from Supabase relationships by using type checking
-      const profiles = typeof inspectionData.profiles === 'object' && inspectionData.profiles !== null && !('code' in inspectionData.profiles) 
+      const profiles = typeof inspectionData.profiles === 'object' && inspectionData.profiles !== null && !('code' in (inspectionData.profiles ?? {})) 
         ? inspectionData.profiles 
         : { full_name: 'Unknown', site_name: 'Unknown' };
         
-      const ppeItems = typeof inspectionData.ppe_items === 'object' && inspectionData.ppe_items !== null && !('code' in inspectionData.ppe_items)
+      const ppeItems = typeof inspectionData.ppe_items === 'object' && inspectionData.ppe_items !== null && !('code' in (inspectionData.ppe_items ?? {}))
         ? inspectionData.ppe_items
         : { type: 'Unknown', serial_number: 'Unknown', brand: 'Unknown', model_number: 'Unknown', manufacturing_date: null, expiry_date: null, batch_number: null };
       
