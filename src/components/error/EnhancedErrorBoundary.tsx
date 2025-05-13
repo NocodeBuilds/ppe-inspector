@@ -45,18 +45,16 @@ const EnhancedErrorBoundary: React.FC<EnhancedErrorBoundaryProps> = ({
     if (onError) {
       onError(error, info);
     }
-    
-    // Here you could add error reporting to a service like Sentry
-    // reportErrorToService(error, info, component);
   };
   
   return (
     <ErrorBoundary
-      FallbackComponent={(props) => 
-        fallback ? 
-          <>{fallback}</> : 
-          <ErrorFallback {...props} componentName={component} />
-      }
+      FallbackComponent={(props) => {
+        if (fallback) {
+          return <>{fallback}</>;
+        }
+        return <ErrorFallback {...props} componentName={component} />;
+      }}
       onError={handleError}
       resetKeys={resetKeys}
       onReset={onReset}

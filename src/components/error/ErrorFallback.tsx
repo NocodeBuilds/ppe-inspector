@@ -1,35 +1,31 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 interface ErrorFallbackProps {
   error: Error;
   resetErrorBoundary: () => void;
   componentStack?: string;
   errorInfo?: React.ErrorInfo;
-  componentName?: string; // Add this optional property to the interface
+  componentName?: string;
 }
 
 const ErrorFallback: React.FC<ErrorFallbackProps> = ({ 
   error, 
   resetErrorBoundary,
   componentStack,
-  componentName = 'Unknown Component', // Provide a default value
+  componentName = 'Unknown Component',
 }) => {
-  const navigate = useNavigate();
-  
   // Log the error for debugging
   React.useEffect(() => {
     console.error(`Error caught in ${componentName}:`, error);
     console.error('Component stack:', componentStack);
-    
-    // You can add error reporting service here
-    // reportErrorToService(error, componentStack, componentName);
   }, [error, componentStack, componentName]);
   
   const handleGoHome = () => {
-    navigate('/');
+    // Use window.location instead of useNavigate
+    window.location.href = '/';
     resetErrorBoundary();
   };
   

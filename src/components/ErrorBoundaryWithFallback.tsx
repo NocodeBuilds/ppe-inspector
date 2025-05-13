@@ -2,7 +2,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, RefreshCw, Home, Info } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 interface Props {
@@ -47,6 +46,10 @@ class ErrorBoundaryWithFallback extends Component<Props, State> {
   
   handleReset = () => {
     this.setState({ hasError: false, error: null, errorInfo: null });
+  };
+
+  handleGoHome = () => {
+    window.location.href = '/';
   };
 
   render() {
@@ -115,12 +118,10 @@ class ErrorBoundaryWithFallback extends Component<Props, State> {
               Reload Page
             </Button>
             {showHomeButton && (
-              <Link to="/">
-                <Button variant="default" className="flex items-center">
-                  <Home className="mr-2 h-4 w-4" />
-                  Go Home
-                </Button>
-              </Link>
+              <Button onClick={this.handleGoHome} variant="default" className="flex items-center">
+                <Home className="mr-2 h-4 w-4" />
+                Go Home
+              </Button>
             )}
           </div>
           

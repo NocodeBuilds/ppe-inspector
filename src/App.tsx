@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeToggler";
 import { initializePWA } from "./utils/pwaUtils";
@@ -105,60 +105,56 @@ const App = () => {
 
   return (
     <EnhancedErrorBoundary onError={handleGlobalError} component="AppRoot">
-      <BrowserRouter>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <TooltipProvider>
-              <AuthProvider>
-                {/* Add NetworkStatusListener to monitor online/offline status */}
-                <NetworkStatusListener />
-                <NetworkStatus />
-                <Toaster />
-                <Sonner />
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                    <Route path="/reset-password" element={<ResetPasswordPage />} />
-                    
-                    <Route path="/" element={<MainLayout />}>
-                      <Route index element={<Home />} />
-                      <Route path="expiring" element={<ExpiringPPE />} />
-                      <Route path="upcoming" element={<UpcomingInspections />} />
-                      <Route path="equipment" element={<Equipment />} />
-                      <Route path="flagged" element={<FlaggedIssues />} />
-                      <Route path="settings" element={<Settings />} />
-                      <Route path="profile" element={<Profile />} />
-                      <Route path="edit-profile" element={<EditProfile />} />
-                      <Route path="start-inspection" element={<StartInspection />} />
-                      <Route path="inspect/new" element={<ManualInspection />} />
-                      <Route path="inspect/:ppeId" element={<InspectionForm />} />
-                      <Route path="inspection/:id" element={<InspectionDetails />} />
-                      <Route path="analytics" element={
-                        <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
-                          <Analytics />
-                        </RoleProtectedRoute>
-                      } />
-                      <Route path="reports" element={
-                        <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
-                          <ReportsPage />
-                        </RoleProtectedRoute>
-                      } />
-                      <Route path="admin/delete/:type/:id" element={
-                        <RoleProtectedRoute requiredRole="admin" fallbackPath="access-denied">
-                          <ReportsPage />
-                        </RoleProtectedRoute>
-                      } />
-                      <Route path="*" element={<NotFound />} />
-                    </Route>
-                  </Routes>
-                </Suspense>
-              </AuthProvider>
-            </TooltipProvider>
-          </ThemeProvider>
-        </QueryClientProvider>
-      </BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <AuthProvider>
+              {/* Add NetworkStatusListener to monitor online/offline status */}
+              <NetworkStatusListener />
+              <NetworkStatus />
+              <Toaster />
+              <Sonner />
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  
+                  <Route path="/" element={<MainLayout />} />
+                  <Route path="expiring" element={<ExpiringPPE />} />
+                  <Route path="upcoming" element={<UpcomingInspections />} />
+                  <Route path="equipment" element={<Equipment />} />
+                  <Route path="flagged" element={<FlaggedIssues />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="edit-profile" element={<EditProfile />} />
+                  <Route path="start-inspection" element={<StartInspection />} />
+                  <Route path="inspect/new" element={<ManualInspection />} />
+                  <Route path="inspect/:ppeId" element={<InspectionForm />} />
+                  <Route path="inspection/:id" element={<InspectionDetails />} />
+                  <Route path="analytics" element={
+                    <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
+                      <Analytics />
+                    </RoleProtectedRoute>
+                  } />
+                  <Route path="reports" element={
+                    <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
+                      <ReportsPage />
+                    </RoleProtectedRoute>
+                  } />
+                  <Route path="admin/delete/:type/:id" element={
+                    <RoleProtectedRoute requiredRole="admin" fallbackPath="access-denied">
+                      <ReportsPage />
+                    </RoleProtectedRoute>
+                  } />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </AuthProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     </EnhancedErrorBoundary>
   );
 };
