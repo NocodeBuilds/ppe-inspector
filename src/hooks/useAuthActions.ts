@@ -71,13 +71,19 @@ export const useAuthActions = (): AuthActionsHook => {
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
       setIsLoading(true);
+      console.log("Starting signup process with Supabase...");
       
       // Create a timeout promise
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Registration request timed out. Please try again.')), AUTH_REQUEST_TIMEOUT);
       });
       
+      // Log Supabase URL and key (without showing the full key)
+      console.log("Using Supabase URL:", supabase.supabaseUrl);
+      console.log("Using Supabase key (first 10 chars):", supabase.supabaseKey.substring(0, 10) + "...");
+      
       // Race between sign-up request and timeout
+      console.log("Sending signup request to Supabase...");
       const signUpPromise = supabase.auth.signUp({
         email,
         password,
@@ -89,8 +95,10 @@ export const useAuthActions = (): AuthActionsHook => {
       });
       
       const result = await Promise.race([signUpPromise, timeoutPromise]) as { data: any, error: any };
+      console.log("Signup response received:", result);
       
       if (result.error) {
+        console.error("Signup error:", result.error);
         throw result.error;
       }
       
@@ -100,6 +108,7 @@ export const useAuthActions = (): AuthActionsHook => {
       });
       
     } catch (error: any) {
+      console.error("Caught error during signup:", error);
       handleError(error, 'Signup failed', 'An unexpected error occurred');
       throw error;
     } finally {
