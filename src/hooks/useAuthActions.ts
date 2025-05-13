@@ -78,9 +78,8 @@ export const useAuthActions = (): AuthActionsHook => {
         setTimeout(() => reject(new Error('Registration request timed out. Please try again.')), AUTH_REQUEST_TIMEOUT);
       });
       
-      // Log Supabase URL and key (without showing the full key)
-      console.log("Using Supabase URL:", supabase.supabaseUrl);
-      console.log("Using Supabase key (first 10 chars):", supabase.supabaseKey.substring(0, 10) + "...");
+      // Log Supabase connection info (without showing sensitive data)
+      console.log("Initiating Supabase signup operation");
       
       // Race between sign-up request and timeout
       console.log("Sending signup request to Supabase...");
