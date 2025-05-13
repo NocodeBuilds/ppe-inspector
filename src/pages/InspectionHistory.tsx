@@ -39,18 +39,28 @@ export const fetchInspectionHistory = async (filters = {}) => {
       
     if (error) throw error;
     
-    // Add fallbacks for the properties that might be undefined
-    return data?.map(item => ({
-      id: item.id,
-      date: item.date,
-      type: item.type,
-      overall_result: item.overall_result || 'Unknown',
-      inspector_name: item.profiles?.full_name || 'Unknown',
-      ppe_type: item.ppe_items?.type || 'Unknown',
-      ppe_serial: item.ppe_items?.serial_number || 'Unknown',
-      ppe_brand: item.ppe_items?.brand || 'Unknown',
-      ppe_model: item.ppe_items?.model_number || 'Unknown',
-    })) || [];
+    // Process data safely to handle potential SelectQueryError results
+    return data?.map(item => {
+      const profiles = typeof item.profiles === 'object' && item.profiles !== null && !('code' in item.profiles)
+        ? item.profiles
+        : { full_name: 'Unknown' };
+        
+      const ppeItems = typeof item.ppe_items === 'object' && item.ppe_items !== null && !('code' in item.ppe_items)
+        ? item.ppe_items
+        : { type: 'Unknown', serial_number: 'Unknown', brand: 'Unknown', model_number: 'Unknown' };
+        
+      return {
+        id: item.id,
+        date: item.date,
+        type: item.type,
+        overall_result: item.overall_result || 'Unknown',
+        inspector_name: profiles.full_name || 'Unknown',
+        ppe_type: ppeItems.type || 'Unknown',
+        ppe_serial: ppeItems.serial_number || 'Unknown',
+        ppe_brand: ppeItems.brand || 'Unknown',
+        ppe_model: ppeItems.model_number || 'Unknown',
+      };
+    }) || [];
     
   } catch (error) {
     console.error('Error fetching inspection history:', error);
@@ -89,17 +99,28 @@ const InspectionHistory = () => {
       
       if (error) throw error;
       
-      const formattedInspections = data.map(item => ({
-        id: item.id,
-        date: item.date,
-        type: item.type,
-        overall_result: item.overall_result,
-        inspector_name: item.profiles?.full_name || 'Unknown',
-        ppe_type: item.ppe_items?.type || 'Unknown',
-        ppe_serial: item.ppe_items?.serial_number || 'Unknown',
-        ppe_brand: item.ppe_items?.brand || 'Unknown',
-        ppe_model: item.ppe_items?.model_number || 'Unknown'
-      }));
+      const formattedInspections = data.map(item => {
+        // Safely handle potential relationship errors
+        const profiles = typeof item.profiles === 'object' && item.profiles !== null && !('code' in item.profiles)
+          ? item.profiles
+          : { full_name: 'Unknown' };
+          
+        const ppeItems = typeof item.ppe_items === 'object' && item.ppe_items !== null && !('code' in item.ppe_items)
+          ? item.ppe_items
+          : { type: 'Unknown', serial_number: 'Unknown', brand: 'Unknown', model_number: 'Unknown' };
+          
+        return {
+          id: item.id,
+          date: item.date,
+          type: item.type,
+          overall_result: item.overall_result,
+          inspector_name: profiles.full_name || 'Unknown',
+          ppe_type: ppeItems.type || 'Unknown',
+          ppe_serial: ppeItems.serial_number || 'Unknown',
+          ppe_brand: ppeItems.brand || 'Unknown',
+          ppe_model: ppeItems.model_number || 'Unknown'
+        };
+      });
       
       setInspections(formattedInspections);
     } catch (error: any) {

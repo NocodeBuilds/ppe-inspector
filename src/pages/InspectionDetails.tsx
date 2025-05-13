@@ -164,7 +164,16 @@ const InspectionDetails = () => {
         photo_url: result.photo_url,
       })) || [];
       
-      // Create the detailed inspection using safe property access
+      // Handle potential errors from Supabase relationships by using type checking
+      const profiles = typeof inspectionData.profiles === 'object' && inspectionData.profiles !== null && !('code' in inspectionData.profiles) 
+        ? inspectionData.profiles 
+        : { full_name: 'Unknown', site_name: 'Unknown' };
+        
+      const ppeItems = typeof inspectionData.ppe_items === 'object' && inspectionData.ppe_items !== null && !('code' in inspectionData.ppe_items)
+        ? inspectionData.ppe_items
+        : { type: 'Unknown', serial_number: 'Unknown', brand: 'Unknown', model_number: 'Unknown', manufacturing_date: null, expiry_date: null, batch_number: null };
+      
+      // Create the detailed inspection with safe property access
       const detailedInspection: InspectionDetails = {
         id: inspectionData.id,
         date: inspectionData.date,
@@ -173,15 +182,15 @@ const InspectionDetails = () => {
         notes: inspectionData.notes,
         signature_data: inspectionData.signature_data,
         inspector_id: inspectionData.inspector_id || '',
-        inspector_name: inspectionData.profiles?.full_name || 'Unknown',
-        ppe_type: inspectionData.ppe_items?.type || 'Unknown',
-        ppe_serial: inspectionData.ppe_items?.serial_number || 'Unknown',
-        ppe_brand: inspectionData.ppe_items?.brand || 'Unknown',
-        ppe_model: inspectionData.ppe_items?.model_number || 'Unknown',
-        site_name: inspectionData.profiles?.site_name || 'Unknown Site',
-        manufacturing_date: inspectionData.ppe_items?.manufacturing_date || 'N/A',
-        expiry_date: inspectionData.ppe_items?.expiry_date || 'N/A',
-        batch_number: inspectionData.ppe_items?.batch_number ? String(inspectionData.ppe_items.batch_number) : 'N/A',
+        inspector_name: profiles.full_name || 'Unknown',
+        ppe_type: ppeItems.type || 'Unknown',
+        ppe_serial: ppeItems.serial_number || 'Unknown',
+        ppe_brand: ppeItems.brand || 'Unknown',
+        ppe_model: ppeItems.model_number || 'Unknown',
+        site_name: profiles.site_name || 'Unknown Site',
+        manufacturing_date: ppeItems.manufacturing_date || 'N/A',
+        expiry_date: ppeItems.expiry_date || 'N/A',
+        batch_number: ppeItems.batch_number ? String(ppeItems.batch_number) : 'N/A',
         checkpoints: formattedCheckpoints,
       };
       

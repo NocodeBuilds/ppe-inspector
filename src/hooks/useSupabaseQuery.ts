@@ -28,10 +28,8 @@ export function useSupabaseQuery<TData = unknown, TError = unknown>(
     queryFn,
   };
   
-  // Add error handling through the built-in mechanism
+  // Add error handling through the meta object for React Query v5+
   if (showErrorToast) {
-    const originalOnError = restOptions?.onError;
-    
     queryConfig.meta = {
       ...queryConfig.meta,
       onError: (error: TError) => {
@@ -42,11 +40,6 @@ export function useSupabaseQuery<TData = unknown, TError = unknown>(
           description: errorToastDescription || (error as Error)?.message || 'An error occurred',
           variant: 'destructive',
         });
-        
-        // Call the original onError if provided
-        if (originalOnError) {
-          originalOnError(error as any);
-        }
       }
     };
   }

@@ -30,8 +30,8 @@ export const exportPPEItemsToExcel = async () => {
         'Manufacturing Date': formatDateOrNA(item.manufacturing_date),
         'Expiry Date': formatDateOrNA(item.expiry_date),
         'Status': item.status,
-        'Last Inspection': formatDateOrNA(item.last_inspection_date || item.next_inspection), // Use next_inspection if last_inspection_date doesn't exist
-        'Next Inspection': formatDateOrNA(item.next_inspection) // Using next_inspection consistently
+        'Last Inspection': formatDateOrNA(item.next_inspection), // Use next_inspection since last_inspection_date doesn't exist
+        'Next Inspection': formatDateOrNA(item.next_inspection)
       }));
       
       exportToExcel(formattedData, 'ppe_inventory');
@@ -63,17 +63,28 @@ export const exportInspectionsToExcel = async () => {
     
     if (data && data.length > 0) {
       // Format data for Excel with safe property access
-      const formattedData = data.map(item => ({
-        'Date': formatDateOrNA(item.date),
-        'Type': item.type,
-        'Result': item.overall_result,
-        'Inspector': item.profiles?.full_name || 'Unknown',
-        'Role': item.profiles?.employee_role || 'Unknown',
-        'Department': item.profiles?.department || 'Unknown',
-        'PPE Type': item.ppe_items?.type || 'Unknown',
-        'Serial Number': item.ppe_items?.serial_number || 'Unknown',
-        'Notes': item.notes || ''
-      }));
+      const formattedData = data.map(item => {
+        // Safely handle potential relationship errors
+        const profiles = typeof item.profiles === 'object' && item.profiles !== null && !('code' in item.profiles)
+          ? item.profiles
+          : { full_name: 'Unknown', employee_role: 'Unknown', department: 'Unknown' };
+          
+        const ppeItems = typeof item.ppe_items === 'object' && item.ppe_items !== null && !('code' in item.ppe_items)
+          ? item.ppe_items
+          : { type: 'Unknown', serial_number: 'Unknown' };
+          
+        return {
+          'Date': formatDateOrNA(item.date),
+          'Type': item.type,
+          'Result': item.overall_result,
+          'Inspector': profiles.full_name || 'Unknown',
+          'Role': profiles.employee_role || 'Unknown',
+          'Department': profiles.department || 'Unknown',
+          'PPE Type': ppeItems.type || 'Unknown',
+          'Serial Number': ppeItems.serial_number || 'Unknown',
+          'Notes': item.notes || ''
+        };
+      });
       
       exportToExcel(formattedData, 'inspection_report');
       return true;
@@ -346,6 +357,19 @@ export const exportFilteredPPEToExcel = async (
   }
 };
 
+// Updated helper functions with safer type checking
+import { format } from 'date-fns';
+
+interface InspectionExportData {
+  id: string;
+  ppe_id: string;
+  inspection_date: string;
+  inspector_name?: string;
+  ppe_type?: string;
+  serial_number?: string;
+  overall_result?: string;
+}
+
 // Helper function to safely format dates
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
@@ -390,12 +414,11 @@ export const formatInspectionDataForExport = (inspection: any) => {
     'Date': formatDateOrNA(inspection.date),
     'Type': inspection.type || '',
     'Result': inspection.overall_result || '',
-    'Inspector': inspector?.full_name || 'Unknown',
-    'Role': inspector?.employee_role || 'Unknown', // Using employee_role consistently
-    'Department': inspector?.department || 'Unknown',
-    'PPE Type': ppe?.type || 'Unknown',
-    'PPE Serial': ppe?.serial_number || 'Unknown',
+    'Inspector': (inspector as any)?.full_name || 'Unknown',
+    'Role': (inspector as any)?.employee_role || 'Unknown', 
+    'Department': (inspector as any)?.department || 'Unknown',
+    'PPE Type': (ppe as any)?.type || 'Unknown',
+    'PPE Serial': (ppe as any)?.serial_number || 'Unknown',
     'Notes': inspection.notes || '',
-    // ... keep existing code (other properties)
   };
 };

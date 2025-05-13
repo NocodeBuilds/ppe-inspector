@@ -64,9 +64,14 @@ export const formatFromFormSubmission = (formData: any, userProfile: any): Stand
 
 // Convert database fetched data to standard format with error handling
 export const formatFromDatabaseFetch = (dbData: any): StandardInspectionData => {
-  // Handle potential missing relationships
-  const profiles = dbData.profiles || {};
-  const ppeItems = dbData.ppe_items || {};
+  // Handle potential missing relationships with safer type checking
+  const profiles = typeof dbData.profiles === 'object' && dbData.profiles !== null && !('code' in dbData.profiles)
+    ? dbData.profiles
+    : {};
+    
+  const ppeItems = typeof dbData.ppe_items === 'object' && dbData.ppe_items !== null && !('code' in dbData.ppe_items)
+    ? dbData.ppe_items
+    : {};
   
   // Generate signature_url from data if not provided
   const signature_url = dbData.signature_url || dbData.signature_data || null;
