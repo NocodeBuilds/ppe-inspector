@@ -9,46 +9,58 @@ export function useProfile(userId: string | undefined) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper to handle result from supabase
+  const handleError = (err: any, context: string = "") => {
+    const msg = (err && err.message) ? err.message : String(err);
+    setError(msg);
+    toast({
+      title: "Profile error",
+      description: `${context} ${msg}`,
+      variant: "destructive",
+    });
+    return null;
+  };
+
   const fetchProfile = useCallback(async (uid: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    if (!uid) {
+      setProfile(null);
+      setIsLoading(false);
+      return null;
+    }
+
     try {
-      setIsLoading(true);
-      setError(null);
-
-      if (!uid) {
-        setProfile(null);
-        setIsLoading(false);
-        return null;
-      }
-
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', uid)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        console.error('Error fetching profile:', error);
-        setError(error.message);
-        setProfile(null);
-      } else {
-        setProfile(data as Profile);
+        return handleError(error, "fetching profile:");
+      }
+      if (!data) {
+        return handleError({ message: "Profile record not found after signup! Please try logging out and back in." }, "fetching profile:");
       }
 
-      return data as Profile | null;
+      setProfile(data as Profile);
+      return data as Profile;
     } catch (err: any) {
-      console.error('Unexpected error in fetchProfile:', err);
-      setError(err.message);
-      return null;
+      return handleError(err, "unexpected error in fetchProfile:");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const refreshProfile = useCallback(async () => {
+  // used for manual refresh
+  const refreshProfile = useCallback(() => {
     if (!userId) return null;
-    return await fetchProfile(userId);
+    return fetchProfile(userId);
   }, [userId, fetchProfile]);
 
+  // update
   const updateProfile = useCallback(async (updates: Partial<Profile>) => {
     if (!userId) {
       toast({
@@ -71,7 +83,6 @@ export function useProfile(userId: string | undefined) {
         .single();
 
       if (error) {
-        console.error('Error updating profile:', error);
         toast({
           title: "Error",
           description: `Failed to update profile: ${error.message}`,
@@ -88,7 +99,6 @@ export function useProfile(userId: string | undefined) {
       setProfile(data as Profile);
       return data as Profile;
     } catch (err: any) {
-      console.error('Unexpected error in updateProfile:', err);
       toast({
         title: "Error",
         description: `An unexpected error occurred: ${err.message}`,
@@ -96,8 +106,9 @@ export function useProfile(userId: string | undefined) {
       });
       return null;
     }
-  }, [userId, toast]);
+  }, [userId]);
 
+  // Always re-fetch when userId changes
   useEffect(() => {
     if (userId) {
       fetchProfile(userId);
