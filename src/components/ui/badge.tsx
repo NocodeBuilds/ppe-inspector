@@ -1,33 +1,31 @@
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary/80",
+          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline:
-          "text-foreground border border-input",
-        success:
-          "bg-green-500 text-white hover:bg-green-600",
-        warning:
-          "bg-yellow-500 text-white hover:bg-yellow-600",
-        info:
-          "bg-blue-500 text-white hover:bg-blue-600",
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground",
+        success: 
+          "border-transparent bg-success/10 text-success border-success/20",
+        warning: 
+          "border-transparent bg-warning/10 text-warning border-warning/20",
+        info: 
+          "border-transparent bg-primary/10 text-primary border-primary/20",
       },
       size: {
-        default: "h-5 px-2.5 py-0.5 text-xs",
-        sm: "h-4 px-1.5 py-0 text-[10px]",
-        lg: "h-6 px-3 py-1 text-sm"
+        default: "px-2.5 py-0.5 text-xs",
+        sm: "px-2 py-0.5 text-xs",
+        lg: "px-3 py-1 text-sm",
       }
     },
     defaultVariants: {
@@ -35,7 +33,7 @@ const badgeVariants = cva(
       size: "default",
     },
   }
-)
+);
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
@@ -44,7 +42,46 @@ export interface BadgeProps
 function Badge({ className, variant, size, ...props }: BadgeProps) {
   return (
     <div className={cn(badgeVariants({ variant, size }), className)} {...props} />
-  )
+  );
 }
 
-export { Badge, badgeVariants }
+// Status badge for inspection statuses
+type StatusType = 'pending' | 'inProgress' | 'passed' | 'failed' | 'needsRepair' | 'scheduled';
+
+interface StatusBadgeProps extends Omit<BadgeProps, 'variant'> {
+  status: StatusType;
+}
+
+function StatusBadge({ status, className, ...props }: StatusBadgeProps) {
+  // Map status to appropriate variant
+  const statusVariantMap: Record<StatusType, BadgeProps['variant']> = {
+    pending: 'secondary',
+    inProgress: 'info',
+    passed: 'success',
+    failed: 'destructive',
+    needsRepair: 'warning',
+    scheduled: 'outline',
+  };
+
+  // Map status to human-readable label
+  const statusLabelMap: Record<StatusType, string> = {
+    pending: 'Pending',
+    inProgress: 'In Progress',
+    passed: 'Passed',
+    failed: 'Failed',
+    needsRepair: 'Needs Repair',
+    scheduled: 'Scheduled',
+  };
+
+  return (
+    <Badge
+      variant={statusVariantMap[status]}
+      className={className}
+      {...props}
+    >
+      {props.children || statusLabelMap[status]}
+    </Badge>
+  );
+}
+
+export { Badge, StatusBadge, badgeVariants };

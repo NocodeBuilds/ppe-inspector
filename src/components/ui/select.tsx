@@ -1,25 +1,48 @@
-import * as React from "react"
-import * as SelectPrimitive from "@radix-ui/react-select"
-import { Check, ChevronDown, ChevronUp } from "lucide-react"
+import * as React from "react";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { cva, type VariantProps } from "class-variance-authority";
+import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
-const Select = SelectPrimitive.Root
+const Select = SelectPrimitive.Root;
 
-const SelectGroup = SelectPrimitive.Group
+const SelectGroup = SelectPrimitive.Group;
 
-const SelectValue = SelectPrimitive.Value
+const SelectValue = SelectPrimitive.Value;
+
+const selectTriggerVariants = cva(
+  "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "",
+        error: "border-destructive focus:ring-destructive",
+      },
+      size: {
+        default: "h-10",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-4",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+);
+
+interface SelectTriggerProps
+  extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>,
+    VariantProps<typeof selectTriggerVariants> {}
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
+  SelectTriggerProps
+>(({ className, variant, size, children, ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
-    className={cn(
-      "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
-      className
-    )}
+    className={cn(selectTriggerVariants({ variant, size }), className)}
     {...props}
   >
     {children}
@@ -27,8 +50,8 @@ const SelectTrigger = React.forwardRef<
       <ChevronDown className="h-4 w-4 opacity-50" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
-))
-SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
+));
+SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
 const SelectScrollUpButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
@@ -44,8 +67,8 @@ const SelectScrollUpButton = React.forwardRef<
   >
     <ChevronUp className="h-4 w-4" />
   </SelectPrimitive.ScrollUpButton>
-))
-SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName
+));
+SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
 
 const SelectScrollDownButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
@@ -61,9 +84,9 @@ const SelectScrollDownButton = React.forwardRef<
   >
     <ChevronDown className="h-4 w-4" />
   </SelectPrimitive.ScrollDownButton>
-))
+));
 SelectScrollDownButton.displayName =
-  SelectPrimitive.ScrollDownButton.displayName
+  SelectPrimitive.ScrollDownButton.displayName;
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
@@ -94,8 +117,8 @@ const SelectContent = React.forwardRef<
       <SelectScrollDownButton />
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
-))
-SelectContent.displayName = SelectPrimitive.Content.displayName
+));
+SelectContent.displayName = SelectPrimitive.Content.displayName;
 
 const SelectLabel = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Label>,
@@ -103,11 +126,11 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)}
+    className={cn("py-1.5 pl-8 pr-2 text-sm font-medium", className)}
     {...props}
   />
-))
-SelectLabel.displayName = SelectPrimitive.Label.displayName
+));
+SelectLabel.displayName = SelectPrimitive.Label.displayName;
 
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
@@ -129,8 +152,8 @@ const SelectItem = React.forwardRef<
 
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
-))
-SelectItem.displayName = SelectPrimitive.Item.displayName
+));
+SelectItem.displayName = SelectPrimitive.Item.displayName;
 
 const SelectSeparator = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Separator>,
@@ -141,8 +164,63 @@ const SelectSeparator = React.forwardRef<
     className={cn("-mx-1 my-1 h-px bg-muted", className)}
     {...props}
   />
-))
-SelectSeparator.displayName = SelectPrimitive.Separator.displayName
+));
+SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
+
+// Composite component that includes label and error display
+interface SelectFieldProps extends React.ComponentPropsWithoutRef<typeof Select> {
+  label?: string;
+  helperText?: string;
+  error?: string;
+  triggerClassName?: string;
+  triggerVariant?: VariantProps<typeof selectTriggerVariants>["variant"];
+  triggerSize?: VariantProps<typeof selectTriggerVariants>["size"];
+}
+
+const SelectField = React.forwardRef<
+  React.ElementRef<typeof Select>,
+  SelectFieldProps
+>(({
+  label,
+  helperText,
+  error,
+  triggerClassName,
+  triggerVariant = error ? "error" : "default",
+  triggerSize,
+  children,
+  ...props
+}, ref) => (
+  <div className="space-y-2">
+    {label && (
+      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        {label}
+      </label>
+    )}
+    <Select {...props} ref={ref}>
+      <SelectTrigger 
+        variant={triggerVariant} 
+        size={triggerSize} 
+        className={triggerClassName}
+      >
+        <SelectValue placeholder={props.placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {children}
+      </SelectContent>
+    </Select>
+    {(helperText || error) && (
+      <p className={cn(
+        "text-sm",
+        error 
+          ? "text-destructive" 
+          : "text-muted-foreground"
+      )}>
+        {error || helperText}
+      </p>
+    )}
+  </div>
+));
+SelectField.displayName = "SelectField";
 
 export {
   Select,
@@ -155,4 +233,5 @@ export {
   SelectSeparator,
   SelectScrollUpButton,
   SelectScrollDownButton,
-}
+  SelectField,
+};

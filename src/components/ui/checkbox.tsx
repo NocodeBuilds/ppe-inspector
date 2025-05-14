@@ -1,8 +1,8 @@
-import * as React from "react"
-import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
-import { Check } from "lucide-react"
+import * as React from "react";
+import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
+import { Check } from "lucide-react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
@@ -19,10 +19,49 @@ const Checkbox = React.forwardRef<
     <CheckboxPrimitive.Indicator
       className={cn("flex items-center justify-center text-current")}
     >
-      <Check className="h-4 w-4" />
+      <Check className="h-3.5 w-3.5" />
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
-))
-Checkbox.displayName = CheckboxPrimitive.Root.displayName
+));
+Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 
-export { Checkbox }
+// Checkbox with label, optional error and helper text
+interface CheckboxFieldProps
+  extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> {
+  label: string;
+  description?: string;
+  error?: string;
+}
+
+const CheckboxField = React.forwardRef<
+  React.ElementRef<typeof CheckboxPrimitive.Root>,
+  CheckboxFieldProps
+>(({ className, label, description, error, ...props }, ref) => (
+  <div className="flex space-x-2">
+    <Checkbox ref={ref} id={props.id} className={className} {...props} />
+    <div className="grid gap-1.5 leading-none">
+      <label
+        htmlFor={props.id}
+        className={cn(
+          "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+          error && "text-destructive"
+        )}
+      >
+        {label}
+      </label>
+      {description && (
+        <p className="text-body-sm text-muted-foreground">
+          {description}
+        </p>
+      )}
+      {error && (
+        <p className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
+  </div>
+));
+CheckboxField.displayName = "CheckboxField";
+
+export { Checkbox, CheckboxField };

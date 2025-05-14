@@ -1,5 +1,4 @@
 import * as React from "react"
-
 import { cn } from "@/lib/utils"
 
 const Card = React.forwardRef<
@@ -36,7 +35,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-xl font-semibold leading-none tracking-tight",
       className
     )}
     {...props}
@@ -76,4 +75,19 @@ const CardFooter = React.forwardRef<
 ))
 CardFooter.displayName = "CardFooter"
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+const VersatileCard = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <Card ref={ref} className={cn("flex flex-col", className)} {...props}>
+    <CardHeader>
+      <CardTitle />
+      <CardDescription />
+    </CardHeader>
+    <CardContent />
+    <CardFooter />
+  </Card>
+))
+VersatileCard.displayName = "VersatileCard"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent, VersatileCard }

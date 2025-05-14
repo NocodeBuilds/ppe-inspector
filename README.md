@@ -1,69 +1,63 @@
-# Welcome to your Lovable project
+# PPE Inspector 2.0
 
-## Project info
+A Progressive Web Application for managing and inspecting Personal Protective Equipment (PPE).
 
-**URL**: https://lovable.dev/projects/df668a11-4bc3-4e3b-aacd-9586c0ce73e1
+## Features
 
-## How can I edit this code?
+- 🔒 Secure authentication with role-based access control
+- 📱 Fully responsive design for all devices
+- 📊 Comprehensive analytics dashboard
+- 📝 Detailed PPE inspection workflow
+- 📷 QR code scanning for equipment identification
+- 📑 Advanced reporting capabilities (PDF/Excel)
+- 🔄 Offline functionality with sync
+- 🌐 Multi-language support framework
 
-There are several ways of editing your application.
+## Technology Stack
 
-**Use Lovable**
+- **Frontend**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **Routing**: TanStack Router
+- **Data Fetching**: TanStack Query v5
+- **State Management**: Zustand
+- **UI Components**: Shadcn UI
+- **Backend**: Supabase (auth, database, storage)
+- **Validation**: Zod
+- **Testing**: Vitest & Testing Library
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/df668a11-4bc3-4e3b-aacd-9586c0ce73e1) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+```bash
+# Install dependencies
+npm install
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
 ```
 
-**Edit a file directly in GitHub**
+## Project Structure
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```
+📁 src
+├── 📁 app (Routing with layouts & pages)
+├── 📁 components (UI components using atomic design)
+│   ├── 📁 ui (Base UI components)
+│   ├── 📁 features (Feature-specific components)
+│   └── 📁 layout (Layout components)
+├── 📁 hooks (Custom React hooks)
+├── 📁 lib (Utility libraries)
+├── 📁 services (API/data services)
+├── 📁 store (State management)
+├── 📁 types (TypeScript types/interfaces)
+└── 📁 utils (Utility functions)
+```
 
-**Use GitHub Codespaces**
+## License
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/df668a11-4bc3-4e3b-aacd-9586c0ce73e1) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+This project is private and proprietary.
