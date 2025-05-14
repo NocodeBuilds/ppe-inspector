@@ -3,10 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   Home, 
-  BarChart3, 
   Plus, 
-  Settings, 
-  User 
+  User, 
+  HardHat,
+  Clipboard
 } from 'lucide-react';
 
 const BottomNav = () => {
@@ -24,9 +24,9 @@ const BottomNav = () => {
       icon: <Home size={20} />,
     },
     {
-      name: 'Analytics',
-      path: '/analytics',
-      icon: <BarChart3 size={20} />,
+      name: 'Equipment',
+      path: '/equipment',
+      icon: <HardHat size={20} />,
     },
     {
       name: 'Inspect',
@@ -35,9 +35,9 @@ const BottomNav = () => {
       primary: true,
     },
     {
-      name: 'Settings',
-      path: '/settings',
-      icon: <Settings size={20} />,
+      name: 'Reports',
+      path: '/reports',
+      icon: <Clipboard size={20} />,
     },
     {
       name: 'Profile',

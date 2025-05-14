@@ -16,25 +16,29 @@ import NetworkStatus from "./components/layout/NetworkStatus";
 import MainLayout from "./components/layout/MainLayout";
 
 // Lazy load pages with better chunk naming and error handling
-const Home = lazy(() => import(/* webpackChunkName: "home-page" */ "./pages/Home"));
+const Home = lazy(() => import(/* webpackChunkName: "home-page" */ "./pages/home"));
 const ExpiringPPE = lazy(() => import(/* webpackChunkName: "expiring-ppe-page" */ "./pages/ExpiringPPE"));
 const UpcomingInspections = lazy(() => import(/* webpackChunkName: "upcoming-inspections-page" */ "./pages/UpcomingInspections"));
-const Equipment = lazy(() => import(/* webpackChunkName: "equipment-page" */ "./pages/Equipment"));
+const Equipment = lazy(() => import(/* webpackChunkName: "equipment-page" */ "./pages/equipment"));
+const EquipmentDetail = lazy(() => import(/* webpackChunkName: "equipment-detail-page" */ "./pages/equipment/[id]"));
+const AddEquipment = lazy(() => import(/* webpackChunkName: "add-equipment-page" */ "./pages/equipment/add"));
 const Analytics = lazy(() => import(/* webpackChunkName: "analytics-page" */ "./pages/Analytics"));
 const Settings = lazy(() => import(/* webpackChunkName: "settings-page" */ "./pages/Settings"));
-const Profile = lazy(() => import(/* webpackChunkName: "profile-page" */ "./pages/Profile"));
-const Login = lazy(() => import(/* webpackChunkName: "login-page" */ "./pages/Login"));
+const Profile = lazy(() => import(/* webpackChunkName: "profile-page" */ "./pages/profile"));
+const Login = lazy(() => import(/* webpackChunkName: "login-page" */ "./pages/auth/login"));
 const NotFound = lazy(() => import(/* webpackChunkName: "not-found-page" */ "./pages/NotFound"));
-const RegisterPage = lazy(() => import(/* webpackChunkName: "register-page" */ "./pages/Register"));
+const RegisterPage = lazy(() => import(/* webpackChunkName: "register-page" */ "./pages/auth/register"));
 const ForgotPasswordPage = lazy(() => import(/* webpackChunkName: "forgot-password-page" */ "./pages/ForgotPassword"));
 const ResetPasswordPage = lazy(() => import(/* webpackChunkName: "reset-password-page" */ "./pages/ResetPassword"));
 const EditProfile = lazy(() => import(/* webpackChunkName: "edit-profile-page" */ "./pages/EditProfile"));
-const InspectionForm = lazy(() => import(/* webpackChunkName: "inspection-form-page" */ "./pages/InspectionForm"));
-const ReportsPage = lazy(() => import(/* webpackChunkName: "reports-page" */ "./pages/Reports"));
+const InspectionForm = lazy(() => import(/* webpackChunkName: "inspection-form-page" */ "./pages/inspections/form"));
+const CreateInspection = lazy(() => import(/* webpackChunkName: "create-inspection-page" */ "./pages/inspections/create"));
+const ReportsPage = lazy(() => import(/* webpackChunkName: "reports-page" */ "./pages/reports"));
 const StartInspection = lazy(() => import(/* webpackChunkName: "start-inspection-page" */ "./pages/StartInspection"));
 const ManualInspection = lazy(() => import(/* webpackChunkName: "manual-inspection-page" */ "./pages/ManualInspection"));
 const FlaggedIssues = lazy(() => import(/* webpackChunkName: "flagged-issues-page" */ "./pages/FlaggedIssues"));
 const InspectionDetails = lazy(() => import(/* webpackChunkName: "inspection-details-page" */ "./pages/InspectionDetails"));
+const Dashboard = lazy(() => import(/* webpackChunkName: "dashboard-page" */ "./pages/dashboard"));
 
 // Loading component for Suspense with better UI
 const PageLoader = () => (
@@ -117,39 +121,73 @@ const App = () => {
                 <Sonner />
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    {/* Auth Routes */}
+                    <Route path="/auth">
+                      <Route path="login" element={<Login />} />
+                      <Route path="register" element={<RegisterPage />} />
+                      <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                      <Route path="reset-password" element={<ResetPasswordPage />} />
+                    </Route>
                     
+                    {/* Protected Routes */}
                     <Route path="/" element={<MainLayout />}>
-                      <Route index element={<Home />} />
-                      <Route path="expiring" element={<ExpiringPPE />} />
-                      <Route path="upcoming" element={<UpcomingInspections />} />
-                      <Route path="equipment" element={<Equipment />} />
-                      <Route path="flagged" element={<FlaggedIssues />} />
-                      <Route path="settings" element={<Settings />} />
-                      <Route path="profile" element={<Profile />} />
-                      <Route path="edit-profile" element={<EditProfile />} />
+                      {/* Home Routes */}
+                      <Route index element={<Dashboard />} />
+                      <Route path="home" element={<Home />} />
+                      
+                      {/* Equipment Routes */}
+                      <Route path="equipment">
+                        <Route index element={<Equipment />} />
+                        <Route path="add" element={<AddEquipment />} />
+                        <Route path=":id" element={<EquipmentDetail />} />
+                      </Route>
+                      
+                      {/* Inspection Routes */}
+                      <Route path="inspections">
+                        <Route path="create" element={<CreateInspection />} />
+                        <Route path="form" element={<InspectionForm />} />
+                      </Route>
+                      
+                      {/* Legacy Inspection Routes (for backward compatibility) */}
                       <Route path="start-inspection" element={<StartInspection />} />
                       <Route path="inspect/new" element={<ManualInspection />} />
                       <Route path="inspect/:ppeId" element={<InspectionForm />} />
                       <Route path="inspection/:id" element={<InspectionDetails />} />
+                      
+                      {/* Reports Routes */}
+                      <Route path="reports">
+                        <Route index element={
+                          <RoleProtectedRoute requiredRole="user" fallbackPath="/auth/login">
+                            <ReportsPage />
+                          </RoleProtectedRoute>
+                        } />
+                      </Route>
+                      
+                      {/* Status Routes */}
+                      <Route path="expiring" element={<ExpiringPPE />} />
+                      <Route path="upcoming" element={<UpcomingInspections />} />
+                      <Route path="flagged" element={<FlaggedIssues />} />
+                      
+                      {/* User Routes */}
+                      <Route path="profile" element={<Profile />} />
+                      <Route path="edit-profile" element={<EditProfile />} />
+                      <Route path="settings" element={<Settings />} />
+                      
+                      {/* Analytics Routes */}
                       <Route path="analytics" element={
-                        <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
+                        <RoleProtectedRoute requiredRole="user" fallbackPath="/auth/login">
                           <Analytics />
                         </RoleProtectedRoute>
                       } />
-                      <Route path="reports" element={
-                        <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
-                          <ReportsPage />
-                        </RoleProtectedRoute>
-                      } />
+                      
+                      {/* Admin Routes */}
                       <Route path="admin/delete/:type/:id" element={
-                        <RoleProtectedRoute requiredRole="admin" fallbackPath="access-denied">
+                        <RoleProtectedRoute requiredRole="admin" fallbackPath="/auth/login">
                           <ReportsPage />
                         </RoleProtectedRoute>
                       } />
+                      
+                      {/* 404 Fallback */}
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Routes>

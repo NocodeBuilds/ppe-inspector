@@ -240,8 +240,8 @@ export type Database = {
 };
 
 // Supabase URL and anon key from environment variables
-const supabaseUrl = "https://oapfjmyyfuopajayrxzw.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hcGZqbXl5ZnVvcGFqYXlyeHp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA3NjEzOTcsImV4cCI6MjA1NjMzNzM5N30.ln7r0soXRMrjmOSY69za1GQkq4H-aW9tGvBI0O81T1U";
+const supabaseUrl = "https://gpbrwftznpsaibwxfoxl.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwYnJ3ZnR6bnBzYWlid3hmb3hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjU1NDAsImV4cCI6MjA2MjY0MTU0MH0.oVSM3JNi5nufXi4q4tho6HfyFHu3hkEBwDh-4wJIBX4";
 
 // Default client options
 const defaultOptions: SupabaseClientOptions<'public'> = {

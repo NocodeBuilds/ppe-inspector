@@ -1,7 +1,10 @@
 // Service Worker for PPE Inspector PWA
-const CACHE_NAME = 'ppe-inspector-v4'; // Incremented version
-const DYNAMIC_CACHE = 'ppe-inspector-dynamic-v4';
-const API_CACHE = 'ppe-inspector-api-v4';
+const CACHE_NAME = 'ppe-inspector-v5'; // Incremented version for new Supabase integration
+const DYNAMIC_CACHE = 'ppe-inspector-dynamic-v5';
+const API_CACHE = 'ppe-inspector-api-v5';
+
+// Supabase configuration
+const SUPABASE_URL = 'https://gpbrwftznpsaibwxfoxl.supabase.co';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
@@ -20,7 +23,21 @@ const OFFLINE_ROUTES = [
   '/upcoming',
   '/expiring',
   '/flagged',
-  '/reports'
+  '/reports',
+  '/inspections/form',
+  '/inspections/create',
+  '/dashboard',
+  '/profile'
+];
+
+// Supabase API routes to cache
+const SUPABASE_ROUTES = [
+  `${SUPABASE_URL}/rest/v1/equipment*`,
+  `${SUPABASE_URL}/rest/v1/inspection_templates*`,
+  `${SUPABASE_URL}/rest/v1/checkpoints*`,
+  `${SUPABASE_URL}/rest/v1/inspections*`,
+  `${SUPABASE_URL}/rest/v1/inspection_responses*`,
+  `${SUPABASE_URL}/storage/v1/object/public/*`
 ];
 
 // Helper functions for cache management
@@ -176,7 +193,19 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     Promise.resolve()
       .then(async () => {
+        // Cache static assets first
         const success = await cacheHelpers.addResourcesToCache(CACHE_NAME, STATIC_ASSETS);
+        
+        // Then try to pre-cache API routes
+        try {
+          // We're not expecting these to succeed necessarily, just attempting to pre-cache
+          await cacheHelpers.addResourcesToCache(API_CACHE, SUPABASE_ROUTES);
+          console.log('[Service Worker] Pre-cached Supabase routes');
+        } catch (error) {
+          console.warn('[Service Worker] Failed to pre-cache Supabase routes:', error);
+          // This is expected sometimes, so we continue anyway
+        }
+        
         if (success) {
           console.log('[Service Worker] Successfully installed');
           self.skipWaiting(); // Activate immediately

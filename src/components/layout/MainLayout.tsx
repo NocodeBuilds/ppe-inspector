@@ -10,6 +10,8 @@ import { toast } from '@/hooks/use-toast';
 import LoadingSpinner from '../common/LoadingSpinner';
 import LogoIcon from '../common/LogoIcon';
 import NotificationCenter from '../notifications/NotificationCenter';
+import OfflineStatusBar from '../offline/OfflineStatusBar';
+import { initializeOfflineSync } from '@/utils/offlineSyncUtils';
 
 export const BackNavigationContext = createContext<{
   showBackButton: boolean;
@@ -95,6 +97,14 @@ const MainLayout = () => {
   const hideNavPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
   const shouldShowNav = !hideNavPaths.includes(location.pathname);
   
+  // Initialize offline sync capabilities
+  useEffect(() => {
+    if (user) {
+      initializeOfflineSync();
+      console.log('Offline sync initialized');
+    }
+  }, [user]);
+  
   useEffect(() => {
     if (profile && profile.role) {
       console.log(`User role: ${profile.role}`);
@@ -143,6 +153,7 @@ const MainLayout = () => {
             </Suspense>
           </main>
           
+          {shouldShowNav && <OfflineStatusBar />}
           {shouldShowNav && <BottomNav />}
         </div>
       </BackNavigationContext.Provider>

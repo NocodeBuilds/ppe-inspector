@@ -12,7 +12,10 @@ import {
   AlertTriangle,
   Info,
   FileText,
-  CheckCircle
+  CheckCircle,
+  WifiOff,
+  CloudOff,
+  Cloud
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -26,6 +29,8 @@ import { Switch, SwitchField } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { useOffline } from '@/hooks/use-offline';
+import InspectionOfflineWrapper from '@/components/InspectionOfflineWrapper';
 
 // Mock data for demo purposes
 // In a real application, this would come from an API based on the template and equipment IDs
@@ -137,8 +142,9 @@ type CheckpointResponse = {
 
 export function InspectionFormPage() {
   const navigate = useNavigate();
-  const search = useSearch({ from: '/inspections/form' });
   const { toast } = useToast();
+  const search = useSearch<typeof router.routeTree.children.inspections.children.form.types.search>();
+  const { online, saveInspectionOffline } = useOffline();
   
   // Form state
   const [currentStep, setCurrentStep] = React.useState(0);
@@ -209,19 +215,60 @@ export function InspectionFormPage() {
     }
   };
   
+  // State for submission process
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
   // Save draft or complete inspection
-  const saveAsDraft = () => {
-    // In a real app, we'd call an API to save the draft here
-    toast({
-      title: "Draft Saved",
-      description: "Your inspection has been saved as a draft",
-      variant: "success",
-    });
-    setShowSaveDialog(false);
-    navigate({ to: "/inspections" });
+  const saveAsDraft = async () => {
+    try {
+      const draftData = {
+        templateId,
+        equipmentId,
+        responses,
+        timestamp: new Date().toISOString(),
+        inspectorName,
+        status: 'draft'
+      };
+      
+      setIsSubmitting(true);
+      
+      if (online) {
+        // In a real app, this would be an API call to save the draft
+        console.log('Saving draft data:', draftData);
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        toast({
+          title: "Draft Saved",
+          description: "Your inspection has been saved as a draft",
+          variant: "success",
+        });
+      } else {
+        // Store draft locally for offline sync
+        await saveInspectionOffline(equipmentId, { ...draftData, syncType: 'draft' });
+        
+        toast({
+          title: "Draft Saved Offline",
+          description: "Your draft will be synced when you're back online",
+          variant: "info",
+        });
+      }
+      
+      setShowSaveDialog(false);
+      navigate({ to: "/inspections" });
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      toast({
+        title: "Error Saving Draft",
+        description: "There was a problem saving your draft. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
-  const completeInspection = () => {
+  const completeInspection = async () => {
     if (!inspectorName) {
       toast({
         title: "Inspector Name Required",
@@ -240,14 +287,59 @@ export function InspectionFormPage() {
       return;
     }
     
-    // In a real app, we'd call an API to submit the inspection here
-    toast({
-      title: "Inspection Completed",
-      description: "Your inspection has been successfully submitted",
-      variant: "success",
-    });
-    
-    navigate({ to: "/inspections" });
+    try {
+      setIsSubmitting(true);
+      
+      // Calculate the overall inspection result
+      const hasFailures = Object.values(responses).some(r => r.result === 'fail');
+      const overallResult = hasFailures ? 'fail' : 'pass';
+      
+      // Prepare the complete inspection data
+      const inspectionData = {
+        templateId,
+        equipmentId,
+        responses,
+        result: overallResult,
+        inspectorName,
+        timestamp: new Date().toISOString(),
+        status: 'completed'
+      };
+      
+      if (online) {
+        // In a real app, this would be an API call to submit the inspection
+        console.log('Submitting inspection data:', inspectionData);
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        
+        toast({
+          title: "Inspection Completed",
+          description: `Your inspection has been successfully submitted with result: ${overallResult.toUpperCase()}`,
+          variant: overallResult === 'pass' ? "success" : "warning",
+        });
+      } else {
+        // Store inspection locally for offline sync
+        await saveInspectionOffline(equipmentId, { ...inspectionData, syncType: 'complete' });
+        
+        toast({
+          title: "Saved Offline",
+          description: `Your inspection has been saved locally and will be synced when you're back online.`,
+          variant: "info",
+          action: <div className="flex items-center gap-1"><CloudOff className="h-4 w-4" /> Offline Mode</div>,
+        });
+      }
+      
+      setShowCompleteDialog(false);
+      navigate({ to: "/equipment" });
+    } catch (error) {
+      console.error('Error completing inspection:', error);
+      toast({
+        title: "Submission Error",
+        description: "There was a problem submitting your inspection. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   // Determine the overall inspection result
@@ -653,6 +745,7 @@ export function InspectionFormPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </InspectionOfflineWrapper>
   );
 }
 
