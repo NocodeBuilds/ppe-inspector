@@ -23,7 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useAuth } from '@/hooks/use-auth';
-import PageLoader from '@/components/ui/page-loader';
+import { PageLoader } from '@/components/ui/page-loader';
 
 interface NavLinkProps {
   to: string;

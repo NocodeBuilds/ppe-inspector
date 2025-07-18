@@ -28,7 +28,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       try {
         // Get PPE counts by type
         const { data: ppeTypes, error: ppeTypeError } = await supabase
-          .from('ppe_items')
+        .from('equipment')
           .select('type');
         
         if (ppeTypeError) throw ppeTypeError;
@@ -48,7 +48,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         
         // Fetch PPE status data
         const { data: ppeItems, error: ppeError } = await supabase
-          .from('ppe_items')
+          .from('equipment')
           .select('status');
         
         if (ppeError) throw ppeError;

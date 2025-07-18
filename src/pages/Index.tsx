@@ -3,7 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Helmet } from 'react-helmet';
+
 import { 
   ClipboardList, 
   Calendar, 
@@ -78,9 +78,6 @@ const Index = () => {
   
   return (
     <div className="container mx-auto px-4 py-6 max-w-5xl">
-      <Helmet>
-        <title>Safety Inspection System</title>
-      </Helmet>
       
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">Safety Inspection System</h1>

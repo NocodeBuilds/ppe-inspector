@@ -76,7 +76,7 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ className = '' 
       
       // Get pending inspections (equipment due for inspection)
       const { count: pendingCount, error: pendingError } = await supabase
-        .from('ppe_items')
+        .from('equipment')
         .select('*', { count: 'exact', head: true })
         .lte('next_inspection', now.toISOString());
       
@@ -94,7 +94,7 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ className = '' 
       
       // Get critical items (flagged PPE)
       const { count: criticalCount, error: criticalError } = await supabase
-        .from('ppe_items')
+        .from('equipment')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'flagged');
       

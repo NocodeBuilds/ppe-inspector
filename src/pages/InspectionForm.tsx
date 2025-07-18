@@ -442,21 +442,7 @@ const InspectionForm = () => {
           type: inspectionTypeEnum,
           date: new Date().toISOString(),
           overall_result: overallResult || 'pass',
-📁 PPE Inspector 2.0
-├── 📁 src
-│   ├── 📁 app (Routing with layouts & pages)
-│   ├── 📁 components (UI components using atomic design)
-│   │   ├── 📁 ui (Base UI components)
-│   │   ├── 📁 features (Feature-specific components)
-│   │   └── 📁 layout (Layout components)
-│   ├── 📁 hooks (Custom React hooks)
-│   ├── 📁 lib (Utility libraries)
-│   ├── 📁 services (API/data services)
-│   ├── 📁 store (State management)
-│   ├── 📁 types (TypeScript types/interfaces)
-│   └── 📁 utils (Utility functions)
-├── 📁 public (Static assets)
-└── 📁 supabase (Database configuration)          notes: notes,
+          notes: notes,
           signature_url: signature,
           inspector_id: user.id,
         })

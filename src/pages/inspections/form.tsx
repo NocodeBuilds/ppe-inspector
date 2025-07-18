@@ -371,7 +371,8 @@ export function InspectionFormPage() {
   const overallResult = getOverallResult();
   
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <InspectionOfflineWrapper>
+      <div className="container mx-auto p-6 max-w-4xl">
       <header className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <Button 
@@ -744,9 +745,9 @@ export function InspectionFormPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
     </InspectionOfflineWrapper>
   );
-}
+};
 
 export default InspectionFormPage;

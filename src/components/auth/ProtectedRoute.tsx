@@ -1,7 +1,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/hooks/use-auth';
-import PageLoader from '@/components/ui/page-loader';
+import { PageLoader } from '@/components/ui/page-loader';
 
 interface ProtectedRouteProps {
   children: ReactNode;

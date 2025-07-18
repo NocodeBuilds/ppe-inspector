@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { Outlet } from '@tanstack/react-router';
 import { Toaster } from 'sonner';
 import NetworkStatus from '@/components/ui/network-status';
-import PageLoader from '@/components/ui/page-loader';
+import { PageLoader } from '@/components/ui/page-loader';
 
 /**
  * RootLayout component serves as the application's outermost layout container.

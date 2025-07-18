@@ -48,7 +48,7 @@ const PPEInventoryList = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('ppe_items')
+        .from('equipment')
         .select('*')
         .order('created_at', { ascending: false });
 
