@@ -240,8 +240,12 @@ export type Database = {
 };
 
 // Supabase URL and anon key from environment variables
-const supabaseUrl = "https://gpbrwftznpsaibwxfoxl.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwYnJ3ZnR6bnBzYWlid3hmb3hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjU1NDAsImV4cCI6MjA2MjY0MTU0MH0.oVSM3JNi5nufXi4q4tho6HfyFHu3hkEBwDh-4wJIBX4";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase environment variables are missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.');
+}
 
 // Default client options
 const defaultOptions: SupabaseClientOptions<'public'> = {

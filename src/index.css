@@ -85,24 +85,24 @@
 
   /* Body Text Styles */
   .text-body-lg {
-    @apply text-body-lg;
+    @apply text-lg leading-relaxed;
   }
   
   .text-body {
-    @apply text-body;
+    @apply text-base leading-relaxed;
   }
   
   .text-body-sm {
-    @apply text-body-sm;
+    @apply text-sm leading-relaxed;
   }
   
   /* Special Text Styles */
   .text-caption {
-    @apply text-caption text-muted-foreground;
+    @apply text-xs text-muted-foreground;
   }
   
   .text-overline {
-    @apply text-overline font-medium uppercase text-muted-foreground;
+    @apply text-xs font-medium uppercase text-muted-foreground;
   }
   
   /* Form Element Typography */

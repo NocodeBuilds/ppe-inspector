@@ -30,9 +30,16 @@ const EditProfile = lazy(() => import('@/pages/EditProfile'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
-// Create the root route
+// Wrap all providers inside TanStack Router's root component
+// This ensures the Router context is established before any hooks are called
 const rootRoute = createRootRoute({
-  component: RootLayout,
+  component: () => {
+    return (
+      <div className="app-container">
+        <RootLayout />
+      </div>
+    );
+  },
 });
 
 // Public routes

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Search, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/use-auth';
 import FlaggedIssuesSkeleton from '@/components/flagged/FlaggedIssuesSkeleton';
 
 const FlaggedIssues = () => {

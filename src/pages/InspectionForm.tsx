@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/use-auth';
 import { supabase } from '@/integrations/supabase/client';
 import { InspectionCheckpoint } from '@/types';
 import CheckpointItem from '@/components/inspection/CheckpointItem';
@@ -442,8 +442,11 @@ const InspectionForm = () => {
           type: inspectionTypeEnum,
           date: new Date().toISOString(),
           overall_result: overallResult || 'pass',
+<<<<<<< Updated upstream
           notes: notes,
           signature_url: signature,
+=======
+>>>>>>> Stashed changes
           inspector_id: user.id,
         })
         .select('id')

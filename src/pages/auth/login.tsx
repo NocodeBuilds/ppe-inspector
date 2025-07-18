@@ -2,14 +2,14 @@ import React from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Eye, EyeOff, KeyRound, Mail } from 'lucide-react';
 
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth.tsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 
-export function LoginPage() {
+const Login = () => {
   const { signIn, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -173,4 +173,4 @@ export function LoginPage() {
   );
 }
 
-export default LoginPage;
+export default Login;

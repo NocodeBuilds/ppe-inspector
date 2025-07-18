@@ -8,7 +8,7 @@ import {
   ClipboardList
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useRoleAccess } from '@/hooks/useAuth';
+import { useRoleAccess } from '@/hooks/useRoleAccess';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '@/hooks/useNotifications';
 import ReportSkeleton from '@/components/reports/ReportSkeleton';

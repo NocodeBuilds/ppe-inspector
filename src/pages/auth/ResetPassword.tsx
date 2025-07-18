@@ -1,39 +1,39 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggler } from '@/components/ThemeToggler';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import LogoIcon from '@/components/common/LogoIcon';
 
-const RegisterPage = () => {
-  const [email, setEmail] = useState('');
+const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(true);
   
-  const { signUp, isLoading, user } = useAuth();
   const navigate = useNavigate();
+  const { updatePassword } = useAuth();
   
   useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
-    
-    const timer = setTimeout(() => {
+    // Check if this is indeed a password reset flow
+    const verifyResetFlow = () => {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      if (!params.get('type') || params.get('type') !== 'recovery') {
+        setError('Invalid reset password link');
+      }
       setIsPageLoading(false);
-    }, 500);
+    };
     
-    return () => clearTimeout(timer);
-  }, [user, navigate]);
+    verifyResetFlow();
+  }, []);
   
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
@@ -51,10 +51,14 @@ const RegisterPage = () => {
     }
     
     try {
-      await signUp(email, password, fullName);
-      navigate('/login', { state: { registrationSuccess: true } });
+      await updatePassword(password);
+      
+      // Redirect to login
+      navigate('/login', { 
+        state: { passwordResetSuccess: true }
+      });
     } catch (error: any) {
-      setError(error.message || 'Failed to create account');
+      setError(error.message || 'Failed to update password');
     } finally {
       setIsSubmitting(false);
     }
@@ -74,7 +78,7 @@ const RegisterPage = () => {
         <ThemeToggler />
       </div>
       
-      <div className="flex-1 flex flex-col justify-center items-center px-4 py-8 pt-20">
+      <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 pt-20">
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
             <LogoIcon size="lg" className="mx-auto" withText={true} />
@@ -88,41 +92,13 @@ const RegisterPage = () => {
               </Alert>
             )}
             
-            <form onSubmit={handleRegister} className="space-y-4">
+            <form onSubmit={handleResetPassword} className="space-y-6">
               <div className="space-y-2">
-                <label htmlFor="fullName" className="block text-sm">Full Name</label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="Your full name"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  disabled={isSubmitting}
-                  className="bg-background"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="email" className="block text-sm">Email address</label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Your email address"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isSubmitting}
-                  className="bg-background"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm">Password</label>
+                <label htmlFor="password" className="block text-sm">New Password</label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Create a password"
+                  placeholder="Create a new password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -136,7 +112,7 @@ const RegisterPage = () => {
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder="Confirm your password"
+                  placeholder="Confirm your new password"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -147,25 +123,16 @@ const RegisterPage = () => {
               
               <Button 
                 type="submit" 
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-5 mt-6"
+                className="w-full"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <div className="flex items-center justify-center">
+                  <div className="flex items-center">
                     <span className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full"></span>
-                    Creating Account...
+                    Updating Password...
                   </div>
-                ) : 'Create Account'}
+                ) : 'Update Password'}
               </Button>
-              
-              <div className="text-center mt-4">
-                <div className="block text-sm">
-                  Already have an account?{' '}
-                  <Link to="/login" className="text-primary hover:underline">
-                    Sign in
-                  </Link>
-                </div>
-              </div>
             </form>
           </div>
         </div>
@@ -174,4 +141,4 @@ const RegisterPage = () => {
   );
 };
 
-export default RegisterPage;
+export default ResetPassword;

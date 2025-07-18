@@ -42,6 +42,9 @@ function Skeleton({
       className={cn(skeletonVariants({ variant }), className)}
       style={style}
       {...props}
+      aria-hidden="true"
+      role="status"
+      aria-label="Loading"
     />
   );
 }

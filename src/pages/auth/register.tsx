@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Eye, EyeOff, KeyRound, Mail, User } from 'lucide-react';
 
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth.tsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 
-export function RegisterPage() {
+const Register = () => {
   const { signUp, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -267,4 +267,4 @@ export function RegisterPage() {
   );
 }
 
-export default RegisterPage;
+export default Register;

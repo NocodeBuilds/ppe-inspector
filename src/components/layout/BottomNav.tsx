@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { 
   Home, 
@@ -54,7 +54,7 @@ const BottomNav = () => {
             key={item.path}
             variant="ghost"
             size={item.primary ? 'default' : 'sm'}
-            onClick={() => navigate(item.path)}
+            onClick={() => navigate({ to: item.path })}
             className={`flex-col justify-center items-center ${
               item.primary 
                 ? 'w-14 h-14 rounded-full shadow-md bg-primary hover:bg-primary/90 text-primary-foreground -mt-5' 

@@ -1,12 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
-import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+<<<<<<< Updated upstream
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
@@ -83,6 +83,8 @@ export default defineConfig({
         ],
       },
     }),
+=======
+>>>>>>> Stashed changes
   ],
   resolve: {
     alias: {
@@ -96,7 +98,7 @@ export default defineConfig({
         manualChunks: {
           react: ['react', 'react-dom'],
           tanstack: [
-            '@tanstack/react-query', 
+            '@tanstack/react-query',
             '@tanstack/react-router',
             '@tanstack/react-table'
           ],

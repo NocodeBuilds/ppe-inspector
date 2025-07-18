@@ -1,8 +1,10 @@
 import React, { memo, Suspense, useEffect, useState, createContext, useContext } from 'react';
-import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import BottomNav from './BottomNav';
 import { ThemeToggler } from '@/components/ThemeToggler';
-import { useAuth, useRoleAccess } from '@/hooks/useAuth';
+// Fix path to useAuth - this was causing a TypeScript error
+import { useAuth } from '@/hooks/use-auth';
+import { useRoleAccess } from '@/hooks/useRoleAccess';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ErrorBoundaryWithFallback from '@/components/ErrorBoundaryWithFallback';
@@ -78,19 +80,22 @@ const LayoutErrorFallback = () => (
 );
 
 const MainLayout = () => {
+  // Get router hooks
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, isLoading, signOut } = useAuth();
+  
+  // Get auth context data - note that we expect user and profile here
+  const { user, isLoading, signOut } = useAuth();
+  const profile = user?.user_metadata || {};
   const { isAdmin } = useRoleAccess();
   
   const [showBackButton, setShowBackButton] = useState(false);
   const [backTo, setBackTo] = useState<string | number>(-1);
   
+  // Only navigate when we have a valid router context
   const handleBack = () => {
-    if (typeof backTo === 'number') {
-      navigate(backTo);
-    } else {
-      navigate(backTo);
+    if (navigate) {
+      navigate({ to: backTo });
     }
   };
   
@@ -115,14 +120,22 @@ const MainLayout = () => {
     return <LoadingSpinner fullScreen text="Loading app..." />;
   }
   
+  // Check if we need to redirect to login
+  useEffect(() => {
+    if (!user && !hideNavPaths.includes(location.pathname) && navigate) {
+      sessionStorage.setItem('redirectPath', location.pathname);
+      toast({
+        title: 'Authentication Required',
+        description: 'Please sign in to access this page',
+        variant: 'destructive',
+      });
+      navigate({ to: '/login' });
+    }
+  }, [user, location.pathname, navigate]);
+  
+  // If we're redirecting, show a loading screen
   if (!user && !hideNavPaths.includes(location.pathname)) {
-    sessionStorage.setItem('redirectPath', location.pathname);
-    toast({
-      title: 'Authentication Required',
-      description: 'Please sign in to access this page',
-      variant: 'destructive',
-    });
-    return <Navigate to="/login" />;
+    return <LoadingSpinner fullScreen text="Redirecting to login..." />;
   }
 
   return (
