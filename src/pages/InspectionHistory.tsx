@@ -59,11 +59,11 @@ const InspectionHistory = () => {
         date: item.date,
         type: item.type,
         overall_result: item.overall_result,
-        inspector_name: item.profiles?.full_name || 'Unknown',
-        ppe_type: item.ppe_items?.type || 'Unknown',
-        ppe_serial: item.ppe_items?.serial_number || 'Unknown',
-        ppe_brand: item.ppe_items?.brand || 'Unknown',
-        ppe_model: item.ppe_items?.model_number || 'Unknown'
+        inspector_name: (item.profiles as any)?.[0]?.full_name || 'Unknown',
+        ppe_type: (item.ppe_items as any)?.[0]?.type || 'Unknown',
+        ppe_serial: (item.ppe_items as any)?.[0]?.serial_number || 'Unknown',
+        ppe_brand: (item.ppe_items as any)?.[0]?.brand || 'Unknown',
+        ppe_model: (item.ppe_items as any)?.[0]?.model_number || 'Unknown'
       }));
       
       setInspections(formattedInspections);

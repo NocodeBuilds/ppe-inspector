@@ -67,11 +67,11 @@ export const exportInspectionsToExcel = async () => {
         'Date': formatDateOrNA(item.date),
         'Type': item.type,
         'Result': item.overall_result,
-        'Inspector': item.profiles?.full_name || 'Unknown',
-        'Role': item.profiles?.Employee_Role || 'Unknown',
-        'Department': item.profiles?.department || 'Unknown',
-        'PPE Type': item.ppe_items?.type || 'Unknown',
-        'Serial Number': item.ppe_items?.serial_number || 'Unknown',
+        'Inspector': (item.profiles as any)?.[0]?.full_name || 'Unknown',
+        'Role': (item.profiles as any)?.[0]?.Employee_Role || 'Unknown',
+        'Department': (item.profiles as any)?.[0]?.department || 'Unknown',
+        'PPE Type': (item.ppe_items as any)?.[0]?.type || 'Unknown',
+        'Serial Number': (item.ppe_items as any)?.[0]?.serial_number || 'Unknown',
         'Notes': item.notes || ''
       }));
       

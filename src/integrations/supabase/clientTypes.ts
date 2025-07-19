@@ -1,6 +1,5 @@
 
-import type { Database } from './types';
-import { Tables, Enums } from './types';
+// Types defined locally since we don't have generated types yet
 
 // Re-export common types that are used across the app
 export type Profile = {
@@ -18,16 +17,17 @@ export type Profile = {
   email: string | null;
 };
 
-export type PPEItem = Tables<'ppe_items'>;
-export type Inspection = Tables<'inspections'>;
-export type InspectionResult = Tables<'inspection_results'>;
-export type InspectionCheckpoint = Tables<'inspection_checkpoints'>;
-export type Notification = Tables<'notifications'>;
+// Basic types for now - will be replaced with generated types
+export type PPEItem = any;
+export type Inspection = any;
+export type InspectionResult = any;
+export type InspectionCheckpoint = any;
+export type Notification = any;
 
-// Enum Types
-export type PPEStatus = Enums<'ppe_status'>;
-export type InspectionType = Enums<'inspection_type'>;
-export type AppRole = Enums<'app_role'>;
+// Enum Types - defined locally for now
+export type PPEStatus = 'active' | 'inactive' | 'under_repair' | 'retired' | 'flagged' | 'maintenance' | 'expired';
+export type InspectionType = 'routine' | 'detailed' | 'emergency' | 'pre-use' | 'monthly' | 'quarterly';
+export type AppRole = 'admin' | 'inspector' | 'user';
 
 // String-based types (for compatibility with existing code)
 export type PPEType =

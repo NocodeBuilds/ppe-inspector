@@ -124,7 +124,7 @@ const InspectionDetails = () => {
       
       const formattedCheckpoints: InspectionCheckpoint[] = checkpointsData?.map(result => ({
         id: result.id,
-        description: result.inspection_checkpoints?.description || 'Unknown checkpoint',
+        description: (result.inspection_checkpoints as any)?.[0]?.description || 'Unknown checkpoint',
         passed: result.passed,
         notes: result.notes,
         photo_url: result.photo_url,
@@ -138,15 +138,15 @@ const InspectionDetails = () => {
         notes: inspectionData.notes,
         signature_url: inspectionData.signature_url,
         inspector_id: inspectionData.inspector_id || '',
-        inspector_name: inspectionData.profiles?.full_name || 'Unknown',
-        ppe_type: inspectionData.ppe_items?.type || 'Unknown',
-        ppe_serial: inspectionData.ppe_items?.serial_number || 'Unknown',
-        ppe_brand: inspectionData.ppe_items?.brand || 'Unknown',
-        ppe_model: inspectionData.ppe_items?.model_number || 'Unknown',
-        site_name: inspectionData.profiles?.site_name || 'Unknown Site',
-        manufacturing_date: inspectionData.ppe_items?.manufacturing_date || 'N/A',
-        expiry_date: inspectionData.ppe_items?.expiry_date || 'N/A',
-        batch_number: inspectionData.ppe_items?.batch_number ? String(inspectionData.ppe_items.batch_number) : 'N/A',
+        inspector_name: (inspectionData.profiles as any)?.[0]?.full_name || 'Unknown',
+        ppe_type: (inspectionData.ppe_items as any)?.[0]?.type || 'Unknown',
+        ppe_serial: (inspectionData.ppe_items as any)?.[0]?.serial_number || 'Unknown',
+        ppe_brand: (inspectionData.ppe_items as any)?.[0]?.brand || 'Unknown',
+        ppe_model: (inspectionData.ppe_items as any)?.[0]?.model_number || 'Unknown',
+        site_name: (inspectionData.profiles as any)?.[0]?.site_name || 'Unknown Site',
+        manufacturing_date: (inspectionData.ppe_items as any)?.[0]?.manufacturing_date || 'N/A',
+        expiry_date: (inspectionData.ppe_items as any)?.[0]?.expiry_date || 'N/A',
+        batch_number: (inspectionData.ppe_items as any)?.[0]?.batch_number ? String((inspectionData.ppe_items as any)[0].batch_number) : 'N/A',
         checkpoints: formattedCheckpoints,
       };
       
