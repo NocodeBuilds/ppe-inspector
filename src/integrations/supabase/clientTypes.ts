@@ -1,45 +1,66 @@
+// Export types from the generated types file
+export type { Database } from './types';
 
-import type { Database } from './types';
-import { Tables, Enums } from './types';
-
-// Re-export common types that are used across the app
-export type Profile = {
+// Equipment type (maps to the equipment table)
+export type Equipment = {
   id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  role: AppRole | null;
-  created_at: string;
-  updated_at: string;
-  // Profile fields directly in profiles table
-  employee_id: string | null;
-  site_name: string | null;
-  department: string | null;
-  Employee_Role: string | null;
-  email: string | null;
+  organization_id: string;
+  manufacturing_date: string;
+  purchase_date?: string;
+  status?: 'active' | 'inactive' | 'under_repair' | 'retired';
+  last_inspection_date?: string;
+  next_inspection_date?: string;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: string;
+  notes?: string;
+  name: string;
+  type: string;
+  model?: string;
+  serial_number: string;
+  manufacturer: string;
+  location?: string;
+  assigned_to?: string;
 };
 
-export type PPEItem = Tables<'ppe_items'>;
-export type Inspection = Tables<'inspections'>;
-export type InspectionResult = Tables<'inspection_results'>;
-export type InspectionCheckpoint = Tables<'inspection_checkpoints'>;
-export type Notification = Tables<'notifications'>;
+// PPE Item type (alias for Equipment for backward compatibility)
+export type PPEItem = Equipment;
 
-// Enum Types
-export type PPEStatus = Enums<'ppe_status'>;
-export type InspectionType = Enums<'inspection_type'>;
-export type AppRole = Enums<'app_role'>;
+// Inspection type
+export type Inspection = {
+  id: string;
+  organization_id: string;
+  equipment_id: string;
+  template_id: string;
+  inspector_id: string;
+  status?: 'draft' | 'in_progress' | 'completed' | 'cancelled';
+  start_time?: string;
+  completion_time?: string;
+  flagged?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  inspector_name: string;
+  flagged_reason?: string;
+  result?: string;
+  notes?: string;
+};
 
-// String-based types (for compatibility with existing code)
-export type PPEType =
-  | 'Full Body Harness'
-  | 'Fall Arrester'
-  | 'Double Lanyard'
-  | 'Safety Helmet'
-  | 'Safety Boots'
-  | 'Safety Gloves'
-  | 'Safety Goggles'
-  | 'Ear Protection'
-  | 'Respirator'
-  | 'Safety Vest'
-  | 'Face Shield'
-  | string;
+// Inspection type enum
+export type InspectionType = 'pre-use' | 'monthly' | 'quarterly';
+
+// Profile type
+export type Profile = {
+  id: string;
+  role?: 'inspector' | 'admin' | 'manager';
+  organization_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  first_name?: string;
+  last_name?: string;
+  email: string;
+  job_title?: string;
+  department?: string;
+  phone?: string;
+  avatar_url?: string;
+  bio?: string;
+};

@@ -46,24 +46,23 @@ const InspectionHistory = () => {
       const { data, error } = await supabase
         .from('inspections')
         .select(`
-          id, date, type, overall_result, notes,
-          profiles:inspector_id(full_name),
-          ppe_items:ppe_id(type, serial_number, brand, model_number)
+          id, start_time, status, result, notes, inspector_name,
+          equipment:equipment_id(type, serial_number, manufacturer, model)
         `)
-        .order('date', { ascending: false });
+        .order('start_time', { ascending: false });
       
       if (error) throw error;
       
       const formattedInspections = data.map(item => ({
         id: item.id,
-        date: item.date,
-        type: item.type,
-        overall_result: item.overall_result,
-        inspector_name: item.profiles?.full_name || 'Unknown',
-        ppe_type: item.ppe_items?.type || 'Unknown',
-        ppe_serial: item.ppe_items?.serial_number || 'Unknown',
-        ppe_brand: item.ppe_items?.brand || 'Unknown',
-        ppe_model: item.ppe_items?.model_number || 'Unknown'
+        date: item.start_time,
+        type: item.status,
+        overall_result: item.result,
+        inspector_name: item.inspector_name || 'Unknown',
+        ppe_type: item.equipment?.type || 'Unknown',
+        ppe_serial: item.equipment?.serial_number || 'Unknown',
+        ppe_brand: item.equipment?.manufacturer || 'Unknown',
+        ppe_model: item.equipment?.model || 'Unknown'
       }));
       
       setInspections(formattedInspections);

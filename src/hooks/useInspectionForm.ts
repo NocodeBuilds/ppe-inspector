@@ -70,7 +70,7 @@ export const useInspectionForm = () => {
         setPpeItem(ppe);
 
         const { data: checkpointData, error: checkpointError } = await supabase
-          .from('inspection_checkpoints')
+          .from('checkpoints')
           .select('*')
           .eq('ppe_type', ppe.type);
 
@@ -130,12 +130,15 @@ export const useInspectionForm = () => {
       const { data: inspection, error: inspectionError } = await supabase
         .from('inspections')
         .insert({
-          ppe_id: ppeId,
+          equipment_id: ppeId,
           inspector_id: user.id,
-          type: data.type as InspectionType,
-          date: new Date().toISOString(),
-          overall_result: finalResult,
-          signature_url: data.signatureUrl,
+          organization_id: '00000000-0000-0000-0000-000000000000', // TODO: Get from user profile
+          template_id: '00000000-0000-0000-0000-000000000000', // TODO: Get from checkpoint data
+          inspector_name: user.email || 'Unknown',
+          start_time: new Date().toISOString(),
+          completion_time: new Date().toISOString(),
+          status: 'completed',
+          result: finalResult,
           notes: data.notes
         })
         .select()
@@ -146,13 +149,12 @@ export const useInspectionForm = () => {
       const resultsToInsert = data.checkpointResults.map(result => ({
         inspection_id: inspection.id,
         checkpoint_id: result.checkpointId,
-        passed: result.passed, // This now properly handles null values
-        notes: result.notes || null,
-        photo_url: result.photoUrl || null
+        result: result.passed ? 'pass' : 'fail',
+        notes: result.notes || null
       }));
 
       const { error: resultsError } = await supabase
-        .from('inspection_results')
+        .from('inspection_responses')
         .insert(resultsToInsert);
 
       if (resultsError) throw resultsError;
@@ -188,10 +190,10 @@ export const useInspectionForm = () => {
       }
 
       await supabase
-        .from('ppe_items')
+        .from('equipment')
         .update({
-          last_inspection: now.toISOString(),
-          next_inspection: nextInspectionDate.toISOString(),
+          last_inspection_date: now.toISOString(),
+          next_inspection_date: nextInspectionDate.toISOString(),
           updated_at: now.toISOString()
         })
         .eq('id', ppeId);

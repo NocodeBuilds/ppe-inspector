@@ -96,7 +96,7 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ className = '' 
       const { count: criticalCount, error: criticalError } = await supabase
         .from('equipment')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'flagged');
+        .eq('status', 'under_repair');
       
       if (criticalError) throw criticalError;
       

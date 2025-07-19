@@ -60,7 +60,7 @@ const AddPPEFormFields: React.FC<AddPPEFormFieldsProps> = ({
       setDuplicateState(prev => ({ ...prev, isChecking: true }));
       try {
         const items = await getPPEBySerialNumber(serial);
-        const hasDuplicate = items.some(item => item.type === type);
+        const hasDuplicate = items.some((item: any) => item.type === type);
         setDuplicateState({
           isDuplicate: hasDuplicate,
           isChecking: false,

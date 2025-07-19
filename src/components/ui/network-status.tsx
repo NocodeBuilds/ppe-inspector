@@ -63,7 +63,7 @@ const NetworkStatus = () => {
       </Alert>
       
       {/* Add keyframe animation for progress bar */}
-      <style jsx>{`
+      <style>{`
         @keyframes shrink {
           from { width: 100%; }
           to { width: 0%; }
