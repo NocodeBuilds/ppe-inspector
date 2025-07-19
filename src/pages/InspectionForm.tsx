@@ -442,11 +442,8 @@ const InspectionForm = () => {
           type: inspectionTypeEnum,
           date: new Date().toISOString(),
           overall_result: overallResult || 'pass',
-<<<<<<< Updated upstream
           notes: notes,
           signature_url: signature,
-=======
->>>>>>> Stashed changes
           inspector_id: user.id,
         })
         .select('id')

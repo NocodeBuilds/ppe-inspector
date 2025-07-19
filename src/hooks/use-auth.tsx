@@ -1,11 +1,6 @@
-<<<<<<< Updated upstream:src/hooks/use-auth.ts
-// Legacy hook redirect to main useAuth hook
-// This file exists to maintain compatibility with existing imports
-export * from './useAuth';
-=======
 import { useState, useEffect, createContext, useContext } from 'react';
 import { Session, User, AuthError } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase-client';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define the auth context type
 type AuthContextType = {
@@ -45,8 +40,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<AuthError | null>(null);
-
-  const supabase = createClient();
 
   // Initialize the auth state
   useEffect(() => {
@@ -90,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/`,
           data: userData,
         },
       });
@@ -245,4 +239,3 @@ export function useAuth() {
   
   return context;
 }
->>>>>>> Stashed changes:src/hooks/use-auth.tsx

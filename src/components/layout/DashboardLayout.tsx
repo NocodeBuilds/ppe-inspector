@@ -22,13 +22,8 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useMediaQuery } from '@/hooks/use-media-query';
-<<<<<<< Updated upstream
 import { useAuth } from '@/hooks/use-auth';
 import { PageLoader } from '@/components/ui/page-loader';
-=======
-import { useAuth } from '@/hooks/use-auth.tsx';
-import PageLoader from '@/components/ui/page-loader';
->>>>>>> Stashed changes
 
 interface NavLinkProps {
   to: string;

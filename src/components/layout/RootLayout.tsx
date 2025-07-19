@@ -5,12 +5,8 @@ import { AuthProvider } from '@/hooks/use-auth';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import NetworkStatus from '@/components/ui/network-status';
-<<<<<<< Updated upstream
 import { PageLoader } from '@/components/ui/page-loader';
-=======
-import PageLoader from '@/components/ui/page-loader';
 import { Toaster as ShadcnToaster } from '@/components/ui/toaster';
->>>>>>> Stashed changes
 
 /**
  * RootLayout component serves as the application's outermost layout container.

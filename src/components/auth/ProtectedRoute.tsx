@@ -1,12 +1,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-<<<<<<< Updated upstream
 import { useAuth } from '@/hooks/use-auth';
 import { PageLoader } from '@/components/ui/page-loader';
-=======
-import { useAuth } from '@/hooks/use-auth.tsx';
-import PageLoader from '@/components/ui/page-loader';
->>>>>>> Stashed changes
 
 interface ProtectedRouteProps {
   children: ReactNode;
