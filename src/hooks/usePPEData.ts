@@ -31,11 +31,15 @@ export function usePPEData() {
     first_use?: string;
     imageFile?: File;
   }) => {
+    if (!user?.id) {
+      throw new Error('User must be logged in to create PPE items');
+    }
+
     setIsUploading(true);
     try {
       let imageUrl = null;
       if (imageFile) {
-        const imagePath = `ppe-images/${serial_number}-${Date.now()}`;
+        const imagePath = `${serial_number}-${Date.now()}.jpg`;
         const { data: uploadData, error: storageError } = await supabase.storage
           .from('ppe-images')
           .upload(imagePath, imageFile, {
@@ -60,6 +64,10 @@ export function usePPEData() {
       const currentDate = new Date();
       const status: PPEStatus = expiryDate < currentDate ? 'expired' : 'active';
 
+      // Calculate next inspection date (3 months from now)
+      const nextInspection = new Date();
+      nextInspection.setMonth(nextInspection.getMonth() + 3);
+
       const { data, error } = await supabase
         .from('ppe_items')
         .insert([
@@ -71,10 +79,11 @@ export function usePPEData() {
             manufacturing_date,
             expiry_date,
             image_url: imageUrl,
-            batch_number: batch_number?.toString(),
+            batch_number,
             first_use,
             status,
-            created_by: user?.id,
+            created_by: user.id,
+            next_inspection: nextInspection.toISOString(),
           },
         ])
         .select();

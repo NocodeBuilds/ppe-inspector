@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -61,6 +62,9 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
       // Convert firstUseDate to ISO string if it exists
       const firstUseDate = data.firstUseDate ? data.firstUseDate.toISOString() : undefined;
       
+      // Convert batch number to integer if provided
+      const batchNumber = data.batchNumber ? parseInt(data.batchNumber) : undefined;
+      
       // Call the createPPE mutation from usePPEData
       await createPPE({
         brand: data.brand,
@@ -69,7 +73,7 @@ const AddPPEForm = ({ onSuccess }: AddPPEFormProps) => {
         model_number: data.modelNumber,
         manufacturing_date: data.manufacturingDate.toISOString(),
         expiry_date: data.expiryDate.toISOString(),
-        batch_number: data.batchNumber ? Number(data.batchNumber) : undefined,
+        batch_number: batchNumber,
         first_use: firstUseDate,
         imageFile: imageFile || undefined
       });
