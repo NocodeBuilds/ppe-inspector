@@ -20,6 +20,7 @@ import CardOverlay from '@/components/ui/card-overlay';
 // Define form schema
 const formSchema = z.object({
   serialNumber: z.string().min(1, "Serial number is required"),
+  batchNumber: z.string().optional(),
   type: z.string().min(1, "PPE type is required"),
   brand: z.string().min(1, "Brand is required"),
   modelNumber: z.string().min(1, "Model number is required"),
@@ -51,6 +52,7 @@ const ManualInspection = ({ show = true, onClose }: ManualInspectionProps) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       serialNumber: "",
+      batchNumber: "",
       type: "",
       brand: "",
       modelNumber: "",
@@ -73,8 +75,8 @@ const ManualInspection = ({ show = true, onClose }: ManualInspectionProps) => {
     setError(null);
     
     try {
-      // First, check if PPE with serial number exists
-      const ppeItems = await getPPEBySerialNumber(values.serialNumber);
+      // First, check if PPE with serial number and batch number exists
+      const ppeItems = await getPPEBySerialNumber(values.serialNumber, values.batchNumber);
       
       if (ppeItems && ppeItems.length > 0) {
         // If it exists, start inspection for the first matching PPE item
@@ -92,6 +94,7 @@ const ManualInspection = ({ show = true, onClose }: ManualInspectionProps) => {
       
       const newPPE = await createPPE({
         serial_number: values.serialNumber,
+        batch_number: values.batchNumber,
         type: values.type as PPEType,
         brand: values.brand || "",
         model_number: values.modelNumber || "",
@@ -178,7 +181,23 @@ const ManualInspection = ({ show = true, onClose }: ManualInspectionProps) => {
                 </FormItem>
               )}
             />
-            <div></div> {/* Empty space for consistency with Add PPE form */}
+            <FormField
+              control={form.control}
+              name="batchNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-body-sm">Batch Number</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter batch number" 
+                      {...field} 
+                      className="text-body"
+                    />
+                  </FormControl>
+                  <FormMessage className="text-caption" />
+                </FormItem>
+              )}
+            />
           </div>
 
           {/* Brand and Model Number */}
