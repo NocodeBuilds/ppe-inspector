@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Dialog,
@@ -73,10 +74,10 @@ const PPESelectionDialog: React.FC<PPESelectionDialogProps> = ({
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {ppe.last_inspection ? (
-                        <span>Last inspected: {formatDistance(new Date(ppe.last_inspection), new Date(), { addSuffix: true })}</span>
+                      {ppe.next_inspection ? (
+                        <span>Next inspection: {formatDistance(new Date(ppe.next_inspection), new Date(), { addSuffix: true })}</span>
                       ) : (
-                        <span>No previous inspections</span>
+                        <span>No inspection scheduled</span>
                       )}
                     </div>
                   </div>

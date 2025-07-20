@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -184,7 +183,7 @@ const Equipment = () => {
                       modelNumber: item.model_number || '',
                       manufacturingDate: item.manufacturing_date || '',
                       expiryDate: item.expiry_date || '',
-                      status: item.status,
+                      status: item.status as any,
                       imageUrl: item.image_url,
                       nextInspection: item.next_inspection,
                       createdAt: item.created_at,

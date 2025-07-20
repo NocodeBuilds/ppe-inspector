@@ -72,9 +72,8 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
     },
     { 
       enabled: !!userId,
-      retry: 2,
       staleTime: 10 * 1000, // 10 seconds
-      refetchInterval: false
+      refetchOnWindowFocus: false
     }
   );
   

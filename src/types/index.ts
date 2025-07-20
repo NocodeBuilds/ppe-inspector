@@ -1,3 +1,4 @@
+
 export type PPEType =
   | 'Full Body Harness'
   | 'Fall Arrester'
@@ -14,12 +15,12 @@ export type PPEType =
 
 export type PPEStatus =
   | 'active'
-  | 'expired'
+  | 'inactive'
+  | 'under_repair'
+  | 'retired'
   | 'flagged'
-  | 'due'
-  | 'inspected'
-  | 'out-of-service'
-  | 'maintenance';
+  | 'maintenance'
+  | 'expired';
 
 export interface PPEItem {
   id: string;

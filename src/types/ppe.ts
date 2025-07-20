@@ -1,4 +1,5 @@
-// src/types/ppe.ts
+
+import { PPEStatus } from './index';
 
 // Define the structure for a PPE item based on usage in components
 export interface PPEItem {
@@ -13,7 +14,7 @@ export interface PPEItem {
   manufacturingDate?: string;  // Mapped name
   expiry_date?: string; // From database
   expiryDate?: string;  // Mapped name
-  status: string; // Consider defining a Status enum if applicable
+  status: PPEStatus; // Using consistent status type
   image_url?: string; // From database
   imageUrl?: string;  // Mapped name
   next_inspection?: string | null; // From database
@@ -22,5 +23,8 @@ export interface PPEItem {
   createdAt?: string;  // Mapped name
   updated_at: string; // From database
   updatedAt?: string;  // Mapped name
-  // Add any other relevant fields from your ppe_items table
+  first_use?: string | null; // From database
+  created_by?: string | null; // From database
+  batch_number?: string | null; // From database
+  assigned_to?: string | null; // From database
 }
