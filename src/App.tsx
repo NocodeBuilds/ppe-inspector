@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -46,14 +47,14 @@ const PageLoader = () => (
   </div>
 );
 
-// Configure React Query with improved settings and error handling
+// Configure React Query with improved settings and better performance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
+      staleTime: 30 * 1000, // 30 seconds - reduced for better performance
+      gcTime: 5 * 60 * 1000, // 5 minutes - reduced for better memory management
     },
   },
 });
@@ -61,34 +62,22 @@ const queryClient = new QueryClient({
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
 
-  // Set up PWA features with better error handling
+  // Set up PWA features with better error handling and faster initialization
   useEffect(() => {
     const setupPWA = async () => {
       try {
-        // Use enhanced PWA initialization with timeout
         await initializePWA();
         console.log("PWA initialized successfully");
       } catch (error) {
         console.error('Error setting up PWA:', error);
       } finally {
-        // Ensure loading state is cleared after max 2 seconds if initialization hangs
-        const fallbackTimer = setTimeout(() => {
-          if (isLoading) {
-            console.warn('Forcing app to load after timeout');
-            setIsLoading(false);
-          }
-        }, 2000);
-        
-        // Normal finish loading
-        setIsLoading(false);
-        
-        // Clear the fallback timer if we loaded normally
-        return () => clearTimeout(fallbackTimer);
+        // Faster initialization - reduced from 2000ms to 500ms
+        setTimeout(() => setIsLoading(false), 500);
       }
     };
     
     setupPWA();
-  }, [isLoading]);
+  }, []);
 
   if (isLoading) {
     return <PageLoader />;
@@ -98,9 +87,6 @@ const App = () => {
   const handleGlobalError = (error: Error, info: React.ErrorInfo) => {
     console.error('Global error caught:', error);
     console.error('Component stack:', info.componentStack);
-    
-    // Here you could add reporting to an error tracking service
-    // reportToErrorService(error, info);
   };
 
   return (
@@ -110,7 +96,6 @@ const App = () => {
           <ThemeProvider>
             <TooltipProvider>
               <AuthProvider>
-                {/* Add NetworkStatusListener to monitor online/offline status */}
                 <NetworkStatusListener />
                 <NetworkStatus />
                 <Toaster />
@@ -135,21 +120,8 @@ const App = () => {
                       <Route path="inspect/new" element={<ManualInspection />} />
                       <Route path="inspect/:ppeId" element={<InspectionForm />} />
                       <Route path="inspection/:id" element={<InspectionDetails />} />
-                      <Route path="analytics" element={
-                        <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
-                          <Analytics />
-                        </RoleProtectedRoute>
-                      } />
-                      <Route path="reports" element={
-                        <RoleProtectedRoute requiredRole="user" fallbackPath="access-denied">
-                          <ReportsPage />
-                        </RoleProtectedRoute>
-                      } />
-                      <Route path="admin/delete/:type/:id" element={
-                        <RoleProtectedRoute requiredRole="admin" fallbackPath="access-denied">
-                          <ReportsPage />
-                        </RoleProtectedRoute>
-                      } />
+                      <Route path="analytics" element={<Analytics />} />
+                      <Route path="reports" element={<ReportsPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Routes>

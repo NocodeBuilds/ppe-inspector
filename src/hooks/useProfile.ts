@@ -10,14 +10,10 @@ type ProfileHook = {
   refreshProfile: () => Promise<void>;
 };
 
-/**
- * Hook to manage user profile data
- * Handles fetching and refreshing profile information with efficient caching
- */
 export const useProfile = (userId: string | undefined): ProfileHook => {
   const { toast } = useToast();
   
-  // Use React Query for profile data
+  // Use React Query for profile data with faster retry and shorter stale time
   const {
     data: profile,
     isLoading,
@@ -33,41 +29,55 @@ export const useProfile = (userId: string | undefined): ProfileHook => {
           .from('profiles')
           .select('*')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching profile:', error);
+          // If profile doesn't exist, create a basic one
+          if (error.code === 'PGRST116') {
+            console.log('Profile not found, creating default profile');
+            const { data: user } = await supabase.auth.getUser();
+            if (user.user) {
+              const { data: newProfile, error: createError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: userId,
+                  email: user.user.email || '',
+                  full_name: user.user.email?.split('@')[0] || 'User',
+                  role: 'user'
+                })
+                .select()
+                .single();
+                
+              if (createError) {
+                console.error('Error creating profile:', createError);
+                throw createError;
+              }
+              
+              return newProfile as Profile;
+            }
+          }
+          throw error;
+        }
 
         if (data) {
-          console.log("Profile data:", data);
-          
-          // Cast data to Profile type with proper type safety
-          // Make sure all properties from the Profile type are included here
-          const profileData: Profile = {
-            id: data.id,
-            full_name: data.full_name || null,
-            avatar_url: data.avatar_url || null,
-            role: data.role || 'user',
-            created_at: data.created_at || '',
-            updated_at: data.updated_at || '',
-            employee_id: data.employee_id || null,
-            site_name: data.site_name || null,
-            department: data.department || null,
-            Employee_Role: data.Employee_Role || null,
-            email: null
-          };
-          
-          return profileData;
+          console.log("Profile data found:", data);
+          return data as Profile;
         }
         return null;
       } catch (error) {
-        console.error('Error fetching profile:', error);
+        console.error('Error in profile fetch:', error);
         throw error;
       }
     },
-    { enabled: !!userId }
+    { 
+      enabled: !!userId,
+      retry: 2,
+      staleTime: 10 * 1000, // 10 seconds
+      refetchInterval: false
+    }
   );
   
-  // Create a function to refresh the profile data
   const refreshProfile = async () => {
     try {
       await refetch();

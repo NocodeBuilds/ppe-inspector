@@ -3,10 +3,12 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PPEItem, PPEStatus } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
+import { useAuth } from './useAuth';
 
 export function usePPEData() {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const createPPE = async ({
     brand,
@@ -46,13 +48,17 @@ export function usePPEData() {
           throw new Error(`Failed to upload image: ${storageError.message}`);
         }
 
-        // Get the public URL using getPublicUrl method
         const { data: publicUrlData } = supabase.storage
           .from('ppe-images')
           .getPublicUrl(imagePath);
           
         imageUrl = publicUrlData.publicUrl;
       }
+
+      // Calculate status based on expiry date
+      const expiryDate = new Date(expiry_date);
+      const currentDate = new Date();
+      const status: PPEStatus = expiryDate < currentDate ? 'expired' : 'active';
 
       const { data, error } = await supabase
         .from('ppe_items')
@@ -65,8 +71,10 @@ export function usePPEData() {
             manufacturing_date,
             expiry_date,
             image_url: imageUrl,
-            batch_number,
+            batch_number: batch_number?.toString(),
             first_use,
+            status,
+            created_by: user?.id,
           },
         ])
         .select();
@@ -125,17 +133,14 @@ export function usePPEData() {
     }
   };
 
-  // Get PPE by serial number - updated for exact matching
   const getPPEBySerialNumber = async (serialNumber: string): Promise<PPEItem[]> => {
     try {
-      // Normalize the serial number
-      const normalizedSerial = serialNumber.trim().toUpperCase();
+      const normalizedSerial = serialNumber.trim();
       
       if (!normalizedSerial) {
         throw new Error('Serial number cannot be empty');
       }
 
-      // Search by exact serial number first
       const { data: exactMatch, error: exactError } = await supabase
         .from('ppe_items')
         .select('*')
@@ -143,16 +148,14 @@ export function usePPEData() {
 
       if (exactError) throw exactError;
       
-      // If we found an exact match, return it
       if (exactMatch && exactMatch.length > 0) {
         return exactMatch;
       }
 
-      // If no exact match, try a more permissive search but with stricter pattern
       const { data: fuzzyMatch, error: fuzzyError } = await supabase
         .from('ppe_items')
         .select('*')
-        .ilike('serial_number', `${normalizedSerial}`);
+        .ilike('serial_number', `%${normalizedSerial}%`);
 
       if (fuzzyError) throw fuzzyError;
       
@@ -163,25 +166,14 @@ export function usePPEData() {
     }
   };
 
-  // Get PPE by ID - optimized to handle both UUIDs and serial numbers
   const getPPEById = async (id: string): Promise<PPEItem | null> => {
     try {
-      // First check if the ID is a valid UUID
-      let isUUID = true;
-      try {
-        // Simple UUID validation check
-        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-          isUUID = false;
-        }
-      } catch {
-        isUUID = false;
-      }
+      let isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
       let data;
       let error;
 
       if (isUUID) {
-        // If it's a UUID, search by ID
         const result = await supabase
           .from('ppe_items')
           .select('*')
@@ -191,7 +183,6 @@ export function usePPEData() {
         data = result.data;
         error = result.error;
       } else {
-        // If it's not a UUID, search by serial number
         const result = await supabase
           .from('ppe_items')
           .select('*')
