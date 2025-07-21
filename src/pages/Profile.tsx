@@ -1,146 +1,89 @@
 
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/hooks/useAuth';
-import { User, Settings, LogOut, Mail, Building, MapPin, Briefcase, FileText } from 'lucide-react';
+import React from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
+import Navigation from '@/components/layout/Navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { User } from 'lucide-react';
 
 const Profile = () => {
-  const { user, profile, signOut, refreshProfile } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    
-    // Give a small delay before attempting to refresh profile
-    if (!profile) {
-      const timer = setTimeout(() => {
-        refreshProfile();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [user, navigate, profile, refreshProfile]);
-  
-  const handleLogout = async () => {
-    setLoading(true);
-    try {
-      await signOut();
-      navigate('/login');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleEditProfile = () => {
-    navigate('/edit-profile');
-  };
-  
-  if (!user) {
+  const { user, profile, isLoading } = useAuth();
+
+  if (isLoading) {
     return (
-      <div className="flex justify-center my-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
-  
-  // Show basic profile info even if full profile isn't loaded yet
-  const displayName = profile?.full_name || user.email?.split('@')[0] || 'User';
-  const displayEmail = user.email || '';
-  
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
-    <div className="fade-in pb-28 md:pb-20 max-h-screen overflow-y-auto">
-      <div>
-        <h1 className="text-2xl font-bold">Profile</h1>
-        <p className="text-muted-foreground">Manage your account settings and preferences</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Navigation />
       
-      <div className="space-y-6 mt-6">
-        <Card>
-          {/* Main Profile Information */}
-          <CardContent className="flex flex-col items-center pt-6">
-            <Avatar className="h-24 w-24 mb-4">
-              {profile?.avatar_url ? (
-                <AvatarImage src={profile.avatar_url} alt={displayName} />
-              ) : (
-                <AvatarFallback className="text-4xl">
-                  <User className="h-12 w-12" />
-                </AvatarFallback>
-              )}
-            </Avatar>
-            
-            <h2 className="text-xl font-bold mb-1">{displayName}</h2>
-            <div className="flex items-center text-muted-foreground mb-4">
-              <Mail className="h-4 w-4 mr-1" />
-              <span>{displayEmail}</span>
-            </div>
-          </CardContent>
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Profile</h1>
+          <p className="text-muted-foreground">Manage your account information</p>
+        </div>
 
-          {profile && (
-            <>
-              <Separator />
-              <CardContent className="pt-6">
-                <h3 className="text-lg font-semibold mb-4">Additional Information</h3>
-                <div className="space-y-3">
-                  {profile.employee_id && (
-                    <div className="flex items-center text-muted-foreground">
-                      <FileText className="h-4 w-4 mr-2" />
-                      <span className="text-muted-foreground/80">Employee ID:</span>
-                      <span className="ml-2 text-foreground">{profile.employee_id}</span>
-                    </div>
-                  )}
-                  
-                  {profile.Employee_Role && (
-                    <div className="flex items-center text-muted-foreground">
-                      <Briefcase className="h-4 w-4 mr-2" />
-                      <span className="text-muted-foreground/80">Role:</span>
-                      <span className="ml-2 text-foreground">{profile.Employee_Role}</span>
-                    </div>
-                  )}
-                  
-                  {profile.department && (
-                    <div className="flex items-center text-muted-foreground">
-                      <Building className="h-4 w-4 mr-2" />
-                      <span className="text-muted-foreground/80">Department:</span>
-                      <span className="ml-2 text-foreground">{profile.department}</span>
-                    </div>
-                  )}
-                  
-                  {profile.site_name && (
-                    <div className="flex items-center text-muted-foreground">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      <span className="text-muted-foreground/80">Site:</span>
-                      <span className="ml-2 text-foreground">{profile.site_name}</span>
-                    </div>
-                  )}
+        <div className="max-w-2xl">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <User className="h-5 w-5" />
+                <span>Account Information</span>
+              </CardTitle>
+              <CardDescription>Your personal details and preferences</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Email</label>
+                <p className="text-sm">{user.email}</p>
+              </div>
+              
+              {profile?.full_name && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Full Name</label>
+                  <p className="text-sm">{profile.full_name}</p>
                 </div>
-              </CardContent>
-            </>
-          )}
-
-          <Separator />
-
-          {/* Actions */}
-          <CardContent className="pt-6 flex flex-col gap-3">
-            <Button variant="outline" onClick={handleEditProfile} className="w-full">
-              <Settings className="h-4 w-4 mr-2" />
-              Edit Profile
-            </Button>
-            <Button variant="destructive" onClick={handleLogout} disabled={loading} className="w-full">
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+              )}
+              
+              {profile?.role && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Role</label>
+                  <p className="text-sm capitalize">{profile.role}</p>
+                </div>
+              )}
+              
+              {profile?.employee_id && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Employee ID</label>
+                  <p className="text-sm">{profile.employee_id}</p>
+                </div>
+              )}
+              
+              {profile?.department && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Department</label>
+                  <p className="text-sm">{profile.department}</p>
+                </div>
+              )}
+              
+              {profile?.site_name && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Site</label>
+                  <p className="text-sm">{profile.site_name}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </main>
     </div>
   );
 };

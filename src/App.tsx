@@ -1,43 +1,21 @@
 
-import React, { useEffect, useState, lazy, Suspense } from "react";
+import React, { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-import { ThemeProvider } from "./components/ThemeToggler";
-import { initializePWA } from "./utils/pwaUtils";
-import EnhancedErrorBoundary from "./components/error/EnhancedErrorBoundary";
-import RoleProtectedRoute from "./components/auth/RoleProtectedRoute";
-import NetworkStatusListener from "./components/layout/NetworkStatusListener";
-import NetworkStatus from "./components/layout/NetworkStatus";
+import { ThemeProvider } from "./components/ThemeProvider";
 
-// Pages with no lazy loading to prevent flashing
-import MainLayout from "./components/layout/MainLayout";
+// Lazy load pages
+const Login = React.lazy(() => import("./pages/Login"));
+const Register = React.lazy(() => import("./pages/Register"));
+const Dashboard = React.lazy(() => import("./pages/Dashboard"));
+const Equipment = React.lazy(() => import("./pages/Equipment"));
+const Inspections = React.lazy(() => import("./pages/Inspections"));
+const Profile = React.lazy(() => import("./pages/Profile"));
 
-// Lazy load pages with better chunk naming and error handling
-const Home = lazy(() => import(/* webpackChunkName: "home-page" */ "./pages/Home"));
-const ExpiringPPE = lazy(() => import(/* webpackChunkName: "expiring-ppe-page" */ "./pages/ExpiringPPE"));
-const UpcomingInspections = lazy(() => import(/* webpackChunkName: "upcoming-inspections-page" */ "./pages/UpcomingInspections"));
-const Equipment = lazy(() => import(/* webpackChunkName: "equipment-page" */ "./pages/Equipment"));
-const Analytics = lazy(() => import(/* webpackChunkName: "analytics-page" */ "./pages/Analytics"));
-const Settings = lazy(() => import(/* webpackChunkName: "settings-page" */ "./pages/Settings"));
-const Profile = lazy(() => import(/* webpackChunkName: "profile-page" */ "./pages/Profile"));
-const Login = lazy(() => import(/* webpackChunkName: "login-page" */ "./pages/Login"));
-const NotFound = lazy(() => import(/* webpackChunkName: "not-found-page" */ "./pages/NotFound"));
-const RegisterPage = lazy(() => import(/* webpackChunkName: "register-page" */ "./pages/Register"));
-const ForgotPasswordPage = lazy(() => import(/* webpackChunkName: "forgot-password-page" */ "./pages/ForgotPassword"));
-const ResetPasswordPage = lazy(() => import(/* webpackChunkName: "reset-password-page" */ "./pages/ResetPassword"));
-const EditProfile = lazy(() => import(/* webpackChunkName: "edit-profile-page" */ "./pages/EditProfile"));
-const InspectionForm = lazy(() => import(/* webpackChunkName: "inspection-form-page" */ "./pages/InspectionForm"));
-const ReportsPage = lazy(() => import(/* webpackChunkName: "reports-page" */ "./pages/Reports"));
-const StartInspection = lazy(() => import(/* webpackChunkName: "start-inspection-page" */ "./pages/StartInspection"));
-const ManualInspection = lazy(() => import(/* webpackChunkName: "manual-inspection-page" */ "./pages/ManualInspection"));
-const FlaggedIssues = lazy(() => import(/* webpackChunkName: "flagged-issues-page" */ "./pages/FlaggedIssues"));
-const InspectionDetails = lazy(() => import(/* webpackChunkName: "inspection-details-page" */ "./pages/InspectionDetails"));
-
-// Loading component for Suspense with better UI
+// Loading component
 const PageLoader = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-background">
     <div className="flex flex-col items-center">
@@ -47,14 +25,13 @@ const PageLoader = () => (
   </div>
 );
 
-// Configure React Query with improved settings and better performance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
-      staleTime: 30 * 1000, // 30 seconds - reduced for better performance
-      gcTime: 5 * 60 * 1000, // 5 minutes - reduced for better memory management
+      staleTime: 30 * 1000,
+      gcTime: 5 * 60 * 1000,
     },
   },
 });
@@ -62,76 +39,39 @@ const queryClient = new QueryClient({
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
 
-  // Set up PWA features with better error handling and faster initialization
   useEffect(() => {
-    const setupPWA = async () => {
-      try {
-        await initializePWA();
-        console.log("PWA initialized successfully");
-      } catch (error) {
-        console.error('Error setting up PWA:', error);
-      } finally {
-        // Faster initialization - reduced from 2000ms to 500ms
-        setTimeout(() => setIsLoading(false), 500);
-      }
-    };
-    
-    setupPWA();
+    // Initialize PWA
+    const timer = setTimeout(() => setIsLoading(false), 500);
+    return () => clearTimeout(timer);
   }, []);
 
   if (isLoading) {
     return <PageLoader />;
   }
 
-  // Handle global errors and provide detailed reporting
-  const handleGlobalError = (error: Error, info: React.ErrorInfo) => {
-    console.error('Global error caught:', error);
-    console.error('Component stack:', info.componentStack);
-  };
-
   return (
-    <EnhancedErrorBoundary onError={handleGlobalError} component="AppRoot">
-      <BrowserRouter>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <TooltipProvider>
-              <AuthProvider>
-                <NetworkStatusListener />
-                <NetworkStatus />
-                <Toaster />
-                <Sonner />
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                    <Route path="/reset-password" element={<ResetPasswordPage />} />
-                    
-                    <Route path="/" element={<MainLayout />}>
-                      <Route index element={<Home />} />
-                      <Route path="expiring" element={<ExpiringPPE />} />
-                      <Route path="upcoming" element={<UpcomingInspections />} />
-                      <Route path="equipment" element={<Equipment />} />
-                      <Route path="flagged" element={<FlaggedIssues />} />
-                      <Route path="settings" element={<Settings />} />
-                      <Route path="profile" element={<Profile />} />
-                      <Route path="edit-profile" element={<EditProfile />} />
-                      <Route path="start-inspection" element={<StartInspection />} />
-                      <Route path="inspect/new" element={<ManualInspection />} />
-                      <Route path="inspect/:ppeId" element={<InspectionForm />} />
-                      <Route path="inspection/:id" element={<InspectionDetails />} />
-                      <Route path="analytics" element={<Analytics />} />
-                      <Route path="reports" element={<ReportsPage />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Route>
-                  </Routes>
-                </Suspense>
-              </AuthProvider>
-            </TooltipProvider>
-          </ThemeProvider>
-        </QueryClientProvider>
-      </BrowserRouter>
-    </EnhancedErrorBoundary>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <AuthProvider>
+              <Toaster />
+              <React.Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/equipment" element={<Equipment />} />
+                  <Route path="/inspections" element={<Inspections />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </React.Suspense>
+            </AuthProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
   );
 };
 
