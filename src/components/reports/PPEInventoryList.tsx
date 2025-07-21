@@ -99,11 +99,7 @@ const PPEInventoryList = () => {
       const fieldA = a[sortField as keyof PPEItem];
       const fieldB = b[sortField as keyof PPEItem];
 
-<<<<<<< Updated upstream
       if (sortField === 'next_inspection' || sortField === 'created_at' || sortField === 'updated_at' || sortField === 'manufacturing_date' || sortField === 'expiry_date') {
-=======
-      if (sortField === 'next_inspection' || sortField === 'created_at' || sortField === 'updatedAt' || sortField === 'manufacturing_date' || sortField === 'expiry_date') {
->>>>>>> Stashed changes
         const dateA = fieldA ? new Date(fieldA as string).getTime() : 0;
         const dateB = fieldB ? new Date(fieldB as string).getTime() : 0;
         if (!dateA && !dateB) return 0;
