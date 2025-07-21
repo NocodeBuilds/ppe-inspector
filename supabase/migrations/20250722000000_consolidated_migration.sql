@@ -3,8 +3,9 @@
 -- Date: 2025-07-22
 
 -- Step 1: Custom Types (Enums)
-CREATE TYPE ppe_status AS ENUM ('active', 'flagged', 'expired', 'retired');
+CREATE TYPE ppe_status AS ENUM ('active', 'flagged', 'expired', 'retired', 'maintenance');
 CREATE TYPE inspection_type AS ENUM ('pre-use', 'monthly', 'quarterly', 'annual');
+CREATE TYPE user_role AS ENUM ('admin', 'user', 'inspector');
 
 -- Step 2: Tables
 
@@ -16,6 +17,10 @@ CREATE TABLE public.profiles (
     full_name TEXT,
     avatar_url TEXT,
     website TEXT,
+    role user_role DEFAULT 'user' NOT NULL,
+    employee_id TEXT,
+    site_name TEXT,
+    department TEXT,
     CONSTRAINT username_length CHECK (char_length(username) >= 3)
 );
 

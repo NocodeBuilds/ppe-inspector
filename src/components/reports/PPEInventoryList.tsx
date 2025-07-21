@@ -23,10 +23,10 @@ import ExportFilterModal, { ExportFilterOptions, SelectedExportFilters } from '.
 
 const ppeExportFilters: ExportFilterOptions = {
   status: true,
-  ppeType: true,
+  ppe_type: true,
   brand: true,
-  dateRange: false,
-  serialNumber: false,
+  date_range: false,
+  serial_number: false,
 };
 
 const PPEInventoryList = () => {
@@ -99,7 +99,11 @@ const PPEInventoryList = () => {
       const fieldA = a[sortField as keyof PPEItem];
       const fieldB = b[sortField as keyof PPEItem];
 
+<<<<<<< Updated upstream
       if (sortField === 'next_inspection' || sortField === 'created_at' || sortField === 'updated_at' || sortField === 'manufacturing_date' || sortField === 'expiry_date') {
+=======
+      if (sortField === 'next_inspection' || sortField === 'created_at' || sortField === 'updatedAt' || sortField === 'manufacturing_date' || sortField === 'expiry_date') {
+>>>>>>> Stashed changes
         const dateA = fieldA ? new Date(fieldA as string).getTime() : 0;
         const dateB = fieldB ? new Date(fieldB as string).getTime() : 0;
         if (!dateA && !dateB) return 0;
@@ -129,7 +133,7 @@ const PPEInventoryList = () => {
           return false;
         }
 
-        if (filters.ppeType && item.type?.toLowerCase() !== filters.ppeType.toLowerCase()) {
+        if (filters.ppe_type && item.type?.toLowerCase() !== filters.ppe_type.toLowerCase()) {
           return false;
         }
 
