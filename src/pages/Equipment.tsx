@@ -156,20 +156,7 @@ const Equipment = () => {
                 {filteredItems.map((item) => (
                   <EquipmentCard
                     key={item.id}
-                    item={{
-                      id: item.id,
-                      serialNumber: item.serial_number,
-                      type: item.type,
-                      brand: item.brand || '',
-                      modelNumber: item.model_number || '',
-                      manufacturingDate: item.manufacturing_date || '',
-                      expiryDate: item.expiry_date || '',
-                      status: item.status,
-                      imageUrl: item.image_url,
-                      nextInspection: item.next_inspection,
-                      createdAt: item.created_at,
-                      updatedAt: item.updated_at,
-                    }}
+                    item={item}
                     type="equipment"
                     onInspect={() => handleInspect(item)}
                   />
