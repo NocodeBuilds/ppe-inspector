@@ -3,71 +3,61 @@
 
 export type Profile = {
   id: string;
-  email: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  role: AppRole;
-  employee_id: string | null;
-  site_name: string | null;
-  department: string | null;
-  Employee_Role: string | null;
-  created_at: string;
-  updated_at: string;
+  updated_at?: string | null;
+  username?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  website?: string | null;
 };
 
 export type PPEItem = {
   id: string;
-  serial_number: string;
-  type: string;
-  brand: string | null;
-  model_number: string | null;
-  manufacturing_date: string | null;
-  expiry_date: string | null;
-  batch_number: string | null;
-  status: PPEStatus;
-  image_url: string | null;
-  first_use: string | null;
-  created_by: string | null;
   created_at: string;
   updated_at: string;
-  next_inspection: string | null;
-  assigned_to: string | null;
+  serial_number: string;
+  batch_number?: number | null;
+  type: string;
+  brand: string;
+  model_number?: string | null;
+  manufacturing_date: string;
+  expiry_date: string;
+  first_use?: string | null;
+  image_url?: string | null;
+  status: PPEStatus;
+  created_by?: string | null;
+  assigned_to?: string | null;
+  last_inspection?: string | null;
+  next_inspection?: string | null;
 };
 
 export type Inspection = {
   id: string;
+  created_at: string;
   ppe_id: string;
   inspector_id: string;
   date: string;
   type: InspectionType;
   overall_result: string;
-  notes: string | null;
-  signature_url: string | null;
-  created_at: string;
-  updated_at: string;
+  notes?: string | null;
+  signature_url?: string | null;
 };
 
 export type InspectionResult = {
   id: string;
-  inspection_id: string;
-  checkpoint_id: string | null;
-  description: string | null;
-  passed: boolean | null;
-  notes: string | null;
-  photo_url: string | null;
   created_at: string;
-  updated_at: string;
+  inspection_id: string;
+  checkpoint_id: string;
+  passed?: boolean | null;
+  notes?: string | null;
+  photo_url?: string | null;
 };
 
 export type InspectionCheckpoint = {
   id: string;
-  template_id: string | null;
+  created_at: string;
   ppe_type: string;
   description: string;
-  order: number | null;
   required: boolean;
-  created_at: string;
-  updated_at: string;
 };
 
 export type Notification = {
@@ -79,9 +69,9 @@ export type Notification = {
   created_at: string;
 };
 
-// Enum Types
-export type PPEStatus = 'active' | 'inactive' | 'under_repair' | 'retired' | 'flagged' | 'maintenance' | 'expired';
-export type InspectionType = 'routine' | 'detailed' | 'emergency' | 'pre-use' | 'monthly' | 'quarterly';
+// Enum Types - matching the database enums
+export type PPEStatus = 'active' | 'flagged' | 'expired' | 'retired';
+export type InspectionType = 'pre-use' | 'monthly' | 'quarterly' | 'annual';
 export type AppRole = 'admin' | 'inspector' | 'user';
 
 export type PPEType =

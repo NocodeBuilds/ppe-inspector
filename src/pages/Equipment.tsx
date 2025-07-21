@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,28 +56,8 @@ const Equipment = () => {
       
       if (error) throw error;
       
-      // Map the data to match the expected interface
-      const mappedItems: PPEItem[] = data.map((item: any) => ({
-        id: item.id,
-        serial_number: item.serial_number,
-        type: item.type,
-        brand: item.brand,
-        model_number: item.model_number,
-        manufacturing_date: item.manufacturing_date,
-        expiry_date: item.expiry_date,
-        status: item.status,
-        image_url: item.image_url,
-        batch_number: item.batch_number,
-        first_use: item.first_use,
-        created_by: item.created_by,
-        next_inspection: item.next_inspection,
-        assigned_to: item.assigned_to,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-      }));
-      
-      setPpeItems(mappedItems);
-      setFilteredItems(mappedItems);
+      setPpeItems(data || []);
+      setFilteredItems(data || []);
     } catch (error) {
       console.error('Error fetching equipment:', error);
       toast({
@@ -183,7 +164,7 @@ const Equipment = () => {
                       modelNumber: item.model_number || '',
                       manufacturingDate: item.manufacturing_date || '',
                       expiryDate: item.expiry_date || '',
-                      status: item.status as any,
+                      status: item.status,
                       imageUrl: item.image_url,
                       nextInspection: item.next_inspection,
                       createdAt: item.created_at,

@@ -371,8 +371,9 @@ export type Database = {
           assigned_to: string | null
           batch_number: string | null
           brand: string | null
-          created_at: string | null
+          created_by: string | null
           expiry_date: string | null
+          first_use: string | null
           id: string
           image_url: string | null
           manufacturing_date: string | null
@@ -387,8 +388,9 @@ export type Database = {
           assigned_to?: string | null
           batch_number?: string | null
           brand?: string | null
-          created_at?: string | null
+          created_by?: string | null
           expiry_date?: string | null
+          first_use?: string | null
           id?: string
           image_url?: string | null
           manufacturing_date?: string | null
@@ -403,8 +405,9 @@ export type Database = {
           assigned_to?: string | null
           batch_number?: string | null
           brand?: string | null
-          created_at?: string | null
+          created_by?: string | null
           expiry_date?: string | null
+          first_use?: string | null
           id?: string
           image_url?: string | null
           manufacturing_date?: string | null
