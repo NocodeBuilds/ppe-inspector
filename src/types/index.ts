@@ -24,17 +24,17 @@ export type PPEStatus =
 
 export interface PPEItem {
   id: string;
-  serialNumber: string;
+  serial_number: string;
   type: PPEType;
   brand: string;
-  modelNumber: string;
-  manufacturingDate: string;
-  expiryDate: string;
+  model_number: string;
+  manufacturing_date: string;
+  expiry_date: string;
   status: PPEStatus;
-  imageUrl?: string | null;
-  nextInspection?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  image_url?: string | null;
+  next_inspection?: string | null;
+  created_at: string;
+  updated_at: string;
   latestInspection?: any;
 }
 

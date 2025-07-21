@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,7 +33,7 @@ const PPEInventoryList = () => {
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<keyof PPEItem | string>('createdAt');
+  const [sortField, setSortField] = useState<keyof PPEItem | string>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedItem, setSelectedItem] = useState<PPEItem | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -85,11 +86,11 @@ const PPEInventoryList = () => {
       if (!searchTerm) return true;
       const searchLower = searchTerm.toLowerCase();
       const searchMatch = (
-        item.serialNumber?.toLowerCase().includes(searchLower) ||
+        item.serial_number?.toLowerCase().includes(searchLower) ||
         item.type?.toLowerCase().includes(searchLower) ||
         item.brand?.toLowerCase().includes(searchLower) ||
         item.status?.toLowerCase().includes(searchLower) ||
-        item.modelNumber?.toLowerCase().includes(searchLower)
+        item.model_number?.toLowerCase().includes(searchLower)
       );
 
       return statusMatch && searchMatch; 
@@ -98,7 +99,7 @@ const PPEInventoryList = () => {
       const fieldA = a[sortField as keyof PPEItem];
       const fieldB = b[sortField as keyof PPEItem];
 
-      if (sortField === 'nextInspection' || sortField === 'createdAt' || sortField === 'updatedAt' || sortField === 'manufacturingDate' || sortField === 'expiryDate') {
+      if (sortField === 'next_inspection' || sortField === 'created_at' || sortField === 'updated_at' || sortField === 'manufacturing_date' || sortField === 'expiry_date') {
         const dateA = fieldA ? new Date(fieldA as string).getTime() : 0;
         const dateB = fieldB ? new Date(fieldB as string).getTime() : 0;
         if (!dateA && !dateB) return 0;
@@ -208,9 +209,9 @@ const PPEInventoryList = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead onClick={() => handleSort('serialNumber')} className="cursor-pointer whitespace-nowrap">
+              <TableHead onClick={() => handleSort('serial_number')} className="cursor-pointer whitespace-nowrap">
                 Serial #
-                <ArrowUpDown className={`ml-1 h-3 w-3 inline transition-transform ${sortField === 'serialNumber' ? 'opacity-100' : 'opacity-30'} ${sortDirection === 'desc' ? '' : 'rotate-180'}`} />
+                <ArrowUpDown className={`ml-1 h-3 w-3 inline transition-transform ${sortField === 'serial_number' ? 'opacity-100' : 'opacity-30'} ${sortDirection === 'desc' ? '' : 'rotate-180'}`} />
               </TableHead>
               <TableHead onClick={() => handleSort('type')} className="cursor-pointer">
                 Type
@@ -224,9 +225,9 @@ const PPEInventoryList = () => {
                 Status
                 <ArrowUpDown className={`ml-1 h-3 w-3 inline transition-transform ${sortField === 'status' ? 'opacity-100' : 'opacity-30'} ${sortDirection === 'desc' ? '' : 'rotate-180'}`} />
               </TableHead>
-              <TableHead onClick={() => handleSort('nextInspection')} className="cursor-pointer whitespace-nowrap">
+              <TableHead onClick={() => handleSort('next_inspection')} className="cursor-pointer whitespace-nowrap">
                 Next Insp.
-                <ArrowUpDown className={`ml-1 h-3 w-3 inline transition-transform ${sortField === 'nextInspection' ? 'opacity-100' : 'opacity-30'} ${sortDirection === 'desc' ? '' : 'rotate-180'}`} />
+                <ArrowUpDown className={`ml-1 h-3 w-3 inline transition-transform ${sortField === 'next_inspection' ? 'opacity-100' : 'opacity-30'} ${sortDirection === 'desc' ? '' : 'rotate-180'}`} />
               </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -237,12 +238,12 @@ const PPEInventoryList = () => {
                 key={item.id} 
                 className="group hover:bg-muted/50 cursor-pointer" 
               >
-                <TableCell className="font-medium whitespace-nowrap" onClick={() => handleShowDetails(item)}>{item.serialNumber || 'N/A'}</TableCell>
+                <TableCell className="font-medium whitespace-nowrap" onClick={() => handleShowDetails(item)}>{item.serial_number || 'N/A'}</TableCell>
                 <TableCell onClick={() => handleShowDetails(item)}>{item.type}</TableCell>
                 <TableCell onClick={() => handleShowDetails(item)}>{item.brand || 'N/A'}</TableCell>
                 <TableCell onClick={() => handleShowDetails(item)}>{item.status}</TableCell>
                 <TableCell onClick={() => handleShowDetails(item)} className="whitespace-nowrap">
-                  {item.nextInspection ? format(new Date(item.nextInspection), 'MMM d, yyyy') : 'N/A'}
+                  {item.next_inspection ? format(new Date(item.next_inspection), 'MMM d, yyyy') : 'N/A'}
                 </TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleShowDetails(item)}>
@@ -270,14 +271,14 @@ const PPEInventoryList = () => {
           <DialogHeader>
             <DialogTitle>PPE Item Details</DialogTitle>
             <DialogDescription>
-              Detailed information for {selectedItem?.type || 'Item'} ({selectedItem?.serialNumber || 'N/A'})
+              Detailed information for {selectedItem?.type || 'Item'} ({selectedItem?.serial_number || 'N/A'})
             </DialogDescription>
           </DialogHeader>
           {selectedItem && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <span className="text-right font-semibold col-span-1">Serial #:</span>
-                <span className="col-span-3">{selectedItem.serialNumber || 'N/A'}</span>
+                <span className="col-span-3">{selectedItem.serial_number || 'N/A'}</span>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                  <span className="text-right font-semibold col-span-1">Type:</span>
@@ -289,7 +290,7 @@ const PPEInventoryList = () => {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                  <span className="text-right font-semibold col-span-1">Model:</span>
-                 <span className="col-span-3">{selectedItem.modelNumber || 'N/A'}</span>
+                 <span className="col-span-3">{selectedItem.model_number || 'N/A'}</span>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                  <span className="text-right font-semibold col-span-1">Status:</span>
@@ -298,34 +299,31 @@ const PPEInventoryList = () => {
                <div className="grid grid-cols-4 items-center gap-4">
                  <span className="text-right font-semibold col-span-1">Mfg Date:</span>
                  <span className="col-span-3">
-                  {selectedItem.manufacturingDate ? format(new Date(selectedItem.manufacturingDate), 'MMM d, yyyy') : 'N/A'}
+                  {selectedItem.manufacturing_date ? format(new Date(selectedItem.manufacturing_date), 'MMM d, yyyy') : 'N/A'}
                  </span>
               </div>
                <div className="grid grid-cols-4 items-center gap-4">
                  <span className="text-right font-semibold col-span-1">Expiry:</span>
                  <span className="col-span-3">
-                   {selectedItem.expiryDate ? format(new Date(selectedItem.expiryDate), 'MMM d, yyyy') : 'N/A'}
+                   {selectedItem.expiry_date ? format(new Date(selectedItem.expiry_date), 'MMM d, yyyy') : 'N/A'}
                  </span>
               </div>
                <div className="grid grid-cols-4 items-center gap-4">
                  <span className="text-right font-semibold col-span-1">Next Insp:</span>
                  <span className="col-span-3">
-                   {selectedItem.nextInspection ? format(new Date(selectedItem.nextInspection), 'MMM d, yyyy') : 'N/A'}
+                   {selectedItem.next_inspection ? format(new Date(selectedItem.next_inspection), 'MMM d, yyyy') : 'N/A'}
                  </span>
               </div>
                <div className="grid grid-cols-4 items-center gap-4">
                  <span className="text-right font-semibold col-span-1">Added:</span>
                  <span className="col-span-3">
-                   {selectedItem.createdAt ? format(new Date(selectedItem.createdAt), 'MMM d, yyyy') : 'N/A'}
+                   {selectedItem.created_at ? format(new Date(selectedItem.created_at), 'MMM d, yyyy') : 'N/A'}
                  </span>
               </div>
-              {/* Add more details as needed */}
             </div>
           )}
-          {/* Optional: Add DialogFooter with actions like Close */}
         </DialogContent>
       </Dialog>
-
     </div>
   );
 };

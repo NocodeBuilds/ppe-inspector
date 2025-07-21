@@ -8,6 +8,11 @@ export type Profile = {
   full_name?: string | null;
   avatar_url?: string | null;
   website?: string | null;
+  role?: string | null;
+  employee_id?: string | null;
+  site_name?: string | null;
+  department?: string | null;
+  Employee_Role?: string | null;
 };
 
 export type PPEItem = {
@@ -70,7 +75,7 @@ export type Notification = {
 };
 
 // Enum Types - matching the database enums
-export type PPEStatus = 'active' | 'flagged' | 'expired' | 'retired';
+export type PPEStatus = 'active' | 'flagged' | 'expired' | 'retired' | 'maintenance';
 export type InspectionType = 'pre-use' | 'monthly' | 'quarterly' | 'annual';
 export type AppRole = 'admin' | 'inspector' | 'user';
 
