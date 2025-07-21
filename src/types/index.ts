@@ -3,6 +3,17 @@ export type PPEStatus = 'active' | 'flagged' | 'expired' | 'retired' | 'maintena
 export type InspectionType = 'pre-use' | 'monthly' | 'quarterly' | 'annual';
 export type UserRole = 'admin' | 'user' | 'inspector';
 
+// Add missing PPEType export
+export type PPEType = 'helmet' | 'harness' | 'respirator' | 'gloves' | 'boots' | 'eyewear' | 'vest';
+
+// Add missing User type
+export interface User {
+  id: string;
+  email: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Profile {
   id: string;
   updated_at?: string | null;
