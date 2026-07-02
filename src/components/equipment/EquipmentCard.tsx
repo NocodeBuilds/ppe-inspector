@@ -1,3 +1,4 @@
+
 import { Download, Edit, FileText } from 'lucide-react';
 import { PPEItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -59,13 +60,13 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
 
   const getStatusText = () => {
     if (type === 'expiring') {
-      return `Expires: ${new Date(item.expiryDate).toLocaleDateString('en-US', {
+      return `Expires: ${new Date(item.expiry_date).toLocaleDateString('en-US', {
         month: 'long',
         day: 'numeric',
         year: 'numeric',
       })}`;
     } else if (type === 'upcoming') {
-      return `Due: ${item.nextInspection ? new Date(item.nextInspection).toLocaleDateString('en-US', {
+      return `Due: ${item.next_inspection ? new Date(item.next_inspection).toLocaleDateString('en-US', {
         month: 'long',
         day: 'numeric',
         year: 'numeric',
@@ -117,7 +118,7 @@ const EquipmentCard = ({ item, type, onEdit, onInspect }: EquipmentCardProps) =>
         {statusIcon}
         <div className="flex-1 min-w-0 overflow-hidden">
           <h3 className="h4 truncate">{item.type}</h3>
-          <p className="text-caption truncate">SN: {item.serialNumber}</p>
+          <p className="text-caption truncate">SN: {item.serial_number}</p>
           <p className="text-body-sm truncate">{getStatusText()}</p>
         </div>
         <div className="flex-shrink-0 flex gap-1.5">

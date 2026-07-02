@@ -1,224 +1,185 @@
 
-import { PPEItem, InspectionCheckpoint, InspectionResult, User, PPEType } from '@/types';
+import { PPEItem, Inspection, InspectionCheckpoint, User, PPEType } from '@/types';
 
-// Mock PPE Items
-export const ppeItems: PPEItem[] = [
+export const mockPPEItems: PPEItem[] = [
   {
     id: '1',
-    serialNumber: 'FBH-001',
-    type: 'Full Body Harness',
+    serial_number: 'HLM-001',
+    type: 'helmet',
     brand: 'SafetyFirst',
-    modelNumber: 'H-2000',
-    manufacturingDate: '2023-01-15',
-    expiryDate: '2025-01-15',
+    model_number: 'SF-100',
+    manufacturing_date: '2023-01-15',
+    expiry_date: '2028-01-15',
     status: 'active',
-    nextInspection: '2024-01-15',
-    createdAt: '2023-01-01',
-    updatedAt: '2023-10-15',
+    created_at: '2023-01-15T00:00:00Z',
+    updated_at: '2023-01-15T00:00:00Z',
+    next_inspection: '2024-04-15',
   },
   {
     id: '2',
-    serialNumber: '0123',
-    type: 'Safety Helmet',
-    brand: 'HeadGuard',
-    modelNumber: 'HG-500',
-    manufacturingDate: '2022-06-10',
-    expiryDate: '2024-12-30',
-    status: 'expired',
-    nextInspection: '2023-12-20',
-    createdAt: '2022-06-01',
-    updatedAt: '2023-09-20',
+    serial_number: 'HRN-002',
+    type: 'harness',
+    brand: 'SecureLife',
+    model_number: 'SL-200',
+    manufacturing_date: '2023-02-10',
+    expiry_date: '2028-02-10',
+    status: 'active',
+    created_at: '2023-02-10T00:00:00Z',
+    updated_at: '2023-02-10T00:00:00Z',
+    next_inspection: '2024-05-10',
   },
   {
     id: '3',
-    serialNumber: '123',
-    type: 'Full Body Harness',
-    brand: 'SafetyFirst',
-    modelNumber: 'H-3000',
-    manufacturingDate: '2022-03-10',
-    expiryDate: '2024-12-30',
-    status: 'expired',
-    nextInspection: '2023-12-10',
-    createdAt: '2022-03-01',
-    updatedAt: '2023-09-10',
+    serial_number: 'RSP-003',
+    type: 'respirator',
+    brand: 'BreathEasy',
+    model_number: 'BE-300',
+    manufacturing_date: '2023-03-05',
+    expiry_date: '2025-03-05',
+    status: 'flagged',
+    created_at: '2023-03-05T00:00:00Z',
+    updated_at: '2023-03-05T00:00:00Z',
+    next_inspection: '2024-06-05',
   },
   {
     id: '4',
-    serialNumber: '54321',
-    type: 'Full Body Harness',
-    brand: 'HarnessPlus',
-    modelNumber: 'HP-100',
-    manufacturingDate: '2023-02-20',
-    expiryDate: '2024-12-30',
+    serial_number: 'GLV-004',
+    type: 'gloves',
+    brand: 'GripSafe',
+    model_number: 'GS-400',
+    manufacturing_date: '2023-04-20',
+    expiry_date: '2024-04-20',
     status: 'expired',
-    nextInspection: '2023-12-20',
-    createdAt: '2023-02-01',
-    updatedAt: '2023-10-20',
+    created_at: '2023-04-20T00:00:00Z',
+    updated_at: '2023-04-20T00:00:00Z',
+    next_inspection: '2024-07-20',
   },
   {
     id: '5',
-    serialNumber: '4321',
-    type: 'Full Body Harness',
-    brand: 'HighSafety',
-    modelNumber: 'HS-200',
-    manufacturingDate: '2023-05-15',
-    expiryDate: '2026-05-15',
+    serial_number: 'BOT-005',
+    type: 'boots',
+    brand: 'StepSafe',
+    model_number: 'SS-500',
+    manufacturing_date: '2023-05-12',
+    expiry_date: '2027-05-12',
     status: 'active',
-    nextInspection: '2025-02-08',
-    createdAt: '2023-05-01',
-    updatedAt: '2023-11-15',
+    created_at: '2023-05-12T00:00:00Z',
+    updated_at: '2023-05-12T00:00:00Z',
+    next_inspection: '2024-08-12',
   },
   {
     id: '6',
-    serialNumber: '3214',
-    type: 'Ear Protection',
-    brand: 'SoundGuard',
-    modelNumber: 'SG-300',
-    manufacturingDate: '2023-06-10',
-    expiryDate: '2026-06-10',
-    status: 'active',
-    nextInspection: '2025-02-09',
-    createdAt: '2023-06-01',
-    updatedAt: '2023-11-10',
+    serial_number: 'EYE-006',
+    type: 'eyewear',
+    brand: 'ClearVision',
+    model_number: 'CV-600',
+    manufacturing_date: '2023-06-08',
+    expiry_date: '2026-06-08',
+    status: 'maintenance',
+    created_at: '2023-06-08T00:00:00Z',
+    updated_at: '2023-06-08T00:00:00Z',
+    next_inspection: '2024-09-08',
   },
 ];
 
-// Mock Inspection Checkpoints
-export const inspectionCheckpoints: Record<PPEType, InspectionCheckpoint[]> = {
-  'Full Body Harness': [
-    { id: 'fbh-1', description: 'Check for cuts, frays, or wear on straps', ppeType: 'Full Body Harness', required: true },
-    { id: 'fbh-2', description: 'Inspect buckles and D-rings for cracks, deformation, or rust', ppeType: 'Full Body Harness', required: true },
-    { id: 'fbh-3', description: 'Verify the label, certification, and expiration date', ppeType: 'Full Body Harness', required: true },
-    { id: 'fbh-4', description: 'Test for proper adjustment and secure fit', ppeType: 'Full Body Harness', required: true },
-  ],
-  'Fall Arrester': [
-    { id: 'fa-1', description: 'Inspect the rope or line for wear, fraying, or knots', ppeType: 'Fall Arrester', required: true },
-    { id: 'fa-2', description: 'Test the locking mechanism for proper engagement and release', ppeType: 'Fall Arrester', required: true },
-    { id: 'fa-3', description: 'Check for cracks, dents, or rust on the device', ppeType: 'Fall Arrester', required: true },
-    { id: 'fa-4', description: 'Confirm certification and expiry details', ppeType: 'Fall Arrester', required: true },
-  ],
-  'Double Lanyard': [
-    { id: 'dl-1', description: 'Check webbing for cuts, burns, or chemical damage', ppeType: 'Double Lanyard', required: true },
-    { id: 'dl-2', description: 'Verify carabiners and hooks for cracks, rust, or deformation', ppeType: 'Double Lanyard', required: true },
-    { id: 'dl-3', description: 'Inspect shock absorber for any signs of deployment', ppeType: 'Double Lanyard', required: true },
-    { id: 'dl-4', description: 'Ensure labels and expiry information are intact', ppeType: 'Double Lanyard', required: true },
-  ],
-  'Safety Helmet': [
-    { id: 'sh-1', description: 'Inspect the shell for cracks, dents, or UV damage', ppeType: 'Safety Helmet', required: true },
-    { id: 'sh-2', description: 'Check suspension straps for tears, frays, or loss of elasticity', ppeType: 'Safety Helmet', required: true },
-    { id: 'sh-3', description: 'Verify the chin strap and buckle functionality', ppeType: 'Safety Helmet', required: true },
-    { id: 'sh-4', description: 'Confirm the helmet\'s certification and expiry date', ppeType: 'Safety Helmet', required: true },
-  ],
-  'Safety Boots': [
-    { id: 'sb-1', description: 'Inspect the sole for wear, cracks, or loss of tread', ppeType: 'Safety Boots', required: true },
-    { id: 'sb-2', description: 'Check the upper material for tears, cuts, or separation from the sole', ppeType: 'Safety Boots', required: true },
-    { id: 'sb-3', description: 'Test the toe cap for dents or deformation', ppeType: 'Safety Boots', required: true },
-    { id: 'sb-4', description: 'Ensure the insole is intact and the boot fits properly', ppeType: 'Safety Boots', required: true },
-  ],
-  'Safety Gloves': [
-    { id: 'sg-1', description: 'Inspect gloves for cuts, holes, or abrasion', ppeType: 'Safety Gloves', required: true },
-    { id: 'sg-2', description: 'Test gripping surface for wear or peeling', ppeType: 'Safety Gloves', required: true },
-    { id: 'sg-3', description: 'Check for proper fit and wrist elasticity', ppeType: 'Safety Gloves', required: true },
-    { id: 'sg-4', description: 'Verify chemical or electrical resistance as applicable', ppeType: 'Safety Gloves', required: true },
-  ],
-  'Safety Goggles': [
-    { id: 'sgo-1', description: 'Check the lens for scratches, cracks, or fogging', ppeType: 'Safety Goggles', required: true },
-    { id: 'sgo-2', description: 'Inspect the frame for damage or deformation', ppeType: 'Safety Goggles', required: true },
-    { id: 'sgo-3', description: 'Ensure the strap is adjustable and in good condition', ppeType: 'Safety Goggles', required: true },
-    { id: 'sgo-4', description: 'Confirm compliance with impact or chemical resistance standards', ppeType: 'Safety Goggles', required: true },
-  ],
-  'Ear Protection': [
-    { id: 'ep-1', description: 'Inspect earmuffs for cracks or damaged foam seals', ppeType: 'Ear Protection', required: true },
-    { id: 'ep-2', description: 'Check earplugs for cleanliness and elasticity (if reusable)', ppeType: 'Ear Protection', required: true },
-    { id: 'ep-3', description: 'Test for proper fit and secure placement', ppeType: 'Ear Protection', required: true },
-    { id: 'ep-4', description: 'Confirm compliance with required noise reduction ratings', ppeType: 'Ear Protection', required: true },
-  ],
-};
+export const mockCheckpoints: InspectionCheckpoint[] = [
+  // Helmet checkpoints
+  { id: '1', ppe_type: 'helmet', description: 'Check for cracks in shell', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '2', ppe_type: 'helmet', description: 'Inspect suspension system', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '3', ppe_type: 'helmet', description: 'Verify chin strap integrity', required: false, created_at: '2023-01-01T00:00:00Z' },
+  { id: '4', ppe_type: 'helmet', description: 'Check for proper fit', required: true, created_at: '2023-01-01T00:00:00Z' },
 
-// Mock Inspection Results - Replace with proper structure matching the interface
-export const inspectionResults = [
+  // Harness checkpoints
+  { id: '5', ppe_type: 'harness', description: 'Inspect webbing for cuts or fraying', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '6', ppe_type: 'harness', description: 'Check hardware for corrosion', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '7', ppe_type: 'harness', description: 'Verify stitching integrity', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '8', ppe_type: 'harness', description: 'Test buckle functionality', required: true, created_at: '2023-01-01T00:00:00Z' },
+
+  // Respirator checkpoints
+  { id: '9', ppe_type: 'respirator', description: 'Check mask seal integrity', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '10', ppe_type: 'respirator', description: 'Inspect filter condition', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '11', ppe_type: 'respirator', description: 'Verify valve operation', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '12', ppe_type: 'respirator', description: 'Check strap elasticity', required: false, created_at: '2023-01-01T00:00:00Z' },
+
+  // Gloves checkpoints
+  { id: '13', ppe_type: 'gloves', description: 'Inspect for punctures or tears', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '14', ppe_type: 'gloves', description: 'Check for chemical degradation', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '15', ppe_type: 'gloves', description: 'Verify proper sizing', required: false, created_at: '2023-01-01T00:00:00Z' },
+  { id: '16', ppe_type: 'gloves', description: 'Test grip capability', required: false, created_at: '2023-01-01T00:00:00Z' },
+
+  // Boots checkpoints
+  { id: '17', ppe_type: 'boots', description: 'Inspect sole for wear patterns', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '18', ppe_type: 'boots', description: 'Check upper material integrity', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '19', ppe_type: 'boots', description: 'Verify lacing system', required: false, created_at: '2023-01-01T00:00:00Z' },
+  { id: '20', ppe_type: 'boots', description: 'Test steel toe protection', required: true, created_at: '2023-01-01T00:00:00Z' },
+
+  // Eyewear checkpoints
+  { id: '21', ppe_type: 'eyewear', description: 'Check lens for scratches', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '22', ppe_type: 'eyewear', description: 'Inspect frame integrity', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '23', ppe_type: 'eyewear', description: 'Verify side shield attachment', required: false, created_at: '2023-01-01T00:00:00Z' },
+  { id: '24', ppe_type: 'eyewear', description: 'Check anti-fog coating', required: false, created_at: '2023-01-01T00:00:00Z' },
+
+  // Vest checkpoints
+  { id: '25', ppe_type: 'vest', description: 'Inspect reflective tape condition', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '26', ppe_type: 'vest', description: 'Check fabric for tears', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '27', ppe_type: 'vest', description: 'Verify closure mechanism', required: true, created_at: '2023-01-01T00:00:00Z' },
+  { id: '28', ppe_type: 'vest', description: 'Test visibility in low light', required: false, created_at: '2023-01-01T00:00:00Z' },
+];
+
+export const mockInspections: Inspection[] = [
   {
     id: '1',
-    inspectionId: '101',
-    ppeId: '1',
-    inspectionDate: '2023-10-15',
-    inspectorName: 'John Smith',
-    results: [
-      { checkpointId: 'fbh-1', checkpointDescription: 'Check for cuts, frays, or wear on straps', passed: true },
-      { checkpointId: 'fbh-2', checkpointDescription: 'Inspect buckles and D-rings for cracks, deformation, or rust', passed: true },
-      { checkpointId: 'fbh-3', checkpointDescription: 'Verify the label, certification, and expiration date', passed: true },
-      { checkpointId: 'fbh-4', checkpointDescription: 'Test for proper adjustment and secure fit', passed: true },
-    ],
-    passFail: true,
+    ppe_id: '1',
+    inspector_id: 'user-1',
+    date: '2024-01-15T10:00:00Z',
+    type: 'monthly',
+    overall_result: 'pass',
+    notes: 'All components in good condition',
+    created_at: '2024-01-15T10:00:00Z',
   },
   {
     id: '2',
-    inspectionId: '102',
-    ppeId: '2',
-    inspectionDate: '2023-09-20',
-    inspectorName: 'Jane Doe',
-    results: [
-      { checkpointId: 'sh-1', checkpointDescription: 'Inspect the shell for cracks, dents, or UV damage', passed: true },
-      { checkpointId: 'sh-2', checkpointDescription: 'Check suspension straps for tears, frays, or loss of elasticity', passed: false, notes: 'Suspension straps showing signs of wear' },
-      { checkpointId: 'sh-3', checkpointDescription: 'Verify the chin strap and buckle functionality', passed: true },
-      { checkpointId: 'sh-4', checkpointDescription: 'Confirm the helmet\'s certification and expiry date', passed: true },
-    ],
-    passFail: false,
-  }
-];
-
-// Mock Users
-export const users: User[] = [
-  {
-    id: '1',
-    name: 'John Smith',
-    email: 'john@example.com',
-    role: 'admin',
-  },
-  {
-    id: '2',
-    name: 'Jane Doe',
-    email: 'jane@example.com',
-    role: 'inspector',
-  },
-  {
-    id: '3',
-    name: 'Bob Johnson',
-    email: 'bob@example.com',
-    role: 'user',
+    ppe_id: '3',
+    inspector_id: 'user-1',
+    date: '2024-01-20T14:30:00Z',
+    type: 'quarterly',
+    overall_result: 'fail',
+    notes: 'Filter replacement required',
+    created_at: '2024-01-20T14:30:00Z',
   },
 ];
 
-// Helper function to get upcoming inspections
-export const getUpcomingInspections = () => {
-  return ppeItems
-    .filter(item => item.nextInspection && new Date(item.nextInspection) > new Date())
-    .sort((a, b) => {
-      if (a.nextInspection && b.nextInspection) {
-        return new Date(a.nextInspection).getTime() - new Date(b.nextInspection).getTime();
-      }
-      return 0;
-    });
+export const mockUsers: User[] = [
+  {
+    id: 'user-1',
+    email: 'inspector@company.com',
+    created_at: '2023-01-01T00:00:00Z',
+    updated_at: '2023-01-01T00:00:00Z',
+  },
+];
+
+// Helper functions
+export const getUpcomingInspections = (items: PPEItem[]) => {
+  const now = new Date();
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  
+  return items.filter(item => {
+    if (!item.next_inspection) return false;
+    const nextInspection = new Date(item.next_inspection);
+    return nextInspection >= now && nextInspection <= thirtyDaysFromNow;
+  });
 };
 
-// Helper function to get expiring PPE
-export const getExpiringPPE = () => {
-  return ppeItems
-    .filter(item => item.status === 'expired' || 
-            (new Date(item.expiryDate).getTime() - new Date().getTime()) < 30 * 24 * 60 * 60 * 1000); // Within 30 days
+export const getExpiringPPE = (items: PPEItem[]) => {
+  const now = new Date();
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  
+  return items.filter(item => {
+    const expiryDate = new Date(item.expiry_date);
+    return expiryDate >= now && expiryDate <= thirtyDaysFromNow;
+  });
 };
 
-// Get PPE List by Type
-export const getPPETypes = (): PPEType[] => [
-  'Full Body Harness',
-  'Fall Arrester',
-  'Double Lanyard',
-  'Safety Helmet',
-  'Safety Boots',
-  'Safety Gloves',
-  'Safety Goggles',
-  'Ear Protection'
-];
-
-// We need to re-export the PPEType from our types so it can be imported from mockData
-export type { PPEType };
+export const getFlaggedPPE = (items: PPEItem[]) => {
+  return items.filter(item => item.status === 'flagged');
+};

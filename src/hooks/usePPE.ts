@@ -7,6 +7,7 @@ import { PPEType } from '@/types/index';
 
 interface PPECreateInput {
   serial_number: string;
+  batch_number?: string;
   type: PPEType;
   brand: string;
   model_number: string;
@@ -78,6 +79,7 @@ export const usePPE = () => {
         .from('ppe_items')
         .insert({
           serial_number: data.serial_number,
+          batch_number: data.batch_number,
           type: data.type,
           brand: data.brand,
           model_number: data.model_number,
@@ -117,13 +119,18 @@ export const usePPE = () => {
   /**
    * Get PPE by serial number
    */
-  const getPPEBySerialNumber = async (serialNumber: string): Promise<PPEItem[]> => {
+  const getPPEBySerialNumber = async (serialNumber: string, batchNumber?: string): Promise<PPEItem[]> => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('ppe_items')
         .select('*')
-        .ilike('serial_number', serialNumber)
-        .order('created_at', { ascending: false });
+        .ilike('serial_number', serialNumber);
+
+      if (batchNumber) {
+        query = query.eq('batch_number', batchNumber);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         throw new Error(`Error fetching PPE: ${error.message}`);

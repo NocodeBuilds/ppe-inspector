@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -63,17 +64,17 @@ const FlaggedIssues = () => {
       
       const mappedItems: PPEItem[] = data.map((item: any) => ({
         id: item.id,
-        serialNumber: item.serial_number,
+        serial_number: item.serial_number,
         type: item.type,
         brand: item.brand,
-        modelNumber: item.model_number,
-        manufacturingDate: item.manufacturing_date,
-        expiryDate: item.expiry_date,
+        model_number: item.model_number,
+        manufacturing_date: item.manufacturing_date,
+        expiry_date: item.expiry_date,
         status: item.status,
-        imageUrl: item.image_url,
-        nextInspection: item.next_inspection,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
+        image_url: item.image_url,
+        next_inspection: item.next_inspection,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
         latestInspection: item.inspections && item.inspections.length > 0 
           ? item.inspections.sort((a: any, b: any) => 
               new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -104,7 +105,7 @@ const FlaggedIssues = () => {
     const query = searchQuery.toLowerCase().trim();
     const results = ppeItems.filter(
       item =>
-        item.serialNumber.toLowerCase().includes(query) ||
+        item.serial_number.toLowerCase().includes(query) ||
         item.type.toLowerCase().includes(query) ||
         item.brand.toLowerCase().includes(query)
     );

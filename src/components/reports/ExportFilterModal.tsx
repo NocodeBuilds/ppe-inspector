@@ -22,11 +22,11 @@ import { Input } from '@/components/ui/input';
 // Define structure for filter options passed to the modal
 export interface ExportFilterOptions {
   status?: boolean;        // For PPE Status
-  ppeType?: boolean;       // For PPE Type (both Inspections and PPE)
+  ppe_type?: boolean;       // For PPE Type (both Inspections and PPE)
   result?: boolean;        // For Inspection Result
   inspectionType?: boolean; // For Inspection Type
-  dateRange?: boolean;      // For date filtering
-  serialNumber?: boolean;   // For PPE Serial Number
+  date_range?: boolean;      // For date filtering
+  serial_number?: boolean;   // For PPE Serial Number
   brand?: boolean;         // For PPE Brand
   inspectorName?: boolean; // For Inspector Name (Inspections)
   location?: boolean;      // For Location (Both, assumed property)
@@ -35,12 +35,12 @@ export interface ExportFilterOptions {
 // Define structure for selected filter values
 export interface SelectedExportFilters {
   status?: string;         // e.g., 'active', 'all'
-  ppeType?: string;        // e.g., 'Helmet', 'all'
+  ppe_type?: string;        // e.g., 'Helmet', 'all'
   result?: string;         // e.g., 'pass', 'fail', 'all'
   inspectionType?: string; // e.g., 'pre-use', 'all'
   startDate?: Date | null;
   endDate?: Date | null;
-  serialNumber?: string;   // e.g., 'SN123', could be partial match
+  serial_number?: string;   // e.g., 'SN123', could be partial match
   brand?: string;          // e.g., 'BrandX', 'all'
   inspectorName?: string;  // e.g., 'John Doe', 'all'
   location?: string;       // e.g., 'Site A', 'all'
@@ -151,14 +151,14 @@ const ExportFilterModal: React.FC<ExportFilterModalProps> = ({
         <div className="grid gap-4 py-4">
           {/* Conditionally render filter controls based on availableFilters */}
           
-          {availableFilters.ppeType && (
+          {availableFilters.ppe_type && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="ppeTypeFilter" className="text-right">PPE Type</Label>
+              <Label htmlFor="ppe_typeFilter" className="text-right">PPE Type</Label>
               <Select 
-                value={selectedFilters.ppeType || 'all'} 
-                onValueChange={(value) => handleFilterChange('ppeType', value)}
+                value={selectedFilters.ppe_type || 'all'} 
+                onValueChange={(value) => handleFilterChange('ppe_type', value)}
               >
-                <SelectTrigger id="ppeTypeFilter" className="col-span-3">
+                <SelectTrigger id="ppe_typeFilter" className="col-span-3">
                   <SelectValue placeholder="Select PPE Type..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -275,15 +275,15 @@ const ExportFilterModal: React.FC<ExportFilterModalProps> = ({
 
           {/* --- PPE SPECIFIC FILTERS --- */}
           
-          {dataType === 'ppe' && availableFilters.serialNumber && (
+          {dataType === 'ppe' && availableFilters.serial_number && (
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="serialFilter" className="text-right">Serial No.</Label>
               <Input 
                 id="serialFilter" 
                 className="col-span-3"
                 placeholder="Enter Serial Number (or part)"
-                value={selectedFilters.serialNumber || ''}
-                onChange={(e) => handleFilterChange('serialNumber', e)}
+                value={selectedFilters.serial_number || ''}
+                onChange={(e) => handleFilterChange('serial_number', e)}
               />
             </div>
           )}
@@ -310,7 +310,7 @@ const ExportFilterModal: React.FC<ExportFilterModalProps> = ({
             </div>
           )}
 
-          {availableFilters.dateRange && (
+          {availableFilters.date_range && (
              <>
                <div className="grid grid-cols-4 items-center gap-4">
                   <Label className="text-right">Start Date</Label>

@@ -1,349 +1,229 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { PPEItem } from '@/types';
 import EquipmentCard from '@/components/equipment/EquipmentCard';
 import { Input } from '@/components/ui/input';
-import { Search, AlertCircle, FileDown, RefreshCw, Filter } from 'lucide-react';
+import { Search, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { generatePPEItemReport } from '@/utils/reportGeneratorService';
-import InspectionsSkeleton from '@/components/inspections/InspectionsSkeleton';
+import EquipmentSkeleton from '@/components/equipment/EquipmentSkeleton';
 
 const UpcomingInspections = () => {
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<PPEItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [hasNetworkError, setHasNetworkError] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'due' | 'overdue'>('all');
+  const [timeFrame, setTimeFrame] = useState<'today' | 'week' | 'month' | 'overdue'>('week');
+  const [sortBy, setSortBy] = useState<'dueDate' | 'dateAdded'>('dueDate');
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchUpcomingInspections();
-  }, []);
+  }, [timeFrame]);
 
   useEffect(() => {
-    filterItems();
-  }, [searchQuery, ppeItems, sortOrder, filter]);
+    filterAndSortItems();
+  }, [searchQuery, ppeItems, sortBy]);
 
   const fetchUpcomingInspections = async () => {
     try {
       setIsLoading(true);
-      setIsRefreshing(true);
-      setHasNetworkError(false);
       
-      const now = new Date();
-      const futureDate = new Date();
-      futureDate.setDate(now.getDate() + 10); // Set threshold to 10 days from now
-      const thresholdDateISO = futureDate.toISOString();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       
-      if (!navigator.onLine) {
-        setHasNetworkError(true);
-        setIsLoading(false);
-        setIsRefreshing(false);
-        
-        const cachedData = localStorage.getItem('upcoming_inspections_cache');
-        if (cachedData) {
-          const { items, timestamp } = JSON.parse(cachedData);
-          const cacheTime = new Date(timestamp);
-          const now = new Date();
-          const diffHours = (now.getTime() - cacheTime.getTime()) / (1000 * 60 * 60);
-          
-          if (diffHours < 24) {
-            setPpeItems(items);
-            setFilteredItems(items);
-            toast({
-              title: 'Offline Mode',
-              description: 'Showing cached data. Connect to internet to update.',
-              variant: 'default',
-            });
-            return;
-          }
-        }
-        
-        toast({
-          title: 'Network Error',
-          description: 'You are offline. Connect to the internet and try again.',
-          variant: 'destructive',
-        });
-        return;
+      let startDate = new Date(today);
+      let endDate = new Date(today);
+      
+      if (timeFrame === 'today') {
+        endDate.setDate(today.getDate() + 1);
+      } else if (timeFrame === 'week') {
+        endDate.setDate(today.getDate() + 7);
+      } else if (timeFrame === 'month') {
+        endDate.setMonth(today.getMonth() + 1);
+      } else if (timeFrame === 'overdue') {
+        endDate = today;
+        startDate = new Date('2000-01-01'); // Far past date to catch all overdue items
       }
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('ppe_items')
         .select('*')
-        // .eq('status', 'active') // Temporarily commented out for debugging
-        .lte('next_inspection', thresholdDateISO); // Due within the next 10 days or past due
+        .not('next_inspection', 'is', null);
       
-      console.log("Raw data from Supabase:", data);
-      
-      if (error) {
-        // Check if the error is the invalid enum value again, though it shouldn't be
-        if (error.code === '22P02') { 
-          console.error('Supabase enum error persists:', error.message);
-          toast({
-            title: 'Configuration Error',
-            description: `Invalid status value used in query: ${error.message}`,
-            variant: 'destructive',
-          });
-        } else {
-          throw error; // Rethrow other errors
-        }
+      if (timeFrame === 'overdue') {
+        query = query.lt('next_inspection', today.toISOString());
+      } else {
+        query = query
+          .gte('next_inspection', startDate.toISOString())
+          .lt('next_inspection', endDate.toISOString());
       }
       
-      if (!data || data.length === 0) {
-        setPpeItems([]);
-        setFilteredItems([]);
-        setIsLoading(false);
-        setIsRefreshing(false);
-        return;
-      }
+      const { data, error } = await query.order('next_inspection', { ascending: true });
       
-      const mappedItems: PPEItem[] = data.map((item: any) => ({
+      if (error) throw error;
+      
+      const mappedItems: PPEItem[] = (data || []).map((item: any) => ({
         id: item.id,
-        serialNumber: item.serial_number,
+        serial_number: item.serial_number,
         type: item.type,
         brand: item.brand,
-        modelNumber: item.model_number,
-        manufacturingDate: item.manufacturing_date,
-        expiryDate: item.expiry_date,
+        model_number: item.model_number,
+        manufacturing_date: item.manufacturing_date,
+        expiry_date: item.expiry_date,
         status: item.status,
-        imageUrl: item.image_url,
-        nextInspection: item.next_inspection,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-      }));
-      console.log("Mapped items:", mappedItems);
-      
-      localStorage.setItem('upcoming_inspections_cache', JSON.stringify({
-        items: mappedItems,
-        timestamp: new Date().toISOString()
+        image_url: item.image_url,
+        next_inspection: item.next_inspection,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
       }));
       
       setPpeItems(mappedItems);
       setFilteredItems(mappedItems);
     } catch (error) {
       console.error('Error fetching upcoming inspections:', error);
-      setHasNetworkError(true);
-      
       toast({
         title: 'Error',
         description: 'Failed to load upcoming inspections',
         variant: 'destructive',
       });
-      
-      const cachedData = localStorage.getItem('upcoming_inspections_cache');
-      if (cachedData) {
-        try {
-          const { items } = JSON.parse(cachedData);
-          setPpeItems(items);
-          setFilteredItems(items);
-          toast({
-            title: 'Using Cached Data',
-            description: 'Showing previously loaded data due to connection error',
-            variant: 'default',
-          });
-        } catch (cacheError) {
-          console.error('Error parsing cache:', cacheError);
-        }
-      } else {
-        setPpeItems([]);
-        setFilteredItems([]);
-      }
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
     }
   };
 
-  const filterItems = () => {
+  const filterAndSortItems = () => {
     let results = [...ppeItems];
     
-    if (filter !== 'all') {
-      const now = new Date();
-      
-      if (filter === 'overdue') {
-        results = results.filter(item => {
-          const inspDate = new Date(item.nextInspection || item.createdAt);
-          return inspDate < now;
-        });
-      } else if (filter === 'due') {
-        results = results.filter(item => {
-          const inspDate = new Date(item.nextInspection || item.createdAt);
-          const diffTime = inspDate.getTime() - now.getTime();
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          return diffDays >= 0 && diffDays <= 10;
-        });
-      }
-    }
-    
+    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       results = results.filter(
         item =>
-          item.serialNumber.toLowerCase().includes(query) ||
+          item.serial_number.toLowerCase().includes(query) ||
           item.type.toLowerCase().includes(query) ||
           item.brand.toLowerCase().includes(query)
       );
     }
     
-    results = results.sort((a, b) => {
-      const dateA = new Date(a.nextInspection || a.createdAt).getTime();
-      const dateB = new Date(b.nextInspection || b.createdAt).getTime();
-      
-      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    // Sort items
+    results.sort((a, b) => {
+      if (sortBy === 'dueDate') {
+        const dateA = a.next_inspection ? new Date(a.next_inspection).getTime() : 0;
+        const dateB = b.next_inspection ? new Date(b.next_inspection).getTime() : 0;
+        return dateA - dateB;
+      } else {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      }
     });
     
     setFilteredItems(results);
   };
 
-  const handleInspect = (item: PPEItem) => {
-    navigate(`/inspect/${item.id}`);
-  };
-  
-  const handleGenerateReport = async () => {
-    try {
-      setIsGeneratingReport(true);
-      
-      const ids = filteredItems.map(item => item.id);
-      
-      if (ids.length === 0) {
-        toast({
-          title: 'No Items',
-          description: 'There are no items to include in the report',
-          variant: 'default',
-        });
-        return;
-      }
-      
-      await generatePPEItemReport('all');
-      
-      toast({
-        title: 'Report Generated',
-        description: 'The report has been downloaded successfully',
-      });
-    } catch (error) {
-      console.error('Error generating report:', error);
-      toast({
-        title: 'Report Error',
-        description: 'Failed to generate report',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGeneratingReport(false);
+  const getStatusText = (item: PPEItem) => {
+    if (!item.next_inspection) return 'No inspection scheduled';
+    
+    const dueDate = new Date(item.next_inspection);
+    const today = new Date();
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return `Overdue by ${Math.abs(diffDays)} days`;
+    } else if (diffDays === 0) {
+      return 'Due today';
+    } else if (diffDays === 1) {
+      return 'Due tomorrow';
+    } else {
+      return `Due in ${diffDays} days`;
     }
   };
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold mb-6">Upcoming Inspections</h1>
+      <h1 className="text-2xl font-bold mb-6 flex items-center">
+        <Calendar className="mr-2" size={24} />
+        Upcoming Inspections
+      </h1>
       
-      {hasNetworkError && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Connection Error</AlertTitle>
-          <AlertDescription>
-            You may be offline or having connection issues. Some features might be limited.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            type="text"
-            placeholder="Search by serial number, type or brand..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <Select
-          value={filter}
-          onValueChange={(value) => setFilter(value as 'all' | 'due' | 'overdue')}
-        >
-          <SelectTrigger className="w-[180px]">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Items</SelectItem>
-            <SelectItem value="due">Due Soon (10 days)</SelectItem>
-            <SelectItem value="overdue">Overdue</SelectItem>
-          </SelectContent>
-        </Select>
-        
-        <Select
-          value={sortOrder}
-          onValueChange={(value) => setSortOrder(value as 'asc' | 'desc')}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Sort by due date" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="asc">Earliest first</SelectItem>
-            <SelectItem value="desc">Latest first</SelectItem>
-          </SelectContent>
-        </Select>
-        
-        <div className="flex gap-2">
-          <Button onClick={fetchUpcomingInspections} disabled={isRefreshing}>
-            {isRefreshing ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-          </Button>
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              type="text"
+              placeholder="Search by serial number, type or brand..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           
-          <Button 
-            variant="outline" 
-            onClick={handleGenerateReport} 
-            disabled={isGeneratingReport || filteredItems.length === 0}
+          <Select
+            value={timeFrame}
+            onValueChange={(value) => setTimeFrame(value as 'today' | 'week' | 'month' | 'overdue')}
           >
-            {isGeneratingReport ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            ) : (
-              <FileDown className="h-4 w-4" />
-            )}
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Time frame" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="week">Next 7 days</SelectItem>
+              <SelectItem value="month">Next month</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select
+            value={sortBy}
+            onValueChange={(value) => setSortBy(value as 'dueDate' | 'dateAdded')}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dueDate">Due date</SelectItem>
+              <SelectItem value="dateAdded">Date added</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Button onClick={() => fetchUpcomingInspections()}>
+            Refresh
           </Button>
         </div>
       </div>
       
       {isLoading ? (
-        <InspectionsSkeleton count={4} />
+        <EquipmentSkeleton />
       ) : filteredItems.length > 0 ? (
-        <>
-          <p className="text-sm text-muted-foreground mb-4">
-            Showing {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}
-          </p>
-          <div className="space-y-4">
-            {filteredItems.map((item) => (
+        <div className="space-y-4">
+          {filteredItems.map((item) => (
+            <div key={item.id} className="space-y-2">
               <EquipmentCard
-                key={item.id}
                 item={item}
                 type="upcoming"
-                onInspect={() => handleInspect(item)}
               />
-            ))}
-          </div>
-        </>
+              <div className="ml-4 pl-4 border-l-2 border-orange-300">
+                <p className="text-sm text-muted-foreground">
+                  {getStatusText(item)}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
-        <Card className="text-center py-12 border border-dashed rounded-lg">
+        <div className="text-center py-12 border border-dashed rounded-lg">
           <p className="text-muted-foreground mb-4">No upcoming inspections found</p>
           <Button variant="outline" onClick={() => navigate('/equipment')}>
             View All Equipment
           </Button>
-        </Card>
+        </div>
       )}
     </div>
   );

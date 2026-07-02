@@ -1,281 +1,186 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState, useMemo } from 'react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
+import { CalendarIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { format } from 'date-fns';
+import { Inspection } from '@/types';
 import InspectionHistoryTable from './InspectionHistoryTable';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Download, 
-  FileSpreadsheet,
-  AlertTriangle,
-  CheckCircle,
-  Calendar,
-  Filter
-} from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { exportFilteredInspectionsToExcel } from '@/utils/exportUtils';
-import { generateInspectionsDateReport } from '@/utils/reportGeneratorService';
-import { Badge } from '@/components/ui/badge';
-import { fetchCompleteInspectionData } from '@/utils/reportGenerator/reportDataFormatter';
-import { generateInspectionDetailPDF } from '@/utils/reportGenerator/inspectionDetailPDF';
-import { generateInspectionExcelReport } from '@/utils/reportGenerator/inspectionExcelReport';
-import { SelectedExportFilters } from './ExportFilterModal';
+
+interface FilterOptions {
+  inspector: string;
+  dateRange: { from: Date | null, to: Date | null };
+  result: string;
+  ppe_type: string;
+}
 
 const InspectionHistory = () => {
-  const [inspections, setInspections] = useState<any[]>([]);
-  const [filteredInspections, setFilteredInspections] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
-  const [timeframe, setTimeframe] = useState('all');
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  
-  useEffect(() => {
-    fetchInspections();
-  }, []);
-  
-  useEffect(() => {
-    applyFilters();
-  }, [filter, timeframe, inspections]);
-  
-  const fetchInspections = async () => {
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from('inspections')
-        .select(`
-          id, date, type, overall_result, notes,
-          profiles:inspector_id(full_name),
-          ppe_items:ppe_id(type, serial_number, brand, model_number)
-        `)
-        .order('date', { ascending: false });
-      
-      if (error) throw error;
-      
-      const formattedInspections = data.map(item => ({
-        id: item.id,
-        date: item.date,
-        type: item.type,
-        overall_result: item.overall_result,
-        inspector_name: (item.profiles as any)?.[0]?.full_name || 'Unknown',
-        ppe_type: (item.ppe_items as any)?.[0]?.type || 'Unknown',
-        ppe_serial: (item.ppe_items as any)?.[0]?.serial_number || 'Unknown',
-        ppe_brand: (item.ppe_items as any)?.[0]?.brand || 'Unknown',
-        ppe_model: (item.ppe_items as any)?.[0]?.model_number || 'Unknown'
-      }));
-      
-      setInspections(formattedInspections);
-    } catch (error: any) {
-      console.error('Error fetching inspections:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to load inspection history',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const applyFilters = () => {
-    let filtered = [...inspections];
-    
-    if (filter === 'pass' || filter === 'fail') {
-      filtered = filtered.filter(i => 
-        i.overall_result?.toLowerCase() === filter
-      );
-    } else if (filter === 'pre-use' || filter === 'monthly' || filter === 'quarterly') {
-      filtered = filtered.filter(i => 
-        i.type === filter
-      );
-    }
-    
-    if (timeframe !== 'all') {
-      const now = new Date();
-      let startDate = new Date();
-      
-      if (timeframe === 'week') {
-        startDate.setDate(now.getDate() - 7);
-      } else if (timeframe === 'month') {
-        startDate.setMonth(now.getMonth() - 1);
-      } else if (timeframe === 'year') {
-        startDate.setFullYear(now.getFullYear() - 1);
+  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [inspectors, setInspectors] = useState<string[]>([]);
+  const [ppeTypes, setPpeTypes] = useState<string[]>([]);
+  const [selectedFilters, setSelectedFilters] = useState<FilterOptions>({
+    inspector: '',
+    dateRange: { from: null, to: null },
+    result: '',
+    ppe_type: '',
+  });
+
+  const filteredInspections = useMemo(() => {
+    return inspections?.filter((inspection) => {
+      if (selectedFilters.inspector && inspection.inspector_id !== selectedFilters.inspector) {
+        return false;
       }
-      
-      filtered = filtered.filter(i => 
-        new Date(i.date) >= startDate && new Date(i.date) <= now
-      );
-    }
-    
-    setFilteredInspections(filtered);
-  };
-  
-  const handleExport = (filters: SelectedExportFilters) => {
-    console.log("Export requested with filters:", filters);
-    toast({ title: "Exporting Inspections...", description: "Generating Excel file." });
-    
-    try {
-      let dataToExport = inspections.filter(inspection => {
-        if (filters.ppeType && inspection.ppe_type !== filters.ppeType) {
-          return false;
-        }
-        
-        if (filters.result && inspection.overall_result?.toLowerCase() !== filters.result.toLowerCase()) {
-          return false;
-        }
-        
+      if (selectedFilters.result && inspection.overall_result !== selectedFilters.result) {
+        return false;
+      }
+      if (selectedFilters.ppe_type && inspection.ppe_id) {
+        // Note: This would need to be joined with PPE data in a real implementation
         return true;
-      });
-      
-      const filterDesc = Object.entries(filters)
-          .map(([key, value]) => `${key}=${value}`)
-          .join('_');
-      const filenamePrefix = filterDesc ? `InspectionHistory_${filterDesc}` : 'InspectionHistory_All';
-      
-      if (dataToExport.length > 0) {
-        exportFilteredInspectionsToExcel(dataToExport, filenamePrefix);
-        toast({ title: "Export Successful", description: `Exported ${dataToExport.length} inspections.` });
-      } else {
-        toast({ variant: "destructive", title: "No Data Found", description: "No inspections match the selected filter criteria." });
       }
-    } catch (error) {
-      console.error("Export failed:", error);
-      toast({ variant: "destructive", title: "Export Error", description: "An unexpected error occurred during export." });
-    }
-  };
-  
-  const handleDownloadPDF = async (id: string) => {
-    try {
-      const inspectionData = await fetchCompleteInspectionData(supabase, id);
-      if (!inspectionData) throw new Error('Inspection data not found.');
-      
-      await generateInspectionDetailPDF(inspectionData);
-      toast({
-        title: 'PDF Generated',
-        description: 'Inspection report has been downloaded as PDF',
-      });
-    } catch (error: any) {
-      console.error('Error generating single PDF report:', error);
-      toast({
-        title: 'PDF Generation Failed',
-        description: error.message || 'Could not generate PDF report',
-        variant: 'destructive',
-      });
-    }
-  };
-  
-  const handleDownloadExcel = async (id: string) => {
-    try {
-      const inspectionData = await fetchCompleteInspectionData(supabase, id);
-      if (!inspectionData) throw new Error('Inspection data not found.');
-
-      await generateInspectionExcelReport(inspectionData);
-      toast({
-        title: 'Excel Generated',
-        description: 'Inspection report has been downloaded as Excel',
-      });
-    } catch (error: any) {
-      console.error('Error generating single Excel report:', error);
-      toast({
-        title: 'Excel Generation Failed',
-        description: error.message || 'Could not generate Excel report',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleViewDetails = async (id: string) => {
-    try {
-      const inspectionData = await fetchCompleteInspectionData(supabase, id);
-      
-      if (inspectionData) {
-        const confirmDownload = window.confirm('Do you want to download this inspection report?');
-        if (confirmDownload) {
-          const format = window.confirm('Click OK for PDF or Cancel for Excel');
-          if (format) {
-            await generateInspectionDetailPDF(inspectionData);
-            toast({
-              title: 'PDF Generated',
-              description: 'Inspection report has been downloaded as PDF',
-            });
-          } else {
-            await generateInspectionExcelReport(inspectionData);
-            toast({
-              title: 'Excel Generated',
-              description: 'Inspection report has been downloaded as Excel',
-            });
-          }
+      if (selectedFilters.dateRange?.from) {
+        const inspectionDate = new Date(inspection.date);
+        if (inspectionDate < selectedFilters.dateRange.from) {
+          return false;
         }
-      } else {
-        navigate(`/inspection/${id}`);
       }
-    } catch (error) {
-      console.error('Error generating report from history:', error);
-      navigate(`/inspection/${id}`);
-    }
+      if (selectedFilters.dateRange?.to) {
+        const inspectionDate = new Date(inspection.date);
+        if (inspectionDate > selectedFilters.dateRange.to) {
+          return false;
+        }
+      }
+      return true;
+    }) || [];
+  }, [inspections, selectedFilters]);
+
+  const handleFilterChange = (filterName: keyof FilterOptions, value: any) => {
+    setSelectedFilters(prev => ({
+      ...prev,
+      [filterName]: value,
+    }));
   };
-  
-  const handleFilterChange = (newFilter: string) => {
-    setFilter(newFilter);
-  };
-  
+
   return (
-    <Card className="backdrop-blur-sm bg-background/80 border-border/50">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center">
-          <Calendar className="mr-2 h-5 w-5" />
-          Inspection History
-        </CardTitle>
-        <CardDescription>
-          View and filter all completed inspections
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="px-2 py-1">
-                Total: {filteredInspections.length}
-              </Badge>
-              <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-1">
-                Pass: {filteredInspections.filter(i => i.overall_result?.toLowerCase() === 'pass').length}
-              </Badge>
-              <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 px-2 py-1">
-                Fail: {filteredInspections.filter(i => i.overall_result?.toLowerCase() === 'fail').length}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Select value={timeframe} onValueChange={setTimeframe}>
-                <SelectTrigger className="h-8 w-full sm:w-[130px]">
-                  <SelectValue placeholder="Timeframe" />
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Filter Inspections</CardTitle>
+          <CardDescription>Apply filters to narrow down inspection history</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="inspector">Inspector</Label>
+              <Select onValueChange={(value) => handleFilterChange('inspector', value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select inspector" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="week">Past Week</SelectItem>
-                  <SelectItem value="month">Past Month</SelectItem>
-                  <SelectItem value="year">Past Year</SelectItem>
+                  {inspectors.map(inspector => (
+                    <SelectItem key={inspector} value={inspector}>{inspector}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="result">Result</Label>
+              <Select onValueChange={(value) => handleFilterChange('result', value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select result" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pass">Pass</SelectItem>
+                  <SelectItem value="fail">Fail</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="ppe_type">PPE Type</Label>
+              <Select onValueChange={(value) => handleFilterChange('ppe_type', value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select PPE Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ppeTypes.map(type => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
-          
-          <InspectionHistoryTable 
-            inspections={filteredInspections}
-            isLoading={isLoading}
-            onViewDetails={handleViewDetails}
-            onDownloadPDF={handleDownloadPDF}
-            onDownloadExcel={handleDownloadExcel}
-            onFilterChange={handleFilterChange}
-            onExport={handleExport}
-            activeFilter={filter}
-            activeTimeframe={timeframe}
-          />
-        </div>
-      </CardContent>
-    </Card>
+          <div>
+            <Label>Date Range</Label>
+            <div className="flex space-x-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-[140px] justify-start text-left font-normal",
+                      !selectedFilters.dateRange.from && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedFilters.dateRange.from ? (
+                      format(selectedFilters.dateRange.from, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedFilters.dateRange.from}
+                    onSelect={(date) => handleFilterChange('dateRange', { ...selectedFilters.dateRange, from: date })}
+                    disabled={(date) =>
+                      date > new Date()
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-[140px] justify-start text-left font-normal",
+                      !selectedFilters.dateRange.to && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedFilters.dateRange.to ? (
+                      format(selectedFilters.dateRange.to, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedFilters.dateRange.to}
+                    onSelect={(date) => handleFilterChange('dateRange', { ...selectedFilters.dateRange, to: date })}
+                    disabled={(date) =>
+                      date > new Date()
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <InspectionHistoryTable inspections={filteredInspections} />
+    </div>
   );
 };
 

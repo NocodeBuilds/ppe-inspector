@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -35,11 +34,13 @@ interface InspectionHistoryTableProps {
   activeTimeframe: string;
 }
 
-const inspectionExportFilters: ExportFilterOptions = {
-  ppeType: true,
+const exportFilterOptions: ExportFilterOptions = {
+  inspector: true,
+  dateRange: true,
   result: true,
-  inspectionType: true,
-  dateRange: true
+  ppe_type: true,
+  includePhotos: true,
+  includeNotes: true,
 };
 
 const InspectionHistoryTable: React.FC<InspectionHistoryTableProps> = ({
@@ -199,7 +200,7 @@ const InspectionHistoryTable: React.FC<InspectionHistoryTableProps> = ({
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         onExport={onExport} 
-        availableFilters={inspectionExportFilters} 
+        availableFilters={exportFilterOptions} 
         data={inspections} 
         dataType="inspections"
       />
