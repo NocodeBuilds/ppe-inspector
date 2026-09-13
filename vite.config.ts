@@ -31,7 +31,7 @@ export default defineConfig(async ({ mode }) => {
     },
     // Optimize build performance
     build: {
-      sourcemap: true,
+      sourcemap: 'hidden',
       rollupOptions: {
         output: {
           manualChunks: {

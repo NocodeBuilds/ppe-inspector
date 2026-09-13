@@ -69,7 +69,7 @@ export const useOfflineSync = () => {
   }, []);
 
   // Process a single action with retry logic
-  const processAction = useCallback(async (actionId: string, attempt = 1): Promise<boolean> => {
+  const processAction = useCallback(async (actionId: number, attempt = 1): Promise<boolean> => {
     try {
       // Get action details
       const action = await getOfflineAction(actionId);
@@ -152,7 +152,7 @@ export const useOfflineSync = () => {
       let failureCount = 0;
       
       for (const action of pendingActions) {
-        const success = await processAction(action.id as string);
+        const success = await processAction(action.id as number);
         if (success) {
           successCount++;
         } else {

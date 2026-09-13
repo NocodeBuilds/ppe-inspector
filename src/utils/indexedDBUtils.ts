@@ -10,7 +10,7 @@ const OFFLINE_ACTIONS_STORE = 'offline_actions';
 const TEMP_IMAGES_STORE = 'temp_images';
 
 export interface OfflineAction {
-  id?: string;
+  id?: number;
   type: string;
   data: any;
   timestamp?: number;
@@ -64,25 +64,25 @@ export const initIndexedDB = (): Promise<IDBDatabase> => {
 /**
  * Queue an offline action for later synchronization
  */
-export const queueOfflineAction = async (action: OfflineAction): Promise<string> => {
+export const queueOfflineAction = async (action: OfflineAction): Promise<number> => {
   try {
     const db = await initIndexedDB();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(OFFLINE_ACTIONS_STORE, 'readwrite');
       const store = transaction.objectStore(OFFLINE_ACTIONS_STORE);
-      
+
       // Add timestamp and default retry count
       const actionToStore = {
         ...action,
         timestamp: Date.now(),
         retryCount: 0
       };
-      
+
       const request = store.add(actionToStore);
-      
+
       request.onsuccess = (event) => {
-        const id = (event.target as IDBRequest).result as string;
+        const id = (event.target as IDBRequest<IDBValidKey>).result as number;
         resolve(id);
       };
       
@@ -258,7 +258,7 @@ export const clearCompletedOfflineActions = async (): Promise<void> => {
 /**
  * Store a temporary image for offline use
  */
-export const storeTemporaryImage = async (imageData: string): Promise<string> => {
+export const storeTemporaryImage = async (imageData: string): Promise<number> => {
   try {
     const db = await initIndexedDB();
     
@@ -272,7 +272,7 @@ export const storeTemporaryImage = async (imageData: string): Promise<string> =>
       });
       
       request.onsuccess = (event) => {
-        const id = (event.target as IDBRequest).result as string;
+        const id = (event.target as IDBRequest<IDBValidKey>).result as number;
         resolve(id);
       };
       

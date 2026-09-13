@@ -3,6 +3,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { initializePWA } from './utils/pwaUtils';
 
 // Apply theme before rendering
 const savedTheme = localStorage.getItem('ui-theme') as 'dark' | 'light' | null;
@@ -13,6 +14,9 @@ if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
 } else {
   document.documentElement.classList.remove('dark');
 }
+
+// Initialize PWA (service worker registration, meta tags)
+initializePWA().catch(console.warn);
 
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Failed to find the root element');

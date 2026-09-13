@@ -230,7 +230,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || 'New notification',
     icon: '/icons/icon-192x192.png',
-    badge: '/icons/badge-72x72.png',
+    badge: '/favicon.ico',
     data: data.url || '/',
     vibrate: [100, 50, 100],
     tag: data.tag || 'default',

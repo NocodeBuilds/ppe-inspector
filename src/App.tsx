@@ -10,10 +10,18 @@ import { ThemeProvider } from "./components/ThemeProvider";
 // Lazy load pages
 const Login = React.lazy(() => import("./pages/Login"));
 const Register = React.lazy(() => import("./pages/Register"));
-const Dashboard = React.lazy(() => import("./pages/Dashboard"));
+const Home = React.lazy(() => import("./pages/Home"));
 const Equipment = React.lazy(() => import("./pages/Equipment"));
 const Inspections = React.lazy(() => import("./pages/Inspections"));
 const Profile = React.lazy(() => import("./pages/Profile"));
+const Analytics = React.lazy(() => import("./pages/Analytics"));
+const Settings = React.lazy(() => import("./pages/Settings"));
+const StartInspection = React.lazy(() => import("./pages/StartInspection"));
+const UpcomingInspections = React.lazy(() => import("./pages/UpcomingInspections"));
+const ExpiringPPE = React.lazy(() => import("./pages/ExpiringPPE"));
+const FlaggedIssues = React.lazy(() => import("./pages/FlaggedIssues"));
+const Reports = React.lazy(() => import("./pages/Reports"));
+const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 // Loading component
 const PageLoader = () => (
@@ -60,11 +68,18 @@ const App = () => {
                 <Routes>
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/" element={<Home />} />
                   <Route path="/equipment" element={<Equipment />} />
                   <Route path="/inspections" element={<Inspections />} />
                   <Route path="/profile" element={<Profile />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/start-inspection" element={<StartInspection />} />
+                  <Route path="/upcoming" element={<UpcomingInspections />} />
+                  <Route path="/expiring" element={<ExpiringPPE />} />
+                  <Route path="/flagged" element={<FlaggedIssues />} />
+                  <Route path="/reports" element={<Reports />} />
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </React.Suspense>
             </AuthProvider>
